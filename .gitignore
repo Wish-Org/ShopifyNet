@@ -53,4 +53,12 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 .vs/
-.vscode/
+
+
+# Ignore everything in .vscode...
+.vscode/*
+
+# ...but include specific files
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
