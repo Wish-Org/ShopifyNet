@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNet", "ShopifyNet\ShopifyNet.csproj", "{F402CA4F-E89F-46CE-849B-EA7AAC13F7E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNetApp", "ShopifyNetApp\ShopifyNetApp.csproj", "{2A893113-4D49-409B-9511-07122FDFB81A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNet.TypeGenerator", "ShopifyNet.TypeGenerator\ShopifyNet.TypeGenerator.csproj", "{2A893113-4D49-409B-9511-07122FDFB81A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

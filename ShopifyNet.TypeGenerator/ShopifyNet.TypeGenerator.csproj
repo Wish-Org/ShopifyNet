@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GraphQLSharp" Version="2.1.0" />
+    <PackageReference Include="ShopifySharp" Version="6.22.0-b221" />
+    <!-- <PackageReference Include="ShopifySharp" Version="6.22.0-b221" /> -->
+    <Reference Include="ShopifySharp">
+      <HintPath>..\References\ShopifySharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+
+
+</Project>
