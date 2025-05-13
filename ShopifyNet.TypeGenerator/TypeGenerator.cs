@@ -37,7 +37,7 @@ var options = new GraphQLTypeGeneratorOptions
 var generator = new GraphQLTypeGenerator();
 string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
-    var res = await new GraphService(Environment.GetEnvironmentVariable("SHOPIFYNET_URL"),
+    var res = await new GraphService(Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID"),
                                     Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN"),
                                     Environment.GetEnvironmentVariable("SHOPIFYNET_API_VERSION"))
                                     .PostAsync(query);
