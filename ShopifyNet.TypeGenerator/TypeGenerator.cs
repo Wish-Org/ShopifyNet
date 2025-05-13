@@ -1,6 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-using System.Text;
-using System.Text.Json;
+﻿using System.Text.Json;
 using GraphQLSharp;
 using ShopifySharp;
 
@@ -37,14 +35,11 @@ var options = new GraphQLTypeGeneratorOptions
 var generator = new GraphQLTypeGenerator();
 string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
-    var res = await new GraphService(Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID"),
-                                    Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN"),
-                                    Environment.GetEnvironmentVariable("SHOPIFYNET_API_VERSION"))
-                                    .PostAsync(query);
+    string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
+    string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
+    var res = await new GraphService(shopId, token, "2024-10").PostAsync(query);
     var doc = JsonDocument.Parse(res.ToString());
     return doc;
 });
 
-var strCode = new StringBuilder().AppendLine(csharpCode);
-
-File.WriteAllText(@"../../../../ShopifyNet/AdminTypes.cs", strCode.ToString());
+File.WriteAllText(@"../../../../ShopifyNet/AdminTypes.cs", csharpCode);
