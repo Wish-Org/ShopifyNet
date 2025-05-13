@@ -1,0 +1,33 @@
+name: Build Test Publish
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
+    workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  global-json-file: global.json
+
+            - name: Install dependencies
+              run: dotnet restore
+
+            - name: Build
+              run: dotnet build -c Release --no-restore
+
+            - name: Test
+              run: dotnet test --no-restore --verbosity normal
+
+            - name: Publish to nuget
+              if: github.event_name == 'workflow_dispatch' # Only runs when manually triggered for deployment
+              run: dotnet nuget push ShopifyNet/bin/Release/*.nupkg  -s https://api.nuget.org/v3/index.json --skip-duplicate -k "${{ secrets.NUGET_API_KEY }}"
