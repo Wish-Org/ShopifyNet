@@ -1,0 +1,13 @@
+// .vscode/launch.json
+{
+  "configurations": [
+    {
+      "name": ".NET Launch ShopifyNet.TypeGenerator",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/ShopifyNet.TypeGenerator/bin/Debug/net9.0/ShopifyNet.TypeGenerator.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}/ShopifyNet.TypeGenerator"
+    }
+  ]
+}

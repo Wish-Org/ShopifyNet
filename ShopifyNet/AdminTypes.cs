@@ -5,117 +5,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GraphQLSharp;
 
 namespace ShopifyNet.AdminTypes
 {
-    public static class Serializer
-    {
-        public static readonly JsonSerializerOptions Options = new JsonSerializerOptions
-        {
-            NumberHandling = JsonNumberHandling.AllowReadingFromString,
-            Converters =
-            {
-                new JsonStringEnumConverter()
-            },
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        };
-        public static string Serialize(object obj)
-        {
-            return JsonSerializer.Serialize(obj, obj.GetType(), Options);
-        }
-
-        public static object? Deserialize(string json, Type type)
-        {
-            return JsonSerializer.Deserialize(json, type, Options);
-        }
-
-        public static T? Deserialize<T>(string json)
-            where T : class
-        {
-            return JsonSerializer.Deserialize<T>(json, Options);
-        }
-    }
-
-    public interface IGraphQLObject
-    {
-    }
-
-    public abstract class GraphQLObject<TSelf> : IGraphQLObject where TSelf : GraphQLObject<TSelf>
-    {
-        public static TSelf? FromJson(string json) => Serializer.Deserialize<TSelf>(json);
-    }
-
-    public static class GraphQLObjectExtensions
-    {
-        public static string ToJson(this IGraphQLObject o) => Serializer.Serialize(o);
-    }
-
-    public interface IEdge
-    {
-        string? cursor { get; set; }
-
-        object? node { get; set; }
-    }
-
-    public interface IEdge<TNode> : IEdge
-    {
-        object? IEdge.node { get => this.node; set => this.node = (TNode? )value; }
-        new TNode? node { get; set; }
-    }
-
-    public interface IConnection
-    {
-        PageInfo? pageInfo { get; set; }
-
-        Type GetNodeType();
-        IEnumerable? GetNodes();
-    }
-
-    public interface IConnectionWithNodes : IConnection
-    {
-        IEnumerable? nodes { get; set; }
-
-        IEnumerable? IConnection.GetNodes() => this.nodes;
-    }
-
-    public interface IConnectionWithNodes<TNode> : IConnectionWithNodes
-    {
-        IEnumerable? IConnectionWithNodes.nodes { get => this.nodes; set => this.nodes = (IEnumerable<TNode>? )value; }
-        new IEnumerable<TNode>? nodes { get; set; }
-
-        Type IConnection.GetNodeType() => typeof(TNode);
-    }
-
-    public interface IConnectionWithEdges : IConnection
-    {
-        IEnumerable<IEdge>? edges { get; set; }
-
-        Type GetEdgeType();
-        IEnumerable? IConnection.GetNodes() => this.edges?.Select(e => e.node);
-    }
-
-    public interface IConnectionWithEdges<TNode> : IConnectionWithEdges
-    {
-        IEnumerable<IEdge>? IConnectionWithEdges.edges { get => this.edges; set => this.edges = (IEnumerable<IEdge<TNode>>? )value; }
-        new IEnumerable<IEdge<TNode>>? edges { get; set; }
-
-        Type IConnection.GetNodeType() => typeof(TNode);
-    }
-
-    public interface IConnectionWithEdges<TEdge, TNode> : IConnectionWithEdges<TNode> where TEdge : IEdge<TNode>
-    {
-        IEnumerable<IEdge<TNode>>? IConnectionWithEdges<TNode>.edges { get => this.edges?.Cast<IEdge<TNode>>(); set => this.edges = value?.Cast<TEdge>(); }
-        new IEnumerable<TEdge>? edges { get; set; }
-
-        Type IConnectionWithEdges.GetEdgeType() => typeof(TEdge);
-    }
-
-    public interface IConnectionWithNodesAndEdges<TEdge, TNode> : IConnectionWithEdges<TEdge, TNode>, IConnectionWithNodes<TNode> where TEdge : IEdge<TNode>
-    {
-        Type IConnection.GetNodeType() => typeof(TNode);
-        IEnumerable? IConnection.GetNodes() => this.nodes ?? this.edges?.Select(e => e.node);
-    }
-
     ///<summary>
     ///A checkout that was abandoned by the customer.
     ///</summary>
@@ -261,6 +154,10 @@ namespace ShopifyNet.AdminTypes
     public class AbandonedCheckoutLineItem : GraphQLObject<AbandonedCheckoutLineItem>, INode
     {
         ///<summary>
+        ///A list of line item components for this line item.
+        ///</summary>
+        public IEnumerable<AbandonedCheckoutLineItemComponent>? components { get; set; }
+        ///<summary>
         ///A list of extra information that has been added to the line item.
         ///</summary>
         public IEnumerable<Attribute>? customAttributes { get; set; }
@@ -331,6 +228,34 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///The list of line item components that belong to a line item.
+    ///</summary>
+    public class AbandonedCheckoutLineItemComponent : GraphQLObject<AbandonedCheckoutLineItemComponent>
+    {
+        ///<summary>
+        ///A globally-unique ID.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The variant image associated with the line item component.
+        ///NULL if the variant associated doesn't have an image.
+        ///</summary>
+        public Image? image { get; set; }
+        ///<summary>
+        ///The quantity of the line item component.
+        ///</summary>
+        public int? quantity { get; set; }
+        ///<summary>
+        ///Title of the line item component.
+        ///</summary>
+        public string? title { get; set; }
+        ///<summary>
+        ///The name of the variant.
+        ///</summary>
+        public string? variantTitle { get; set; }
+    }
+
+    ///<summary>
     ///An auto-generated type for paginating through multiple AbandonedCheckoutLineItems.
     ///</summary>
     public class AbandonedCheckoutLineItemConnection : GraphQLObject<AbandonedCheckoutLineItemConnection>, IConnectionWithNodesAndEdges<AbandonedCheckoutLineItemEdge, AbandonedCheckoutLineItem>
@@ -394,6 +319,16 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `total_price` value.
         ///</summary>
         TOTAL_PRICE,
+    }
+
+    public static class AbandonedCheckoutSortKeysStringValues
+    {
+        public const string CHECKOUT_ID = @"CHECKOUT_ID";
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string CUSTOMER_NAME = @"CUSTOMER_NAME";
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TOTAL_PRICE = @"TOTAL_PRICE";
     }
 
     ///<summary>
@@ -526,6 +461,13 @@ namespace ShopifyNet.AdminTypes
         CHECKOUT,
     }
 
+    public static class AbandonmentAbandonmentTypeStringValues
+    {
+        public const string BROWSE = @"BROWSE";
+        public const string CART = @"CART";
+        public const string CHECKOUT = @"CHECKOUT";
+    }
+
     ///<summary>
     ///Specifies the delivery state of a marketing activity.
     ///</summary>
@@ -545,6 +487,13 @@ namespace ShopifyNet.AdminTypes
         SCHEDULED,
     }
 
+    public static class AbandonmentDeliveryStateStringValues
+    {
+        public const string NOT_SENT = @"NOT_SENT";
+        public const string SENT = @"SENT";
+        public const string SCHEDULED = @"SCHEDULED";
+    }
+
     ///<summary>
     ///Specifies the email state.
     ///</summary>
@@ -562,6 +511,13 @@ namespace ShopifyNet.AdminTypes
         ///The email has been scheduled for later delivery.
         ///</summary>
         SCHEDULED,
+    }
+
+    public static class AbandonmentEmailStateStringValues
+    {
+        public const string NOT_SENT = @"NOT_SENT";
+        public const string SENT = @"SENT";
+        public const string SCHEDULED = @"SCHEDULED";
     }
 
     ///<summary>
@@ -607,6 +563,11 @@ namespace ShopifyNet.AdminTypes
         ///Unable to find an Abandonment for the provided ID.
         ///</summary>
         ABANDONMENT_NOT_FOUND,
+    }
+
+    public static class AbandonmentEmailStateUpdateUserErrorCodeStringValues
+    {
+        public const string ABANDONMENT_NOT_FOUND = @"ABANDONMENT_NOT_FOUND";
     }
 
     ///<summary>
@@ -662,6 +623,13 @@ namespace ShopifyNet.AdminTypes
         DELIVERY_STATUS_INFO_NOT_FOUND,
     }
 
+    public static class AbandonmentUpdateActivitiesDeliveryStatusesUserErrorCodeStringValues
+    {
+        public const string ABANDONMENT_NOT_FOUND = @"ABANDONMENT_NOT_FOUND";
+        public const string MARKETING_ACTIVITY_NOT_FOUND = @"MARKETING_ACTIVITY_NOT_FOUND";
+        public const string DELIVERY_STATUS_INFO_NOT_FOUND = @"DELIVERY_STATUS_INFO_NOT_FOUND";
+    }
+
     ///<summary>
     ///The permission required to access a Shopify Admin API or Storefront API resource for a shop. Merchants grant access scopes that are requested by applications.
     ///</summary>
@@ -714,6 +682,18 @@ namespace ShopifyNet.AdminTypes
         ///The user has not yet accepted the invitation to become the store owner.
         ///</summary>
         INVITED_STORE_OWNER,
+    }
+
+    public static class AccountTypeStringValues
+    {
+        public const string REGULAR = @"REGULAR";
+        public const string RESTRICTED = @"RESTRICTED";
+        public const string INVITED = @"INVITED";
+        public const string REQUESTED = @"REQUESTED";
+        public const string COLLABORATOR = @"COLLABORATOR";
+        public const string COLLABORATOR_TEAM_MEMBER = @"COLLABORATOR_TEAM_MEMBER";
+        public const string SAML = @"SAML";
+        public const string INVITED_STORE_OWNER = @"INVITED_STORE_OWNER";
     }
 
     ///<summary>
@@ -862,14 +842,15 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `time` value.
         ///</summary>
         TIME,
+    }
+
+    public static class AdjustmentsSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string TIME = @"TIME";
     }
 
     ///<summary>
@@ -1221,6 +1202,14 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class AppDeveloperTypeStringValues
+    {
+        public const string SHOPIFY = @"SHOPIFY";
+        public const string PARTNER = @"PARTNER";
+        public const string MERCHANT = @"MERCHANT";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///The details about the app extension that's providing the
     ///[discount type](https://help.shopify.com/manual/discounts/discount-types).
@@ -1262,6 +1251,11 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
         ///<summary>
+        ///The list of [discount classes](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
+        ///that this app extension supports.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
+        ///<summary>
         ///The
         ///[function ID](https://shopify.dev/docs/apps/build/functions/input-output/metafields-for-input-queries)
         ///associated with the app extension providing the
@@ -1281,6 +1275,40 @@ namespace ShopifyNet.AdminTypes
         ///that the app extension is providing.
         ///</summary>
         public string? title { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type for paginating through multiple AppDiscountTypes.
+    ///</summary>
+    public class AppDiscountTypeConnection : GraphQLObject<AppDiscountTypeConnection>, IConnectionWithNodesAndEdges<AppDiscountTypeEdge, AppDiscountType>
+    {
+        ///<summary>
+        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
+        ///</summary>
+        public IEnumerable<AppDiscountTypeEdge>? edges { get; set; }
+        ///<summary>
+        ///A list of nodes that are contained in AppDiscountTypeEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
+        ///</summary>
+        public IEnumerable<AppDiscountType>? nodes { get; set; }
+        ///<summary>
+        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
+        ///</summary>
+        public PageInfo? pageInfo { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type which holds one AppDiscountType and a cursor during pagination.
+    ///</summary>
+    public class AppDiscountTypeEdge : GraphQLObject<AppDiscountTypeEdge>, IEdge<AppDiscountType>
+    {
+        ///<summary>
+        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
+        ///</summary>
+        public string? cursor { get; set; }
+        ///<summary>
+        ///The item at the end of AppDiscountTypeEdge.
+        ///</summary>
+        public AppDiscountType? node { get; set; }
     }
 
     ///<summary>
@@ -1381,18 +1409,6 @@ namespace ShopifyNet.AdminTypes
         ///One-time purchases to a shop.
         ///</summary>
         public AppPurchaseOneTimeConnection? oneTimePurchases { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The publication associated with the installed application.
         ///</summary>
@@ -1427,6 +1443,12 @@ namespace ShopifyNet.AdminTypes
         ///Apps that can be used in the POS mobile client.
         ///</summary>
         POS_EMBEDDED,
+    }
+
+    public static class AppInstallationCategoryStringValues
+    {
+        public const string CHANNEL = @"CHANNEL";
+        public const string POS_EMBEDDED = @"POS_EMBEDDED";
     }
 
     ///<summary>
@@ -1472,6 +1494,12 @@ namespace ShopifyNet.AdminTypes
         PRIVATE,
     }
 
+    public static class AppInstallationPrivacyStringValues
+    {
+        public const string PUBLIC = @"PUBLIC";
+        public const string PRIVATE = @"PRIVATE";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the AppInstallation query.
     ///</summary>
@@ -1489,11 +1517,13 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `installed_at` value.
         ///</summary>
         INSTALLED_AT,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AppInstallationSortKeysStringValues
+    {
+        public const string APP_TITLE = @"APP_TITLE";
+        public const string ID = @"ID";
+        public const string INSTALLED_AT = @"INSTALLED_AT";
     }
 
     ///<summary>
@@ -1539,6 +1569,12 @@ namespace ShopifyNet.AdminTypes
         EVERY_30_DAYS,
     }
 
+    public static class AppPricingIntervalStringValues
+    {
+        public const string ANNUAL = @"ANNUAL";
+        public const string EVERY_30_DAYS = @"EVERY_30_DAYS";
+    }
+
     ///<summary>
     ///The public-facing category for an app.
     ///</summary>
@@ -1560,6 +1596,14 @@ namespace ShopifyNet.AdminTypes
         ///The app's public category is other. An app is in this category if it's not classified under any of the other app types (private, public, or custom).
         ///</summary>
         OTHER,
+    }
+
+    public static class AppPublicCategoryStringValues
+    {
+        public const string PRIVATE = @"PRIVATE";
+        public const string PUBLIC = @"PUBLIC";
+        public const string CUSTOM = @"CUSTOM";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -1715,6 +1759,16 @@ namespace ShopifyNet.AdminTypes
         PENDING,
     }
 
+    public static class AppPurchaseStatusStringValues
+    {
+        [Obsolete("As of API version 2021-01, when a merchant accepts an app purchase, the status immediately changes from `pending` to `active`.")]
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string ACTIVE = @"ACTIVE";
+        public const string DECLINED = @"DECLINED";
+        public const string EXPIRED = @"EXPIRED";
+        public const string PENDING = @"PENDING";
+    }
+
     ///<summary>
     ///The pricing information about a subscription app.
     ///The object contains an interval (the frequency at which the shop is billed for an app subscription) and
@@ -1730,6 +1784,10 @@ namespace ShopifyNet.AdminTypes
         ///The frequency at which the subscribing shop is billed for an app subscription.
         ///</summary>
         public string? interval { get; set; }
+        ///<summary>
+        ///The app store pricing plan handle.
+        ///</summary>
+        public string? planHandle { get; set; }
         ///<summary>
         ///The amount and currency to be charged to the subscribing shop every billing interval.
         ///</summary>
@@ -1820,11 +1878,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AppRevenueAttributionRecordSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -1848,6 +1907,14 @@ namespace ShopifyNet.AdminTypes
         ///Other app revenue collection type.
         ///</summary>
         OTHER,
+    }
+
+    public static class AppRevenueAttributionTypeStringValues
+    {
+        public const string APPLICATION_PURCHASE = @"APPLICATION_PURCHASE";
+        public const string APPLICATION_SUBSCRIPTION = @"APPLICATION_SUBSCRIPTION";
+        public const string APPLICATION_USAGE = @"APPLICATION_USAGE";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -1902,6 +1969,17 @@ namespace ShopifyNet.AdminTypes
         ///App is not installed on shop.
         ///</summary>
         APP_NOT_INSTALLED,
+    }
+
+    public static class AppRevokeAccessScopesAppRevokeScopeErrorCodeStringValues
+    {
+        public const string MISSING_SOURCE_APP = @"MISSING_SOURCE_APP";
+        public const string APPLICATION_CANNOT_BE_FOUND = @"APPLICATION_CANNOT_BE_FOUND";
+        public const string UNKNOWN_SCOPES = @"UNKNOWN_SCOPES";
+        public const string CANNOT_REVOKE_REQUIRED_SCOPES = @"CANNOT_REVOKE_REQUIRED_SCOPES";
+        public const string CANNOT_REVOKE_IMPLIED_SCOPES = @"CANNOT_REVOKE_IMPLIED_SCOPES";
+        public const string CANNOT_REVOKE_UNDECLARED_SCOPES = @"CANNOT_REVOKE_UNDECLARED_SCOPES";
+        public const string APP_NOT_INSTALLED = @"APP_NOT_INSTALLED";
     }
 
     ///<summary>
@@ -2149,6 +2227,13 @@ namespace ShopifyNet.AdminTypes
         STANDARD,
     }
 
+    public static class AppSubscriptionReplacementBehaviorStringValues
+    {
+        public const string APPLY_IMMEDIATELY = @"APPLY_IMMEDIATELY";
+        public const string APPLY_ON_NEXT_BILLING_CYCLE = @"APPLY_ON_NEXT_BILLING_CYCLE";
+        public const string STANDARD = @"STANDARD";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the AppSubscription query.
     ///</summary>
@@ -2162,11 +2247,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AppSubscriptionSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -2203,6 +2289,18 @@ namespace ShopifyNet.AdminTypes
         ///The app subscription was cancelled by the app. This could be caused by the app being uninstalled, a new app subscription being activated, or a direct cancellation by the app. This is a terminal state.
         ///</summary>
         CANCELLED,
+    }
+
+    public static class AppSubscriptionStatusStringValues
+    {
+        public const string PENDING = @"PENDING";
+        [Obsolete("As of API version 2021-01, when a merchant approves an app subscription, the status immediately transitions from `pending` to `active`.")]
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string ACTIVE = @"ACTIVE";
+        public const string DECLINED = @"DECLINED";
+        public const string EXPIRED = @"EXPIRED";
+        public const string FROZEN = @"FROZEN";
+        public const string CANCELLED = @"CANCELLED";
     }
 
     ///<summary>
@@ -2258,6 +2356,13 @@ namespace ShopifyNet.AdminTypes
         SUBSCRIPTION_NOT_ACTIVE,
     }
 
+    public static class AppSubscriptionTrialExtendUserErrorCodeStringValues
+    {
+        public const string SUBSCRIPTION_NOT_FOUND = @"SUBSCRIPTION_NOT_FOUND";
+        public const string TRIAL_NOT_ACTIVE = @"TRIAL_NOT_ACTIVE";
+        public const string SUBSCRIPTION_NOT_ACTIVE = @"SUBSCRIPTION_NOT_ACTIVE";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the AppTransaction query.
     ///</summary>
@@ -2271,11 +2376,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AppTransactionSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -2399,11 +2505,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AppUsageRecordSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -2508,18 +2615,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time (ISO 8601 format) when the article became or will become visible.
         ///Returns null when the article isn't visible.
@@ -2563,6 +2658,40 @@ namespace ShopifyNet.AdminTypes
         ///The author's full name.
         ///</summary>
         public string? name { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type for paginating through multiple ArticleAuthors.
+    ///</summary>
+    public class ArticleAuthorConnection : GraphQLObject<ArticleAuthorConnection>, IConnectionWithNodesAndEdges<ArticleAuthorEdge, ArticleAuthor>
+    {
+        ///<summary>
+        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
+        ///</summary>
+        public IEnumerable<ArticleAuthorEdge>? edges { get; set; }
+        ///<summary>
+        ///A list of nodes that are contained in ArticleAuthorEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
+        ///</summary>
+        public IEnumerable<ArticleAuthor>? nodes { get; set; }
+        ///<summary>
+        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
+        ///</summary>
+        public PageInfo? pageInfo { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type which holds one ArticleAuthor and a cursor during pagination.
+    ///</summary>
+    public class ArticleAuthorEdge : GraphQLObject<ArticleAuthorEdge>, IEdge<ArticleAuthor>
+    {
+        ///<summary>
+        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
+        ///</summary>
+        public string? cursor { get; set; }
+        ///<summary>
+        ///The item at the end of ArticleAuthorEdge.
+        ///</summary>
+        public ArticleAuthor? node { get; set; }
     }
 
     ///<summary>
@@ -2681,6 +2810,24 @@ namespace ShopifyNet.AdminTypes
         INVALID_TYPE,
     }
 
+    public static class ArticleCreateUserErrorCodeStringValues
+    {
+        public const string AMBIGUOUS_AUTHOR = @"AMBIGUOUS_AUTHOR";
+        public const string AMBIGUOUS_BLOG = @"AMBIGUOUS_BLOG";
+        public const string AUTHOR_FIELD_REQUIRED = @"AUTHOR_FIELD_REQUIRED";
+        public const string AUTHOR_MUST_EXIST = @"AUTHOR_MUST_EXIST";
+        public const string INVALID_PUBLISH_DATE = @"INVALID_PUBLISH_DATE";
+        public const string BLOG_REFERENCE_REQUIRED = @"BLOG_REFERENCE_REQUIRED";
+        public const string UPLOAD_FAILED = @"UPLOAD_FAILED";
+        public const string BLANK = @"BLANK";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TAKEN = @"TAKEN";
+        public const string INVALID = @"INVALID";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+    }
+
     ///<summary>
     ///Return type for `articleDelete` mutation.
     ///</summary>
@@ -2726,6 +2873,11 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class ArticleDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one Article and a cursor during pagination.
     ///</summary>
@@ -2763,11 +2915,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         PUBLISHED_AT,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `title` value.
         ///</summary>
         TITLE,
@@ -2775,6 +2922,16 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class ArticleSortKeysStringValues
+    {
+        public const string AUTHOR = @"AUTHOR";
+        public const string BLOG_TITLE = @"BLOG_TITLE";
+        public const string ID = @"ID";
+        public const string PUBLISHED_AT = @"PUBLISHED_AT";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -2790,6 +2947,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by popularity, starting with the most popular tag.
         ///</summary>
         POPULAR,
+    }
+
+    public static class ArticleTagSortStringValues
+    {
+        public const string ALPHABETICAL = @"ALPHABETICAL";
+        public const string POPULAR = @"POPULAR";
     }
 
     ///<summary>
@@ -2873,6 +3036,20 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class ArticleUpdateUserErrorCodeStringValues
+    {
+        public const string AMBIGUOUS_AUTHOR = @"AMBIGUOUS_AUTHOR";
+        public const string AMBIGUOUS_BLOG = @"AMBIGUOUS_BLOG";
+        public const string AUTHOR_MUST_EXIST = @"AUTHOR_MUST_EXIST";
+        public const string INVALID_PUBLISH_DATE = @"INVALID_PUBLISH_DATE";
+        public const string UPLOAD_FAILED = @"UPLOAD_FAILED";
+        public const string BLANK = @"BLANK";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TAKEN = @"TAKEN";
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///A custom property. Attributes are used to store additional information about a Shopify resource, such as
     ///products, customers, or orders. Attributes are stored as key-value pairs.
@@ -2939,11 +3116,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class AutomaticDiscountSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -2959,6 +3137,21 @@ namespace ShopifyNet.AdminTypes
         ///The name of the channel.
         ///</summary>
         public string? channelName { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `backupRegionUpdate` mutation.
+    ///</summary>
+    public class BackupRegionUpdatePayload : GraphQLObject<BackupRegionUpdatePayload>
+    {
+        ///<summary>
+        ///Returns the updated backup region.
+        ///</summary>
+        public IMarketRegion? backupRegion { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<MarketUserError>? userErrors { get; set; }
     }
 
     ///<summary>
@@ -2990,6 +3183,16 @@ namespace ShopifyNet.AdminTypes
         ///This badge has type `critical`.
         ///</summary>
         CRITICAL,
+    }
+
+    public static class BadgeTypeStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string SUCCESS = @"SUCCESS";
+        public const string ATTENTION = @"ATTENTION";
+        public const string WARNING = @"WARNING";
+        public const string INFO = @"INFO";
+        public const string CRITICAL = @"CRITICAL";
     }
 
     ///<summary>
@@ -3034,14 +3237,54 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         PROCESSED_AT,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `transaction_type` value.
         ///</summary>
         TRANSACTION_TYPE,
+    }
+
+    public static class BalanceTransactionSortKeysStringValues
+    {
+        public const string AMOUNT = @"AMOUNT";
+        public const string FEE = @"FEE";
+        public const string ID = @"ID";
+        public const string NET = @"NET";
+        public const string ORDER_NAME = @"ORDER_NAME";
+        public const string PAYMENT_METHOD_NAME = @"PAYMENT_METHOD_NAME";
+        public const string PAYOUT_DATE = @"PAYOUT_DATE";
+        public const string PAYOUT_STATUS = @"PAYOUT_STATUS";
+        public const string PROCESSED_AT = @"PROCESSED_AT";
+        public const string TRANSACTION_TYPE = @"TRANSACTION_TYPE";
+    }
+
+    ///<summary>
+    ///The valid types of actions a user should be able to perform in an financial app.
+    ///</summary>
+    public enum BankingFinanceAppAccess
+    {
+        ///<summary>
+        ///Read access in the financial app.
+        ///</summary>
+        READ_ACCESS,
+        ///<summary>
+        ///Ability to perform actions that moves money.
+        ///</summary>
+        MOVE_MONEY,
+        ///<summary>
+        ///Indication that the user has restricted money movement.
+        ///</summary>
+        MONEY_MOVEMENT_RESTRICTED,
+        ///<summary>
+        ///Indication that the user has blocked money movement due to MFA disabled.
+        ///</summary>
+        MONEY_MOVEMENT_BLOCKED_MFA,
+    }
+
+    public static class BankingFinanceAppAccessStringValues
+    {
+        public const string READ_ACCESS = @"READ_ACCESS";
+        public const string MOVE_MONEY = @"MOVE_MONEY";
+        public const string MONEY_MOVEMENT_RESTRICTED = @"MONEY_MOVEMENT_RESTRICTED";
+        public const string MONEY_MOVEMENT_BLOCKED_MFA = @"MONEY_MOVEMENT_BLOCKED_MFA";
     }
 
     ///<summary>
@@ -3265,6 +3508,23 @@ namespace ShopifyNet.AdminTypes
         CONTRACT_PAUSED,
     }
 
+    public static class BillingAttemptUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string CONTRACT_NOT_FOUND = @"CONTRACT_NOT_FOUND";
+        public const string ORIGIN_TIME_BEFORE_CONTRACT_CREATION = @"ORIGIN_TIME_BEFORE_CONTRACT_CREATION";
+        public const string UPCOMING_CYCLE_LIMIT_EXCEEDED = @"UPCOMING_CYCLE_LIMIT_EXCEEDED";
+        public const string CYCLE_INDEX_OUT_OF_RANGE = @"CYCLE_INDEX_OUT_OF_RANGE";
+        public const string CYCLE_START_DATE_OUT_OF_RANGE = @"CYCLE_START_DATE_OUT_OF_RANGE";
+        public const string ORIGIN_TIME_OUT_OF_RANGE = @"ORIGIN_TIME_OUT_OF_RANGE";
+        public const string BILLING_CYCLE_CHARGE_BEFORE_EXPECTED_DATE = @"BILLING_CYCLE_CHARGE_BEFORE_EXPECTED_DATE";
+        public const string BILLING_CYCLE_SKIPPED = @"BILLING_CYCLE_SKIPPED";
+        public const string CONTRACT_UNDER_REVIEW = @"CONTRACT_UNDER_REVIEW";
+        public const string CONTRACT_TERMINATED = @"CONTRACT_TERMINATED";
+        public const string CONTRACT_PAUSED = @"CONTRACT_PAUSED";
+    }
+
     ///<summary>
     ///Shopify stores come with a built-in blogging engine, allowing a shop to have one or more blogs.  Blogs are meant
     ///to be used as a type of magazine or newsletter for the shop, with content that changes over time.
@@ -3321,18 +3581,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///A list of tags associated with the 200 most recent blog articles.
         ///</summary>
@@ -3436,6 +3684,15 @@ namespace ShopifyNet.AdminTypes
         INVALID_TYPE,
     }
 
+    public static class BlogCreateUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+    }
+
     ///<summary>
     ///Return type for `blogDelete` mutation.
     ///</summary>
@@ -3479,6 +3736,11 @@ namespace ShopifyNet.AdminTypes
         ///The record with the ID used as the input value couldn't be found.
         ///</summary>
         NOT_FOUND,
+    }
+
+    public static class BlogDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
     }
 
     ///<summary>
@@ -3525,14 +3787,16 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `title` value.
         ///</summary>
         TITLE,
+    }
+
+    public static class BlogSortKeysStringValues
+    {
+        public const string HANDLE = @"HANDLE";
+        public const string ID = @"ID";
+        public const string TITLE = @"TITLE";
     }
 
     ///<summary>
@@ -3596,6 +3860,15 @@ namespace ShopifyNet.AdminTypes
         INCLUSION,
     }
 
+    public static class BlogUpdateUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string INCLUSION = @"INCLUSION";
+    }
+
     ///<summary>
     ///Possible error codes that can be returned by `BulkMutationUserError`.
     ///</summary>
@@ -3621,6 +3894,15 @@ namespace ShopifyNet.AdminTypes
         ///There was a problem reading the JSONL file. This error might be intermittent, so you can try performing the same query again.
         ///</summary>
         INTERNAL_FILE_SERVER_ERROR,
+    }
+
+    public static class BulkMutationErrorCodeStringValues
+    {
+        public const string OPERATION_IN_PROGRESS = @"OPERATION_IN_PROGRESS";
+        public const string INVALID_MUTATION = @"INVALID_MUTATION";
+        public const string INVALID_STAGED_UPLOAD_FILE = @"INVALID_STAGED_UPLOAD_FILE";
+        public const string NO_SUCH_FILE = @"NO_SUCH_FILE";
+        public const string INTERNAL_FILE_SERVER_ERROR = @"INTERNAL_FILE_SERVER_ERROR";
     }
 
     ///<summary>
@@ -3747,6 +4029,13 @@ namespace ShopifyNet.AdminTypes
         TIMEOUT,
     }
 
+    public static class BulkOperationErrorCodeStringValues
+    {
+        public const string ACCESS_DENIED = @"ACCESS_DENIED";
+        public const string INTERNAL_SERVER_ERROR = @"INTERNAL_SERVER_ERROR";
+        public const string TIMEOUT = @"TIMEOUT";
+    }
+
     ///<summary>
     ///Return type for `bulkOperationRunMutation` mutation.
     ///</summary>
@@ -3774,7 +4063,7 @@ namespace ShopifyNet.AdminTypes
         ///<summary>
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
+        public IEnumerable<BulkOperationUserError>? userErrors { get; set; }
     }
 
     ///<summary>
@@ -3814,6 +4103,17 @@ namespace ShopifyNet.AdminTypes
         RUNNING,
     }
 
+    public static class BulkOperationStatusStringValues
+    {
+        public const string CANCELED = @"CANCELED";
+        public const string CANCELING = @"CANCELING";
+        public const string COMPLETED = @"COMPLETED";
+        public const string CREATED = @"CREATED";
+        public const string EXPIRED = @"EXPIRED";
+        public const string FAILED = @"FAILED";
+        public const string RUNNING = @"RUNNING";
+    }
+
     ///<summary>
     ///The valid values for the bulk operation's type.
     ///</summary>
@@ -3827,6 +4127,52 @@ namespace ShopifyNet.AdminTypes
         ///The bulk operation is a mutation.
         ///</summary>
         MUTATION,
+    }
+
+    public static class BulkOperationTypeStringValues
+    {
+        public const string QUERY = @"QUERY";
+        public const string MUTATION = @"MUTATION";
+    }
+
+    ///<summary>
+    ///Represents an error in the input of a mutation.
+    ///</summary>
+    public class BulkOperationUserError : GraphQLObject<BulkOperationUserError>, IDisplayableError
+    {
+        ///<summary>
+        ///The error code.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///The path to the input field that caused the error.
+        ///</summary>
+        public IEnumerable<string>? field { get; set; }
+        ///<summary>
+        ///The error message.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///Possible error codes that can be returned by `BulkOperationUserError`.
+    ///</summary>
+    public enum BulkOperationUserErrorCode
+    {
+        ///<summary>
+        ///A bulk operation is already in progress.
+        ///</summary>
+        OPERATION_IN_PROGRESS,
+        ///<summary>
+        ///The input value is invalid.
+        ///</summary>
+        INVALID,
+    }
+
+    public static class BulkOperationUserErrorCodeStringValues
+    {
+        public const string OPERATION_IN_PROGRESS = @"OPERATION_IN_PROGRESS";
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -3896,6 +4242,17 @@ namespace ShopifyNet.AdminTypes
         ///The input value should be less than or equal to the maximum value allowed.
         ///</summary>
         LESS_THAN_OR_EQUAL_TO,
+    }
+
+    public static class BulkProductResourceFeedbackCreateUserErrorCodeStringValues
+    {
+        public const string MAXIMUM_FEEDBACK_LIMIT_EXCEEDED = @"MAXIMUM_FEEDBACK_LIMIT_EXCEEDED";
+        public const string OUTDATED_FEEDBACK = @"OUTDATED_FEEDBACK";
+        public const string PRODUCT_NOT_FOUND = @"PRODUCT_NOT_FOUND";
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string PRESENT = @"PRESENT";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
     }
 
     ///<summary>
@@ -3970,6 +4327,22 @@ namespace ShopifyNet.AdminTypes
         ///The input value is already taken.
         ///</summary>
         TAKEN,
+    }
+
+    public static class BusinessCustomerErrorCodeStringValues
+    {
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string RESOURCE_NOT_FOUND = @"RESOURCE_NOT_FOUND";
+        public const string FAILED_TO_DELETE = @"FAILED_TO_DELETE";
+        public const string REQUIRED = @"REQUIRED";
+        public const string NO_INPUT = @"NO_INPUT";
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string UNEXPECTED_TYPE = @"UNEXPECTED_TYPE";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string LIMIT_REACHED = @"LIMIT_REACHED";
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string TAKEN = @"TAKEN";
     }
 
     ///<summary>
@@ -4266,6 +4639,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public IEnumerable<ResourceAlert>? alerts { get; set; }
         ///<summary>
+        ///Whether all variant prices have been overridden.
+        ///</summary>
+        public bool? allVariantPricesOverridden { get; set; }
+        ///<summary>
+        ///Whether any variant prices have been overridden.
+        ///</summary>
+        public bool? anyVariantPricesOverridden { get; set; }
+        ///<summary>
         ///The custom order-level discount applied.
         ///</summary>
         public DraftOrderAppliedDiscount? appliedDiscount { get; set; }
@@ -4419,10 +4800,16 @@ namespace ShopifyNet.AdminTypes
         ///This value doesn't include discounts applied to the entire draft order.
         ///</summary>
         public MoneyBag? approximateDiscountedUnitPriceSet { get; set; }
+
         ///<summary>
         ///The bundle components of the draft order line item.
         ///</summary>
+        [Obsolete("Use `components` instead.")]
         public IEnumerable<CalculatedDraftOrderLineItem>? bundleComponents { get; set; }
+        ///<summary>
+        ///The components of the draft order line item.
+        ///</summary>
+        public IEnumerable<CalculatedDraftOrderLineItem>? components { get; set; }
         ///<summary>
         ///Whether the line item is custom (`true`) or contains a product variant (`false`).
         ///</summary>
@@ -4496,6 +4883,10 @@ namespace ShopifyNet.AdminTypes
         ///The original custom line item input price.
         ///</summary>
         public MoneyV2? originalUnitPriceWithCurrency { get; set; }
+        ///<summary>
+        ///The price override for the line item.
+        ///</summary>
+        public MoneyV2? priceOverride { get; set; }
         ///<summary>
         ///The product for the line item.
         ///</summary>
@@ -5017,6 +5408,13 @@ namespace ShopifyNet.AdminTypes
         REMOVED,
     }
 
+    public static class CalculatedShippingLineStagedStatusStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string ADDED = @"ADDED";
+        public const string REMOVED = @"REMOVED";
+    }
+
     ///<summary>
     ///Card payment details related to a transaction.
     ///</summary>
@@ -5109,6 +5507,11 @@ namespace ShopifyNet.AdminTypes
         CARRIER_SERVICE_CREATE_FAILED,
     }
 
+    public static class CarrierServiceCreateUserErrorCodeStringValues
+    {
+        public const string CARRIER_SERVICE_CREATE_FAILED = @"CARRIER_SERVICE_CREATE_FAILED";
+    }
+
     ///<summary>
     ///Return type for `carrierServiceDelete` mutation.
     ///</summary>
@@ -5154,6 +5557,11 @@ namespace ShopifyNet.AdminTypes
         CARRIER_SERVICE_DELETE_FAILED,
     }
 
+    public static class CarrierServiceDeleteUserErrorCodeStringValues
+    {
+        public const string CARRIER_SERVICE_DELETE_FAILED = @"CARRIER_SERVICE_DELETE_FAILED";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the CarrierService query.
     ///</summary>
@@ -5168,14 +5576,16 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CarrierServiceSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -5223,6 +5633,11 @@ namespace ShopifyNet.AdminTypes
         CARRIER_SERVICE_UPDATE_FAILED,
     }
 
+    public static class CarrierServiceUpdateUserErrorCodeStringValues
+    {
+        public const string CARRIER_SERVICE_UPDATE_FAILED = @"CARRIER_SERVICE_UPDATE_FAILED";
+    }
+
     ///<summary>
     ///A Cart Transform Function to create [Customized Bundles.](https://shopify.dev/docs/apps/selling-strategies/bundles/add-a-customized-bundle).
     ///</summary>
@@ -5251,18 +5666,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -5345,6 +5748,15 @@ namespace ShopifyNet.AdminTypes
         INVALID_METAFIELDS,
     }
 
+    public static class CartTransformCreateUserErrorCodeStringValues
+    {
+        public const string INPUT_INVALID = @"INPUT_INVALID";
+        public const string FUNCTION_NOT_FOUND = @"FUNCTION_NOT_FOUND";
+        public const string FUNCTION_ALREADY_REGISTERED = @"FUNCTION_ALREADY_REGISTERED";
+        public const string FUNCTION_DOES_NOT_IMPLEMENT = @"FUNCTION_DOES_NOT_IMPLEMENT";
+        public const string INVALID_METAFIELDS = @"INVALID_METAFIELDS";
+    }
+
     ///<summary>
     ///Return type for `cartTransformDelete` mutation.
     ///</summary>
@@ -5392,6 +5804,12 @@ namespace ShopifyNet.AdminTypes
         ///Unauthorized app scope.
         ///</summary>
         UNAUTHORIZED_APP_SCOPE,
+    }
+
+    public static class CartTransformDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string UNAUTHORIZED_APP_SCOPE = @"UNAUTHORIZED_APP_SCOPE";
     }
 
     ///<summary>
@@ -5657,11 +6075,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `processed_at` value.
         ///</summary>
         PROCESSED_AT,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class CashTrackingSessionTransactionsSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string PROCESSED_AT = @"PROCESSED_AT";
     }
 
     ///<summary>
@@ -5690,11 +6109,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         OPENING_TIME_DESC,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `total_discrepancy_asc` value.
         ///</summary>
         TOTAL_DISCREPANCY_ASC,
@@ -5702,6 +6116,17 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `total_discrepancy_desc` value.
         ///</summary>
         TOTAL_DISCREPANCY_DESC,
+    }
+
+    public static class CashTrackingSessionsSortKeysStringValues
+    {
+        public const string CLOSING_TIME_ASC = @"CLOSING_TIME_ASC";
+        public const string CLOSING_TIME_DESC = @"CLOSING_TIME_DESC";
+        public const string ID = @"ID";
+        public const string OPENING_TIME_ASC = @"OPENING_TIME_ASC";
+        public const string OPENING_TIME_DESC = @"OPENING_TIME_DESC";
+        public const string TOTAL_DISCREPANCY_ASC = @"TOTAL_DISCREPANCY_ASC";
+        public const string TOTAL_DISCREPANCY_DESC = @"TOTAL_DISCREPANCY_DESC";
     }
 
     ///<summary>
@@ -5856,6 +6281,18 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `title` value.
         ///</summary>
         TITLE,
+        ///<summary>
+        ///Sort by the `type` value.
+        ///</summary>
+        TYPE,
+    }
+
+    public static class CatalogSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
+        public const string TYPE = @"TYPE";
     }
 
     ///<summary>
@@ -5875,6 +6312,13 @@ namespace ShopifyNet.AdminTypes
         ///The catalog is in draft.
         ///</summary>
         DRAFT,
+    }
+
+    public static class CatalogStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string ARCHIVED = @"ARCHIVED";
+        public const string DRAFT = @"DRAFT";
     }
 
     ///<summary>
@@ -5898,6 +6342,14 @@ namespace ShopifyNet.AdminTypes
         ///Catalogs belonging to markets.
         ///</summary>
         MARKET,
+    }
+
+    public static class CatalogTypeStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string APP = @"APP";
+        public const string COMPANY_LOCATION = @"COMPANY_LOCATION";
+        public const string MARKET = @"MARKET";
     }
 
     ///<summary>
@@ -6101,6 +6553,50 @@ namespace ShopifyNet.AdminTypes
         INVALID_CONTEXT_CHANGE,
     }
 
+    public static class CatalogUserErrorCodeStringValues
+    {
+        public const string APP_CATALOG_PRICE_LIST_ASSIGNMENT = @"APP_CATALOG_PRICE_LIST_ASSIGNMENT";
+        public const string CATALOG_FAILED_TO_SAVE = @"CATALOG_FAILED_TO_SAVE";
+        public const string CATALOG_NOT_FOUND = @"CATALOG_NOT_FOUND";
+        public const string PRICE_LIST_NOT_ALLOWED_FOR_PRIMARY_MARKET = @"PRICE_LIST_NOT_ALLOWED_FOR_PRIMARY_MARKET";
+        public const string CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES = @"CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES";
+        public const string CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_PRICE_BREAKS = @"CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_PRICE_BREAKS";
+        public const string CANNOT_ADD_MORE_THAN_ONE_MARKET = @"CANNOT_ADD_MORE_THAN_ONE_MARKET";
+        public const string COMPANY_LOCATION_CATALOG_STATUS_PLAN = @"COMPANY_LOCATION_CATALOG_STATUS_PLAN";
+        public const string CONTEXT_ALREADY_ASSIGNED_TO_CATALOG = @"CONTEXT_ALREADY_ASSIGNED_TO_CATALOG";
+        public const string CONTEXT_CATALOG_LIMIT_REACHED = @"CONTEXT_CATALOG_LIMIT_REACHED";
+        public const string COMPANY_LOCATION_NOT_FOUND = @"COMPANY_LOCATION_NOT_FOUND";
+        public const string CONTEXT_DRIVER_MISMATCH = @"CONTEXT_DRIVER_MISMATCH";
+        public const string COUNTRY_CATALOG_PRICE_LIST_ASSIGNMENT = @"COUNTRY_CATALOG_PRICE_LIST_ASSIGNMENT";
+        public const string COUNTRY_PRICE_LIST_ASSIGNMENT = @"COUNTRY_PRICE_LIST_ASSIGNMENT";
+        public const string INVALID_CATALOG_CONTEXT_TYPE = @"INVALID_CATALOG_CONTEXT_TYPE";
+        public const string MARKET_CATALOG_STATUS = @"MARKET_CATALOG_STATUS";
+        public const string MARKET_NOT_FOUND = @"MARKET_NOT_FOUND";
+        public const string MARKET_AND_PRICE_LIST_CURRENCY_MISMATCH = @"MARKET_AND_PRICE_LIST_CURRENCY_MISMATCH";
+        public const string MARKET_TAKEN = @"MARKET_TAKEN";
+        public const string MANAGED_COUNTRY_BELONGS_TO_ANOTHER_CATALOG = @"MANAGED_COUNTRY_BELONGS_TO_ANOTHER_CATALOG";
+        public const string MUST_PROVIDE_EXACTLY_ONE_CONTEXT_TYPE = @"MUST_PROVIDE_EXACTLY_ONE_CONTEXT_TYPE";
+        public const string PRICE_LIST_FAILED_TO_SAVE = @"PRICE_LIST_FAILED_TO_SAVE";
+        public const string PRICE_LIST_NOT_FOUND = @"PRICE_LIST_NOT_FOUND";
+        public const string PRICE_LIST_LOCKED = @"PRICE_LIST_LOCKED";
+        public const string PUBLICATION_NOT_FOUND = @"PUBLICATION_NOT_FOUND";
+        public const string REQUIRES_CONTEXTS_TO_ADD_OR_REMOVE = @"REQUIRES_CONTEXTS_TO_ADD_OR_REMOVE";
+        public const string UNSUPPORTED_CATALOG_ACTION = @"UNSUPPORTED_CATALOG_ACTION";
+        public const string CANNOT_CREATE_APP_CATALOG = @"CANNOT_CREATE_APP_CATALOG";
+        public const string CANNOT_MODIFY_APP_CATALOG = @"CANNOT_MODIFY_APP_CATALOG";
+        public const string CANNOT_DELETE_APP_CATALOG = @"CANNOT_DELETE_APP_CATALOG";
+        public const string CANNOT_CREATE_MARKET_CATALOG = @"CANNOT_CREATE_MARKET_CATALOG";
+        public const string CANNOT_MODIFY_MARKET_CATALOG = @"CANNOT_MODIFY_MARKET_CATALOG";
+        public const string CANNOT_DELETE_MARKET_CATALOG = @"CANNOT_DELETE_MARKET_CATALOG";
+        public const string UNPERMITTED_ENTITLEMENTS_MARKET_CATALOGS = @"UNPERMITTED_ENTITLEMENTS_MARKET_CATALOGS";
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string BLANK = @"BLANK";
+        public const string INVALID_CONTEXT_CHANGE = @"INVALID_CONTEXT_CHANGE";
+    }
+
     ///<summary>
     ///A channel represents an app where you sell a group of products and collections.
     ///A channel can be a platform or marketplace such as Facebook or Pinterest, an online store, or POS.
@@ -6164,7 +6660,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public ProductConnection? products { get; set; }
         ///<summary>
-        ///The count of products published to the channel. Limited to a maximum of 10000.
+        ///The count of products published to the channel. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? productsCount { get; set; }
         ///<summary>
@@ -6218,9 +6714,11 @@ namespace ShopifyNet.AdminTypes
         ///Name of the sub channel (e.g. Online Store, Instagram Shopping, TikTok Live).
         ///</summary>
         public string? subChannelName { get; set; }
+
         ///<summary>
         ///Icon displayed when showing the channel in admin.
         ///</summary>
+        [Obsolete("Use App.icon instead")]
         public string? svgIcon { get; set; }
     }
 
@@ -6301,6 +6799,13 @@ namespace ShopifyNet.AdminTypes
         TRANSPARENT,
     }
 
+    public static class CheckoutBrandingBackgroundStringValues
+    {
+        public const string BASE = @"BASE";
+        public const string SUBDUED = @"SUBDUED";
+        public const string TRANSPARENT = @"TRANSPARENT";
+    }
+
     ///<summary>
     ///Possible values for the background style.
     ///</summary>
@@ -6314,6 +6819,12 @@ namespace ShopifyNet.AdminTypes
         ///The None background style.
         ///</summary>
         NONE,
+    }
+
+    public static class CheckoutBrandingBackgroundStyleStringValues
+    {
+        public const string SOLID = @"SOLID";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -6335,6 +6846,13 @@ namespace ShopifyNet.AdminTypes
         FULL,
     }
 
+    public static class CheckoutBrandingBorderStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string BLOCK_END = @"BLOCK_END";
+        public const string FULL = @"FULL";
+    }
+
     ///<summary>
     ///The container border style.
     ///</summary>
@@ -6352,6 +6870,13 @@ namespace ShopifyNet.AdminTypes
         ///The Dotted border style.
         ///</summary>
         DOTTED,
+    }
+
+    public static class CheckoutBrandingBorderStyleStringValues
+    {
+        public const string BASE = @"BASE";
+        public const string DASHED = @"DASHED";
+        public const string DOTTED = @"DOTTED";
     }
 
     ///<summary>
@@ -6375,6 +6900,14 @@ namespace ShopifyNet.AdminTypes
         ///The Large border width.
         ///</summary>
         LARGE,
+    }
+
+    public static class CheckoutBrandingBorderWidthStringValues
+    {
+        public const string BASE = @"BASE";
+        public const string LARGE_100 = @"LARGE_100";
+        public const string LARGE_200 = @"LARGE_200";
+        public const string LARGE = @"LARGE";
     }
 
     ///<summary>
@@ -6482,6 +7015,13 @@ namespace ShopifyNet.AdminTypes
         ///The checkout header content type text value.
         ///</summary>
         TEXT,
+    }
+
+    public static class CheckoutBrandingCartLinkContentTypeStringValues
+    {
+        public const string ICON = @"ICON";
+        public const string IMAGE = @"IMAGE";
+        public const string TEXT = @"TEXT";
     }
 
     ///<summary>
@@ -6635,6 +7175,15 @@ namespace ShopifyNet.AdminTypes
         COLOR_SCHEME4,
     }
 
+    public static class CheckoutBrandingColorSchemeSelectionStringValues
+    {
+        public const string TRANSPARENT = @"TRANSPARENT";
+        public const string COLOR_SCHEME1 = @"COLOR_SCHEME1";
+        public const string COLOR_SCHEME2 = @"COLOR_SCHEME2";
+        public const string COLOR_SCHEME3 = @"COLOR_SCHEME3";
+        public const string COLOR_SCHEME4 = @"COLOR_SCHEME4";
+    }
+
     ///<summary>
     ///The color schemes.
     ///</summary>
@@ -6667,6 +7216,11 @@ namespace ShopifyNet.AdminTypes
         ///Transparent color selection.
         ///</summary>
         TRANSPARENT,
+    }
+
+    public static class CheckoutBrandingColorSelectionStringValues
+    {
+        public const string TRANSPARENT = @"TRANSPARENT";
     }
 
     ///<summary>
@@ -6800,6 +7354,14 @@ namespace ShopifyNet.AdminTypes
         ///The corner radius with a pixel value defined by designSystem.cornerRadius.large.
         ///</summary>
         LARGE,
+    }
+
+    public static class CheckoutBrandingCornerRadiusStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string SMALL = @"SMALL";
+        public const string BASE = @"BASE";
+        public const string LARGE = @"LARGE";
     }
 
     ///<summary>
@@ -7066,6 +7628,15 @@ namespace ShopifyNet.AdminTypes
         OPTIONAL,
     }
 
+    public static class CheckoutBrandingFontLoadingStrategyStringValues
+    {
+        public const string AUTO = @"AUTO";
+        public const string BLOCK = @"BLOCK";
+        public const string SWAP = @"SWAP";
+        public const string FALLBACK = @"FALLBACK";
+        public const string OPTIONAL = @"OPTIONAL";
+    }
+
     ///<summary>
     ///The font size.
     ///</summary>
@@ -7131,6 +7702,13 @@ namespace ShopifyNet.AdminTypes
         END,
     }
 
+    public static class CheckoutBrandingFooterAlignmentStringValues
+    {
+        public const string START = @"START";
+        public const string CENTER = @"CENTER";
+        public const string END = @"END";
+    }
+
     ///<summary>
     ///The footer content customizations.
     ///</summary>
@@ -7155,6 +7733,12 @@ namespace ShopifyNet.AdminTypes
         ///The Inline footer position.
         ///</summary>
         INLINE,
+    }
+
+    public static class CheckoutBrandingFooterPositionStringValues
+    {
+        public const string END = @"END";
+        public const string INLINE = @"INLINE";
     }
 
     ///<summary>
@@ -7186,6 +7770,11 @@ namespace ShopifyNet.AdminTypes
         ///Set the global corner radius override to 0px (square corners).
         ///</summary>
         NONE,
+    }
+
+    public static class CheckoutBrandingGlobalCornerRadiusStringValues
+    {
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -7246,6 +7835,13 @@ namespace ShopifyNet.AdminTypes
         END,
     }
 
+    public static class CheckoutBrandingHeaderAlignmentStringValues
+    {
+        public const string START = @"START";
+        public const string CENTER = @"CENTER";
+        public const string END = @"END";
+    }
+
     ///<summary>
     ///The header cart link customizations.
     ///</summary>
@@ -7278,6 +7874,13 @@ namespace ShopifyNet.AdminTypes
         ///Start position.
         ///</summary>
         START,
+    }
+
+    public static class CheckoutBrandingHeaderPositionStringValues
+    {
+        public const string INLINE = @"INLINE";
+        public const string INLINE_SECONDARY = @"INLINE_SECONDARY";
+        public const string START = @"START";
     }
 
     ///<summary>
@@ -7315,6 +7918,12 @@ namespace ShopifyNet.AdminTypes
         ///The Outside label position.
         ///</summary>
         OUTSIDE,
+    }
+
+    public static class CheckoutBrandingLabelPositionStringValues
+    {
+        public const string INSIDE = @"INSIDE";
+        public const string OUTSIDE = @"OUTSIDE";
     }
 
     ///<summary>
@@ -7404,6 +8013,10 @@ namespace ShopifyNet.AdminTypes
     public class CheckoutBrandingMerchandiseThumbnail : GraphQLObject<CheckoutBrandingMerchandiseThumbnail>
     {
         ///<summary>
+        ///The settings for the merchandise thumbnail badge.
+        ///</summary>
+        public CheckoutBrandingMerchandiseThumbnailBadge? badge { get; set; }
+        ///<summary>
         ///The border used for merchandise thumbnails.
         ///</summary>
         public string? border { get; set; }
@@ -7411,6 +8024,63 @@ namespace ShopifyNet.AdminTypes
         ///The corner radius used for merchandise thumbnails.
         ///</summary>
         public string? cornerRadius { get; set; }
+        ///<summary>
+        ///The property used to customize how the product image fits within merchandise thumbnails.
+        ///</summary>
+        public string? fit { get; set; }
+    }
+
+    ///<summary>
+    ///The merchandise thumbnail badges customizations.
+    ///</summary>
+    public class CheckoutBrandingMerchandiseThumbnailBadge : GraphQLObject<CheckoutBrandingMerchandiseThumbnailBadge>
+    {
+        ///<summary>
+        ///The background used for merchandise thumbnail badges.
+        ///</summary>
+        public string? background { get; set; }
+    }
+
+    ///<summary>
+    ///The merchandise thumbnail badge background.
+    ///</summary>
+    public enum CheckoutBrandingMerchandiseThumbnailBadgeBackground
+    {
+        ///<summary>
+        ///The Accent background.
+        ///</summary>
+        ACCENT,
+        ///<summary>
+        ///The Base background.
+        ///</summary>
+        BASE,
+    }
+
+    public static class CheckoutBrandingMerchandiseThumbnailBadgeBackgroundStringValues
+    {
+        public const string ACCENT = @"ACCENT";
+        public const string BASE = @"BASE";
+    }
+
+    ///<summary>
+    ///Possible values for object fit.
+    ///</summary>
+    public enum CheckoutBrandingObjectFit
+    {
+        ///<summary>
+        ///The Contain value for fit. The image is scaled to maintain its aspect ratio while fitting within the containing box. The entire image is made to fill the box, while preserving its aspect ratio, so the image will be "letterboxed" if its aspect ratio does not match the aspect ratio of the box. This is the default value.
+        ///</summary>
+        CONTAIN,
+        ///<summary>
+        ///The Cover value for fit. The image is sized to maintain its aspect ratio while filling the entire containing box. If the image’s aspect ratio does not match the aspect ratio of the containing box, then the object will be clipped to fit.
+        ///</summary>
+        COVER,
+    }
+
+    public static class CheckoutBrandingObjectFitStringValues
+    {
+        public const string CONTAIN = @"CONTAIN";
+        public const string COVER = @"COVER";
     }
 
     ///<summary>
@@ -7517,6 +8187,15 @@ namespace ShopifyNet.AdminTypes
         LARGE_200,
     }
 
+    public static class CheckoutBrandingShadowStringValues
+    {
+        public const string SMALL_200 = @"SMALL_200";
+        public const string SMALL_100 = @"SMALL_100";
+        public const string BASE = @"BASE";
+        public const string LARGE_100 = @"LARGE_100";
+        public const string LARGE_200 = @"LARGE_200";
+    }
+
     ///<summary>
     ///A Shopify font.
     ///</summary>
@@ -7545,6 +8224,12 @@ namespace ShopifyNet.AdminTypes
         ///The Full simple border.
         ///</summary>
         FULL,
+    }
+
+    public static class CheckoutBrandingSimpleBorderStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string FULL = @"FULL";
     }
 
     ///<summary>
@@ -7576,6 +8261,16 @@ namespace ShopifyNet.AdminTypes
         ///The Extra Loose spacing.
         ///</summary>
         EXTRA_LOOSE,
+    }
+
+    public static class CheckoutBrandingSpacingStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string EXTRA_TIGHT = @"EXTRA_TIGHT";
+        public const string TIGHT = @"TIGHT";
+        public const string BASE = @"BASE";
+        public const string LOOSE = @"LOOSE";
+        public const string EXTRA_LOOSE = @"EXTRA_LOOSE";
     }
 
     ///<summary>
@@ -7641,6 +8336,24 @@ namespace ShopifyNet.AdminTypes
         LARGE_500,
     }
 
+    public static class CheckoutBrandingSpacingKeywordStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string BASE = @"BASE";
+        public const string SMALL = @"SMALL";
+        public const string SMALL_100 = @"SMALL_100";
+        public const string SMALL_200 = @"SMALL_200";
+        public const string SMALL_300 = @"SMALL_300";
+        public const string SMALL_400 = @"SMALL_400";
+        public const string SMALL_500 = @"SMALL_500";
+        public const string LARGE = @"LARGE";
+        public const string LARGE_100 = @"LARGE_100";
+        public const string LARGE_200 = @"LARGE_200";
+        public const string LARGE_300 = @"LARGE_300";
+        public const string LARGE_400 = @"LARGE_400";
+        public const string LARGE_500 = @"LARGE_500";
+    }
+
     ///<summary>
     ///The text fields customizations.
     ///</summary>
@@ -7694,6 +8407,12 @@ namespace ShopifyNet.AdminTypes
         SECONDARY,
     }
 
+    public static class CheckoutBrandingTypographyFontStringValues
+    {
+        public const string PRIMARY = @"PRIMARY";
+        public const string SECONDARY = @"SECONDARY";
+    }
+
     ///<summary>
     ///Possible values for the typography kerning.
     ///</summary>
@@ -7711,6 +8430,13 @@ namespace ShopifyNet.AdminTypes
         ///Extra loose kerning, leaving even more space in between characters.
         ///</summary>
         EXTRA_LOOSE,
+    }
+
+    public static class CheckoutBrandingTypographyKerningStringValues
+    {
+        public const string BASE = @"BASE";
+        public const string LOOSE = @"LOOSE";
+        public const string EXTRA_LOOSE = @"EXTRA_LOOSE";
     }
 
     ///<summary>
@@ -7734,6 +8460,14 @@ namespace ShopifyNet.AdminTypes
         ///All letters are uppercase.
         ///</summary>
         UPPER,
+    }
+
+    public static class CheckoutBrandingTypographyLetterCaseStringValues
+    {
+        public const string LOWER = @"LOWER";
+        public const string NONE = @"NONE";
+        public const string TITLE = @"TITLE";
+        public const string UPPER = @"UPPER";
     }
 
     ///<summary>
@@ -7774,6 +8508,17 @@ namespace ShopifyNet.AdminTypes
         ///The extra extra large font size. Example: 24px.
         ///</summary>
         EXTRA_EXTRA_LARGE,
+    }
+
+    public static class CheckoutBrandingTypographySizeStringValues
+    {
+        public const string EXTRA_SMALL = @"EXTRA_SMALL";
+        public const string SMALL = @"SMALL";
+        public const string BASE = @"BASE";
+        public const string MEDIUM = @"MEDIUM";
+        public const string LARGE = @"LARGE";
+        public const string EXTRA_LARGE = @"EXTRA_LARGE";
+        public const string EXTRA_EXTRA_LARGE = @"EXTRA_EXTRA_LARGE";
     }
 
     ///<summary>
@@ -7833,6 +8578,12 @@ namespace ShopifyNet.AdminTypes
         BOLD,
     }
 
+    public static class CheckoutBrandingTypographyWeightStringValues
+    {
+        public const string BASE = @"BASE";
+        public const string BOLD = @"BOLD";
+    }
+
     ///<summary>
     ///Return type for `checkoutBrandingUpsert` mutation.
     ///</summary>
@@ -7878,6 +8629,11 @@ namespace ShopifyNet.AdminTypes
         INTERNAL_ERROR,
     }
 
+    public static class CheckoutBrandingUpsertUserErrorCodeStringValues
+    {
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+    }
+
     ///<summary>
     ///Possible visibility states.
     ///</summary>
@@ -7891,6 +8647,12 @@ namespace ShopifyNet.AdminTypes
         ///The Visible visibility setting.
         ///</summary>
         VISIBLE,
+    }
+
+    public static class CheckoutBrandingVisibilityStringValues
+    {
+        public const string HIDDEN = @"HIDDEN";
+        public const string VISIBLE = @"VISIBLE";
     }
 
     ///<summary>
@@ -7984,14 +8746,18 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         IS_PUBLISHED,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CheckoutProfileSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string EDITED_AT = @"EDITED_AT";
+        public const string ID = @"ID";
+        public const string IS_PUBLISHED = @"IS_PUBLISHED";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -8028,6 +8794,17 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CodeDiscountSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ENDS_AT = @"ENDS_AT";
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string STARTS_AT = @"STARTS_AT";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -8103,18 +8880,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The products that are included in the collection.
         ///</summary>
@@ -8291,6 +9056,12 @@ namespace ShopifyNet.AdminTypes
         ///Collection doesn't exist.
         ///</summary>
         COLLECTION_DOES_NOT_EXIST,
+    }
+
+    public static class CollectionAddProductsV2UserErrorCodeStringValues
+    {
+        public const string CANT_ADD_TO_SMART_COLLECTION = @"CANT_ADD_TO_SMART_COLLECTION";
+        public const string COLLECTION_DOES_NOT_EXIST = @"COLLECTION_DOES_NOT_EXIST";
     }
 
     ///<summary>
@@ -8582,6 +9353,25 @@ namespace ShopifyNet.AdminTypes
         VARIANT_METAFIELD_DEFINITION,
     }
 
+    public static class CollectionRuleColumnStringValues
+    {
+        public const string TAG = @"TAG";
+        public const string TITLE = @"TITLE";
+        public const string TYPE = @"TYPE";
+        public const string PRODUCT_TAXONOMY_NODE_ID = @"PRODUCT_TAXONOMY_NODE_ID";
+        public const string PRODUCT_CATEGORY_ID = @"PRODUCT_CATEGORY_ID";
+        public const string PRODUCT_CATEGORY_ID_WITH_DESCENDANTS = @"PRODUCT_CATEGORY_ID_WITH_DESCENDANTS";
+        public const string VENDOR = @"VENDOR";
+        public const string VARIANT_PRICE = @"VARIANT_PRICE";
+        public const string IS_PRICE_REDUCED = @"IS_PRICE_REDUCED";
+        public const string VARIANT_COMPARE_AT_PRICE = @"VARIANT_COMPARE_AT_PRICE";
+        public const string VARIANT_WEIGHT = @"VARIANT_WEIGHT";
+        public const string VARIANT_INVENTORY = @"VARIANT_INVENTORY";
+        public const string VARIANT_TITLE = @"VARIANT_TITLE";
+        public const string PRODUCT_METAFIELD_DEFINITION = @"PRODUCT_METAFIELD_DEFINITION";
+        public const string VARIANT_METAFIELD_DEFINITION = @"VARIANT_METAFIELD_DEFINITION";
+    }
+
     ///<summary>
     ///Specifies object for the condition of the rule.
     ///</summary>
@@ -8704,6 +9494,20 @@ namespace ShopifyNet.AdminTypes
         STARTS_WITH,
     }
 
+    public static class CollectionRuleRelationStringValues
+    {
+        public const string CONTAINS = @"CONTAINS";
+        public const string ENDS_WITH = @"ENDS_WITH";
+        public const string EQUALS = @"EQUALS";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string IS_NOT_SET = @"IS_NOT_SET";
+        public const string IS_SET = @"IS_SET";
+        public const string LESS_THAN = @"LESS_THAN";
+        public const string NOT_CONTAINS = @"NOT_CONTAINS";
+        public const string NOT_EQUALS = @"NOT_EQUALS";
+        public const string STARTS_WITH = @"STARTS_WITH";
+    }
+
     ///<summary>
     ///The set of rules that are used to determine which products are included in the collection.
     ///</summary>
@@ -8756,6 +9560,14 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class CollectionSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///Specifies the sort order for the products in the collection.
     ///</summary>
@@ -8793,6 +9605,18 @@ namespace ShopifyNet.AdminTypes
         ///By price, in descending order (highest - lowest).
         ///</summary>
         PRICE_DESC,
+    }
+
+    public static class CollectionSortOrderStringValues
+    {
+        public const string ALPHA_ASC = @"ALPHA_ASC";
+        public const string ALPHA_DESC = @"ALPHA_DESC";
+        public const string BEST_SELLING = @"BEST_SELLING";
+        public const string CREATED = @"CREATED";
+        public const string CREATED_DESC = @"CREATED_DESC";
+        public const string MANUAL = @"MANUAL";
+        public const string PRICE_ASC = @"PRICE_ASC";
+        public const string PRICE_DESC = @"PRICE_DESC";
     }
 
     ///<summary>
@@ -9066,6 +9890,42 @@ namespace ShopifyNet.AdminTypes
         UNEXPECTED_ERROR,
     }
 
+    public static class CombinedListingUpdateUserErrorCodeStringValues
+    {
+        public const string CANNOT_HAVE_DUPLICATED_PRODUCTS = @"CANNOT_HAVE_DUPLICATED_PRODUCTS";
+        public const string CANNOT_HAVE_PARENT_AS_CHILD = @"CANNOT_HAVE_PARENT_AS_CHILD";
+        public const string CANNOT_HAVE_REPEATED_OPTION_VALUES = @"CANNOT_HAVE_REPEATED_OPTION_VALUES";
+        public const string CANNOT_HAVE_REPEATED_OPTIONS = @"CANNOT_HAVE_REPEATED_OPTIONS";
+        public const string CANT_ADD_OPTIONS_VALUES_IF_ALREADY_EXISTS = @"CANT_ADD_OPTIONS_VALUES_IF_ALREADY_EXISTS";
+        public const string COMBINED_LISTINGS_NOT_ENABLED = @"COMBINED_LISTINGS_NOT_ENABLED";
+        public const string EDIT_AND_REMOVE_ON_SAME_PRODUCTS = @"EDIT_AND_REMOVE_ON_SAME_PRODUCTS";
+        public const string FAILED_TO_ADD_PRODUCTS = @"FAILED_TO_ADD_PRODUCTS";
+        public const string FAILED_TO_REMOVE_PRODUCTS = @"FAILED_TO_REMOVE_PRODUCTS";
+        public const string FAILED_TO_UPDATE_PRODUCTS = @"FAILED_TO_UPDATE_PRODUCTS";
+        public const string LINKED_METAFIELD_CANNOT_BE_CHANGED = @"LINKED_METAFIELD_CANNOT_BE_CHANGED";
+        public const string LINKED_METAFIELD_VALUE_MISSING = @"LINKED_METAFIELD_VALUE_MISSING";
+        public const string LINKED_METAFIELDS_CANNOT_BE_REPEATED = @"LINKED_METAFIELDS_CANNOT_BE_REPEATED";
+        public const string LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP = @"LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP";
+        public const string MISSING_OPTION_VALUES = @"MISSING_OPTION_VALUES";
+        public const string MUST_HAVE_SELECTED_OPTION_VALUES = @"MUST_HAVE_SELECTED_OPTION_VALUES";
+        public const string OPTION_NAME_CANNOT_BE_BLANK = @"OPTION_NAME_CANNOT_BE_BLANK";
+        public const string OPTION_NAME_CONTAINS_INVALID_CHARACTERS = @"OPTION_NAME_CONTAINS_INVALID_CHARACTERS";
+        public const string OPTION_NOT_FOUND = @"OPTION_NOT_FOUND";
+        public const string OPTIONS_MUST_BE_EQUAL_TO_THE_OTHER_COMPONENTS = @"OPTIONS_MUST_BE_EQUAL_TO_THE_OTHER_COMPONENTS";
+        public const string OPTION_VALUES_CANNOT_BE_BLANK = @"OPTION_VALUES_CANNOT_BE_BLANK";
+        public const string OPTION_VALUES_CANNOT_BE_EMPTY = @"OPTION_VALUES_CANNOT_BE_EMPTY";
+        public const string PARENT_PRODUCT_CANNOT_BE_COMBINED_LISTING_CHILD = @"PARENT_PRODUCT_CANNOT_BE_COMBINED_LISTING_CHILD";
+        public const string PARENT_PRODUCT_MUST_BE_A_COMBINED_LISTING = @"PARENT_PRODUCT_MUST_BE_A_COMBINED_LISTING";
+        public const string PARENT_PRODUCT_NOT_FOUND = @"PARENT_PRODUCT_NOT_FOUND";
+        public const string PRODUCT_IS_ALREADY_A_CHILD = @"PRODUCT_IS_ALREADY_A_CHILD";
+        public const string PRODUCT_MEMBERSHIP_NOT_FOUND = @"PRODUCT_MEMBERSHIP_NOT_FOUND";
+        public const string PRODUCT_NOT_FOUND = @"PRODUCT_NOT_FOUND";
+        public const string TITLE_TOO_LONG = @"TITLE_TOO_LONG";
+        public const string TOO_MANY_VARIANTS = @"TOO_MANY_VARIANTS";
+        public const string TOO_MANY_PRODUCTS = @"TOO_MANY_PRODUCTS";
+        public const string UNEXPECTED_ERROR = @"UNEXPECTED_ERROR";
+    }
+
     ///<summary>
     ///The role of the combined listing.
     ///</summary>
@@ -9079,6 +9939,12 @@ namespace ShopifyNet.AdminTypes
         ///The product is the child of a combined listing.
         ///</summary>
         CHILD,
+    }
+
+    public static class CombinedListingsRoleStringValues
+    {
+        public const string PARENT = @"PARENT";
+        public const string CHILD = @"CHILD";
     }
 
     ///<summary>
@@ -9185,6 +10051,11 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class CommentApproveUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///The author of a comment.
     ///</summary>
@@ -9262,6 +10133,11 @@ namespace ShopifyNet.AdminTypes
         ///The record with the ID used as the input value couldn't be found.
         ///</summary>
         NOT_FOUND,
+    }
+
+    public static class CommentDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
     }
 
     ///<summary>
@@ -9425,18 +10301,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time when the customer was last updated.
         ///</summary>
@@ -9516,6 +10380,11 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class CommentNotSpamUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///Possible comment policies for a blog.
     ///</summary>
@@ -9535,6 +10404,13 @@ namespace ShopifyNet.AdminTypes
         MODERATED,
     }
 
+    public static class CommentPolicyStringValues
+    {
+        public const string AUTO_PUBLISHED = @"AUTO_PUBLISHED";
+        public const string CLOSED = @"CLOSED";
+        public const string MODERATED = @"MODERATED";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the Comment query.
     ///</summary>
@@ -9548,11 +10424,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class CommentSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -9600,6 +10477,11 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class CommentSpamUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///The status of a comment.
     ///</summary>
@@ -9625,6 +10507,15 @@ namespace ShopifyNet.AdminTypes
         ///The comment is pending approval.
         ///</summary>
         PENDING,
+    }
+
+    public static class CommentStatusStringValues
+    {
+        public const string SPAM = @"SPAM";
+        public const string REMOVED = @"REMOVED";
+        public const string PUBLISHED = @"PUBLISHED";
+        public const string UNAPPROVED = @"UNAPPROVED";
+        public const string PENDING = @"PENDING";
     }
 
     ///<summary>
@@ -9749,18 +10640,6 @@ namespace ShopifyNet.AdminTypes
         ///The total number of orders placed for this company, across all its locations.
         ///</summary>
         public Count? ordersCount { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The total amount spent by this company, across all its locations.
         ///</summary>
@@ -9881,6 +10760,12 @@ namespace ShopifyNet.AdminTypes
         ///The address is a shipping address.
         ///</summary>
         SHIPPING,
+    }
+
+    public static class CompanyAddressTypeStringValues
+    {
+        public const string BILLING = @"BILLING";
+        public const string SHIPPING = @"SHIPPING";
     }
 
     ///<summary>
@@ -10233,14 +11118,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         LOCATION_NAME,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CompanyContactRoleAssignmentSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string LOCATION_NAME = @"LOCATION_NAME";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -10291,14 +11179,16 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CompanyContactRoleSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -10358,6 +11248,19 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CompanyContactSortKeysStringValues
+    {
+        public const string COMPANY_ID = @"COMPANY_ID";
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string EMAIL = @"EMAIL";
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string NAME_EMAIL = @"NAME_EMAIL";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -10453,7 +11356,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CatalogConnection? catalogs { get; set; }
         ///<summary>
-        ///The number of catalogs associated with the company location. Limited to a maximum of 10000.
+        ///The number of catalogs associated with the company location. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? catalogsCount { get; set; }
         ///<summary>
@@ -10500,9 +11403,11 @@ namespace ShopifyNet.AdminTypes
         ///The preferred locale of the company location.
         ///</summary>
         public string? locale { get; set; }
+
         ///<summary>
         ///The market that includes the location's shipping address. If the shipping address is empty, then the value is the shop's primary market.
         ///</summary>
+        [Obsolete("This `market` field will be removed in a future version of the API.")]
         public Market? market { get; set; }
         ///<summary>
         ///A [custom field](https://shopify.dev/docs/apps/build/custom-data),
@@ -10547,18 +11452,6 @@ namespace ShopifyNet.AdminTypes
         ///The phone number of the company location.
         ///</summary>
         public string? phone { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The list of roles assigned to the company location.
         ///</summary>
@@ -10583,6 +11476,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `taxSettings` instead.")]
         public string? taxRegistrationId { get; set; }
+        ///<summary>
+        ///The tax settings for the company location.
+        ///</summary>
+        public CompanyLocationTaxSettings? taxSettings { get; set; }
         ///<summary>
         ///The total amount spent by the location.
         ///</summary>
@@ -10867,6 +11764,17 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class CompanyLocationSortKeysStringValues
+    {
+        public const string COMPANY_AND_LOCATION_NAME = @"COMPANY_AND_LOCATION_NAME";
+        public const string COMPANY_ID = @"COMPANY_ID";
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///A representation of store's staff member who is assigned to a [company location](https://shopify.dev/api/admin-graphql/latest/objects/CompanyLocation) of the shop. The staff member's actions will be limited to objects associated with the assigned company location.
     ///</summary>
@@ -10934,14 +11842,50 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CompanyLocationStaffMemberAssignmentSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
+    ///<summary>
+    ///Represents the tax settings for a company location.
+    ///</summary>
+    public class CompanyLocationTaxSettings : GraphQLObject<CompanyLocationTaxSettings>
+    {
+        ///<summary>
+        ///Whether the location is exempt from taxes.
+        ///</summary>
+        public bool? taxExempt { get; set; }
+        ///<summary>
+        ///The list of tax exemptions applied to the location.
+        ///</summary>
+        public IEnumerable<string>? taxExemptions { get; set; }
+        ///<summary>
+        ///The tax registration ID for the company location.
+        ///</summary>
+        public string? taxRegistrationId { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `companyLocationTaxSettingsUpdate` mutation.
+    ///</summary>
+    public class CompanyLocationTaxSettingsUpdatePayload : GraphQLObject<CompanyLocationTaxSettingsUpdatePayload>
+    {
+        ///<summary>
+        ///The company location with the updated tax settings.
+        ///</summary>
+        public CompanyLocation? companyLocation { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<BusinessCustomerUserError>? userErrors { get; set; }
     }
 
     ///<summary>
@@ -10957,6 +11901,21 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<BusinessCustomerUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///A condition checking the company location a visitor is purchasing for.
+    ///</summary>
+    public class CompanyLocationsCondition : GraphQLObject<CompanyLocationsCondition>
+    {
+        ///<summary>
+        ///The application level for the condition.
+        ///</summary>
+        public string? applicationLevel { get; set; }
+        ///<summary>
+        ///The company locations that comprise the market.
+        ///</summary>
+        public CompanyLocationConnection? companyLocations { get; set; }
     }
 
     ///<summary>
@@ -11011,11 +11970,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ORDER_COUNT,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `since_date` value.
         ///</summary>
         SINCE_DATE,
@@ -11027,6 +11981,17 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class CompanySortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string ORDER_COUNT = @"ORDER_COUNT";
+        public const string SINCE_DATE = @"SINCE_DATE";
+        public const string TOTAL_SPENT = @"TOTAL_SPENT";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -11042,6 +12007,142 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<BusinessCustomerUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///A consent policy describes the level of consent that the merchant requires from the user before actually
+    ///collecting and processing the data.
+    ///</summary>
+    public class ConsentPolicy : GraphQLObject<ConsentPolicy>, INode
+    {
+        ///<summary>
+        ///Whether consent is required for the region.
+        ///</summary>
+        public bool? consentRequired { get; set; }
+        ///<summary>
+        ///The `ISO 3166` country code for which the policy applies.
+        ///</summary>
+        public string? countryCode { get; set; }
+        ///<summary>
+        ///Whether data sale opt-out is required for the region.
+        ///</summary>
+        public bool? dataSaleOptOutRequired { get; set; }
+        ///<summary>
+        ///The global ID of the consent policy. IDs prefixed with `SD-` are system default policies.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The `ISO 3166` region code for which the policy applies.
+        ///</summary>
+        public string? regionCode { get; set; }
+        ///<summary>
+        ///The global ID of the shop that owns the policy.
+        ///</summary>
+        public string? shopId { get; set; }
+    }
+
+    ///<summary>
+    ///The errors encountered while performing mutations on consent policies.
+    ///</summary>
+    public class ConsentPolicyError : GraphQLObject<ConsentPolicyError>, IDisplayableError
+    {
+        ///<summary>
+        ///The error code.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///The path to the input field that caused the error.
+        ///</summary>
+        public IEnumerable<string>? field { get; set; }
+        ///<summary>
+        ///The error message.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///Possible error codes that can be returned by `ConsentPolicyError`.
+    ///</summary>
+    public enum ConsentPolicyErrorCode
+    {
+        ///<summary>
+        ///Country code is required.
+        ///</summary>
+        COUNTRY_CODE_REQUIRED,
+        ///<summary>
+        ///Region code is required for countries with existing regional policies.
+        ///</summary>
+        REGION_CODE_REQUIRED,
+        ///<summary>
+        ///Region code must match the country code.
+        ///</summary>
+        REGION_CODE_MUST_MATCH_COUNTRY_CODE,
+        ///<summary>
+        ///Shopify's cookie banner must be disabled.
+        ///</summary>
+        SHOPIFY_COOKIE_BANNER_NOT_DISABLED,
+        ///<summary>
+        ///Unsupported consent policy.
+        ///</summary>
+        UNSUPORTED_CONSENT_POLICY,
+    }
+
+    public static class ConsentPolicyErrorCodeStringValues
+    {
+        public const string COUNTRY_CODE_REQUIRED = @"COUNTRY_CODE_REQUIRED";
+        public const string REGION_CODE_REQUIRED = @"REGION_CODE_REQUIRED";
+        public const string REGION_CODE_MUST_MATCH_COUNTRY_CODE = @"REGION_CODE_MUST_MATCH_COUNTRY_CODE";
+        public const string SHOPIFY_COOKIE_BANNER_NOT_DISABLED = @"SHOPIFY_COOKIE_BANNER_NOT_DISABLED";
+        public const string UNSUPORTED_CONSENT_POLICY = @"UNSUPORTED_CONSENT_POLICY";
+    }
+
+    ///<summary>
+    ///A country or region code.
+    ///</summary>
+    public class ConsentPolicyRegion : GraphQLObject<ConsentPolicyRegion>
+    {
+        ///<summary>
+        ///The `ISO 3166` country code for which the policy applies.
+        ///</summary>
+        public string? countryCode { get; set; }
+        ///<summary>
+        ///The `ISO 3166` region code for which the policy applies.
+        ///</summary>
+        public string? regionCode { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `consentPolicyUpdate` mutation.
+    ///</summary>
+    public class ConsentPolicyUpdatePayload : GraphQLObject<ConsentPolicyUpdatePayload>
+    {
+        ///<summary>
+        ///All updated and created consent policies. The consent policies that haven't been modified as part of the mutation aren't returned.
+        ///</summary>
+        public IEnumerable<ConsentPolicy>? updatedPolicies { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<ConsentPolicyError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///A shop's banner settings.
+    ///</summary>
+    public class CookieBanner : GraphQLObject<CookieBanner>, IHasPublishedTranslations
+    {
+        ///<summary>
+        ///Indicates if the banner is auto managed.
+        ///</summary>
+        public bool? autoManaged { get; set; }
+        ///<summary>
+        ///Indicates if the banner is enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+        ///<summary>
+        ///The published translations associated with the resource.
+        ///</summary>
+        public IEnumerable<Translation>? translations { get; set; }
     }
 
     ///<summary>
@@ -11065,13 +12166,19 @@ namespace ShopifyNet.AdminTypes
     public enum CountPrecision
     {
         ///<summary>
-        ///The count is exactly the value.
+        ///The count is exactly the value. A write may not be reflected instantaneously.
         ///</summary>
         EXACT,
         ///<summary>
         ///The count is at least the value. A limit was imposed and reached.
         ///</summary>
         AT_LEAST,
+    }
+
+    public static class CountPrecisionStringValues
+    {
+        public const string EXACT = @"EXACT";
+        public const string AT_LEAST = @"AT_LEAST";
     }
 
     ///<summary>
@@ -12079,6 +13186,255 @@ namespace ShopifyNet.AdminTypes
         ZZ,
     }
 
+    public static class CountryCodeStringValues
+    {
+        public const string AF = @"AF";
+        public const string AX = @"AX";
+        public const string AL = @"AL";
+        public const string DZ = @"DZ";
+        public const string AD = @"AD";
+        public const string AO = @"AO";
+        public const string AI = @"AI";
+        public const string AG = @"AG";
+        public const string AR = @"AR";
+        public const string AM = @"AM";
+        public const string AW = @"AW";
+        public const string AC = @"AC";
+        public const string AU = @"AU";
+        public const string AT = @"AT";
+        public const string AZ = @"AZ";
+        public const string BS = @"BS";
+        public const string BH = @"BH";
+        public const string BD = @"BD";
+        public const string BB = @"BB";
+        public const string BY = @"BY";
+        public const string BE = @"BE";
+        public const string BZ = @"BZ";
+        public const string BJ = @"BJ";
+        public const string BM = @"BM";
+        public const string BT = @"BT";
+        public const string BO = @"BO";
+        public const string BA = @"BA";
+        public const string BW = @"BW";
+        public const string BV = @"BV";
+        public const string BR = @"BR";
+        public const string IO = @"IO";
+        public const string BN = @"BN";
+        public const string BG = @"BG";
+        public const string BF = @"BF";
+        public const string BI = @"BI";
+        public const string KH = @"KH";
+        public const string CA = @"CA";
+        public const string CV = @"CV";
+        public const string BQ = @"BQ";
+        public const string KY = @"KY";
+        public const string CF = @"CF";
+        public const string TD = @"TD";
+        public const string CL = @"CL";
+        public const string CN = @"CN";
+        public const string CX = @"CX";
+        public const string CC = @"CC";
+        public const string CO = @"CO";
+        public const string KM = @"KM";
+        public const string CG = @"CG";
+        public const string CD = @"CD";
+        public const string CK = @"CK";
+        public const string CR = @"CR";
+        public const string HR = @"HR";
+        public const string CU = @"CU";
+        public const string CW = @"CW";
+        public const string CY = @"CY";
+        public const string CZ = @"CZ";
+        public const string CI = @"CI";
+        public const string DK = @"DK";
+        public const string DJ = @"DJ";
+        public const string DM = @"DM";
+        public const string DO = @"DO";
+        public const string EC = @"EC";
+        public const string EG = @"EG";
+        public const string SV = @"SV";
+        public const string GQ = @"GQ";
+        public const string ER = @"ER";
+        public const string EE = @"EE";
+        public const string SZ = @"SZ";
+        public const string ET = @"ET";
+        public const string FK = @"FK";
+        public const string FO = @"FO";
+        public const string FJ = @"FJ";
+        public const string FI = @"FI";
+        public const string FR = @"FR";
+        public const string GF = @"GF";
+        public const string PF = @"PF";
+        public const string TF = @"TF";
+        public const string GA = @"GA";
+        public const string GM = @"GM";
+        public const string GE = @"GE";
+        public const string DE = @"DE";
+        public const string GH = @"GH";
+        public const string GI = @"GI";
+        public const string GR = @"GR";
+        public const string GL = @"GL";
+        public const string GD = @"GD";
+        public const string GP = @"GP";
+        public const string GT = @"GT";
+        public const string GG = @"GG";
+        public const string GN = @"GN";
+        public const string GW = @"GW";
+        public const string GY = @"GY";
+        public const string HT = @"HT";
+        public const string HM = @"HM";
+        public const string VA = @"VA";
+        public const string HN = @"HN";
+        public const string HK = @"HK";
+        public const string HU = @"HU";
+        public const string IS = @"IS";
+        public const string IN = @"IN";
+        public const string ID = @"ID";
+        public const string IR = @"IR";
+        public const string IQ = @"IQ";
+        public const string IE = @"IE";
+        public const string IM = @"IM";
+        public const string IL = @"IL";
+        public const string IT = @"IT";
+        public const string JM = @"JM";
+        public const string JP = @"JP";
+        public const string JE = @"JE";
+        public const string JO = @"JO";
+        public const string KZ = @"KZ";
+        public const string KE = @"KE";
+        public const string KI = @"KI";
+        public const string KP = @"KP";
+        public const string XK = @"XK";
+        public const string KW = @"KW";
+        public const string KG = @"KG";
+        public const string LA = @"LA";
+        public const string LV = @"LV";
+        public const string LB = @"LB";
+        public const string LS = @"LS";
+        public const string LR = @"LR";
+        public const string LY = @"LY";
+        public const string LI = @"LI";
+        public const string LT = @"LT";
+        public const string LU = @"LU";
+        public const string MO = @"MO";
+        public const string MG = @"MG";
+        public const string MW = @"MW";
+        public const string MY = @"MY";
+        public const string MV = @"MV";
+        public const string ML = @"ML";
+        public const string MT = @"MT";
+        public const string MQ = @"MQ";
+        public const string MR = @"MR";
+        public const string MU = @"MU";
+        public const string YT = @"YT";
+        public const string MX = @"MX";
+        public const string MD = @"MD";
+        public const string MC = @"MC";
+        public const string MN = @"MN";
+        public const string ME = @"ME";
+        public const string MS = @"MS";
+        public const string MA = @"MA";
+        public const string MZ = @"MZ";
+        public const string MM = @"MM";
+        public const string NA = @"NA";
+        public const string NR = @"NR";
+        public const string NP = @"NP";
+        public const string NL = @"NL";
+        public const string AN = @"AN";
+        public const string NC = @"NC";
+        public const string NZ = @"NZ";
+        public const string NI = @"NI";
+        public const string NE = @"NE";
+        public const string NG = @"NG";
+        public const string NU = @"NU";
+        public const string NF = @"NF";
+        public const string MK = @"MK";
+        public const string NO = @"NO";
+        public const string OM = @"OM";
+        public const string PK = @"PK";
+        public const string PS = @"PS";
+        public const string PA = @"PA";
+        public const string PG = @"PG";
+        public const string PY = @"PY";
+        public const string PE = @"PE";
+        public const string PH = @"PH";
+        public const string PN = @"PN";
+        public const string PL = @"PL";
+        public const string PT = @"PT";
+        public const string QA = @"QA";
+        public const string CM = @"CM";
+        public const string RE = @"RE";
+        public const string RO = @"RO";
+        public const string RU = @"RU";
+        public const string RW = @"RW";
+        public const string BL = @"BL";
+        public const string SH = @"SH";
+        public const string KN = @"KN";
+        public const string LC = @"LC";
+        public const string MF = @"MF";
+        public const string PM = @"PM";
+        public const string WS = @"WS";
+        public const string SM = @"SM";
+        public const string ST = @"ST";
+        public const string SA = @"SA";
+        public const string SN = @"SN";
+        public const string RS = @"RS";
+        public const string SC = @"SC";
+        public const string SL = @"SL";
+        public const string SG = @"SG";
+        public const string SX = @"SX";
+        public const string SK = @"SK";
+        public const string SI = @"SI";
+        public const string SB = @"SB";
+        public const string SO = @"SO";
+        public const string ZA = @"ZA";
+        public const string GS = @"GS";
+        public const string KR = @"KR";
+        public const string SS = @"SS";
+        public const string ES = @"ES";
+        public const string LK = @"LK";
+        public const string VC = @"VC";
+        public const string SD = @"SD";
+        public const string SR = @"SR";
+        public const string SJ = @"SJ";
+        public const string SE = @"SE";
+        public const string CH = @"CH";
+        public const string SY = @"SY";
+        public const string TW = @"TW";
+        public const string TJ = @"TJ";
+        public const string TZ = @"TZ";
+        public const string TH = @"TH";
+        public const string TL = @"TL";
+        public const string TG = @"TG";
+        public const string TK = @"TK";
+        public const string TO = @"TO";
+        public const string TT = @"TT";
+        public const string TA = @"TA";
+        public const string TN = @"TN";
+        public const string TR = @"TR";
+        public const string TM = @"TM";
+        public const string TC = @"TC";
+        public const string TV = @"TV";
+        public const string UG = @"UG";
+        public const string UA = @"UA";
+        public const string AE = @"AE";
+        public const string GB = @"GB";
+        public const string US = @"US";
+        public const string UM = @"UM";
+        public const string UY = @"UY";
+        public const string UZ = @"UZ";
+        public const string VU = @"VU";
+        public const string VE = @"VE";
+        public const string VN = @"VN";
+        public const string VG = @"VG";
+        public const string WF = @"WF";
+        public const string EH = @"EH";
+        public const string YE = @"YE";
+        public const string ZM = @"ZM";
+        public const string ZW = @"ZW";
+        public const string ZZ = @"ZZ";
+    }
+
     ///<summary>
     ///The country-specific harmonized system code and ISO country code for an inventory item.
     ///</summary>
@@ -12153,6 +13509,15 @@ namespace ShopifyNet.AdminTypes
         ///Keep the right of the image.
         ///</summary>
         RIGHT,
+    }
+
+    public static class CropRegionStringValues
+    {
+        public const string CENTER = @"CENTER";
+        public const string TOP = @"TOP";
+        public const string BOTTOM = @"BOTTOM";
+        public const string LEFT = @"LEFT";
+        public const string RIGHT = @"RIGHT";
     }
 
     ///<summary>
@@ -12810,6 +14175,174 @@ namespace ShopifyNet.AdminTypes
         XXX,
     }
 
+    public static class CurrencyCodeStringValues
+    {
+        public const string USD = @"USD";
+        public const string EUR = @"EUR";
+        public const string GBP = @"GBP";
+        public const string CAD = @"CAD";
+        public const string AFN = @"AFN";
+        public const string ALL = @"ALL";
+        public const string DZD = @"DZD";
+        public const string AOA = @"AOA";
+        public const string ARS = @"ARS";
+        public const string AMD = @"AMD";
+        public const string AWG = @"AWG";
+        public const string AUD = @"AUD";
+        public const string BBD = @"BBD";
+        public const string AZN = @"AZN";
+        public const string BDT = @"BDT";
+        public const string BSD = @"BSD";
+        public const string BHD = @"BHD";
+        public const string BIF = @"BIF";
+        public const string BYN = @"BYN";
+        public const string BZD = @"BZD";
+        public const string BMD = @"BMD";
+        public const string BTN = @"BTN";
+        public const string BAM = @"BAM";
+        public const string BRL = @"BRL";
+        public const string BOB = @"BOB";
+        public const string BWP = @"BWP";
+        public const string BND = @"BND";
+        public const string BGN = @"BGN";
+        public const string MMK = @"MMK";
+        public const string KHR = @"KHR";
+        public const string CVE = @"CVE";
+        public const string KYD = @"KYD";
+        public const string XAF = @"XAF";
+        public const string CLP = @"CLP";
+        public const string CNY = @"CNY";
+        public const string COP = @"COP";
+        public const string KMF = @"KMF";
+        public const string CDF = @"CDF";
+        public const string CRC = @"CRC";
+        public const string HRK = @"HRK";
+        public const string CZK = @"CZK";
+        public const string DKK = @"DKK";
+        public const string DJF = @"DJF";
+        public const string DOP = @"DOP";
+        public const string XCD = @"XCD";
+        public const string EGP = @"EGP";
+        public const string ERN = @"ERN";
+        public const string ETB = @"ETB";
+        public const string FKP = @"FKP";
+        public const string XPF = @"XPF";
+        public const string FJD = @"FJD";
+        public const string GIP = @"GIP";
+        public const string GMD = @"GMD";
+        public const string GHS = @"GHS";
+        public const string GTQ = @"GTQ";
+        public const string GYD = @"GYD";
+        public const string GEL = @"GEL";
+        public const string GNF = @"GNF";
+        public const string HTG = @"HTG";
+        public const string HNL = @"HNL";
+        public const string HKD = @"HKD";
+        public const string HUF = @"HUF";
+        public const string ISK = @"ISK";
+        public const string INR = @"INR";
+        public const string IDR = @"IDR";
+        public const string ILS = @"ILS";
+        public const string IRR = @"IRR";
+        public const string IQD = @"IQD";
+        public const string JMD = @"JMD";
+        public const string JPY = @"JPY";
+        public const string JEP = @"JEP";
+        public const string JOD = @"JOD";
+        public const string KZT = @"KZT";
+        public const string KES = @"KES";
+        public const string KID = @"KID";
+        public const string KWD = @"KWD";
+        public const string KGS = @"KGS";
+        public const string LAK = @"LAK";
+        public const string LVL = @"LVL";
+        public const string LBP = @"LBP";
+        public const string LSL = @"LSL";
+        public const string LRD = @"LRD";
+        public const string LYD = @"LYD";
+        public const string LTL = @"LTL";
+        public const string MGA = @"MGA";
+        public const string MKD = @"MKD";
+        public const string MOP = @"MOP";
+        public const string MWK = @"MWK";
+        public const string MVR = @"MVR";
+        public const string MRU = @"MRU";
+        public const string MXN = @"MXN";
+        public const string MYR = @"MYR";
+        public const string MUR = @"MUR";
+        public const string MDL = @"MDL";
+        public const string MAD = @"MAD";
+        public const string MNT = @"MNT";
+        public const string MZN = @"MZN";
+        public const string NAD = @"NAD";
+        public const string NPR = @"NPR";
+        public const string ANG = @"ANG";
+        public const string NZD = @"NZD";
+        public const string NIO = @"NIO";
+        public const string NGN = @"NGN";
+        public const string NOK = @"NOK";
+        public const string OMR = @"OMR";
+        public const string PAB = @"PAB";
+        public const string PKR = @"PKR";
+        public const string PGK = @"PGK";
+        public const string PYG = @"PYG";
+        public const string PEN = @"PEN";
+        public const string PHP = @"PHP";
+        public const string PLN = @"PLN";
+        public const string QAR = @"QAR";
+        public const string RON = @"RON";
+        public const string RUB = @"RUB";
+        public const string RWF = @"RWF";
+        public const string WST = @"WST";
+        public const string SHP = @"SHP";
+        public const string SAR = @"SAR";
+        public const string RSD = @"RSD";
+        public const string SCR = @"SCR";
+        public const string SLL = @"SLL";
+        public const string SGD = @"SGD";
+        public const string SDG = @"SDG";
+        public const string SOS = @"SOS";
+        public const string SYP = @"SYP";
+        public const string ZAR = @"ZAR";
+        public const string KRW = @"KRW";
+        public const string SSP = @"SSP";
+        public const string SBD = @"SBD";
+        public const string LKR = @"LKR";
+        public const string SRD = @"SRD";
+        public const string SZL = @"SZL";
+        public const string SEK = @"SEK";
+        public const string CHF = @"CHF";
+        public const string TWD = @"TWD";
+        public const string THB = @"THB";
+        public const string TJS = @"TJS";
+        public const string TZS = @"TZS";
+        public const string TOP = @"TOP";
+        public const string TTD = @"TTD";
+        public const string TND = @"TND";
+        public const string TRY = @"TRY";
+        public const string TMT = @"TMT";
+        public const string UGX = @"UGX";
+        public const string UAH = @"UAH";
+        public const string AED = @"AED";
+        public const string UYU = @"UYU";
+        public const string UZS = @"UZS";
+        public const string VUV = @"VUV";
+        public const string VES = @"VES";
+        public const string VND = @"VND";
+        public const string XOF = @"XOF";
+        public const string YER = @"YER";
+        public const string ZMW = @"ZMW";
+        [Obsolete("`BYR` is deprecated. Use `BYN` available from version `2021-01` onwards instead.")]
+        public const string BYR = @"BYR";
+        [Obsolete("`STD` is deprecated. Use `STN` available from version `2022-07` onwards instead.")]
+        public const string STD = @"STD";
+        public const string STN = @"STN";
+        public const string VED = @"VED";
+        [Obsolete("`VEF` is deprecated. Use `VES` available from version `2020-10` onwards instead.")]
+        public const string VEF = @"VEF";
+        public const string XXX = @"XXX";
+    }
+
     ///<summary>
     ///Currency formats configured for the merchant. These formats are available to use within Liquid.
     ///</summary>
@@ -12934,6 +14467,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public MailingAddress? defaultAddress { get; set; }
         ///<summary>
+        ///The customer's default email address.
+        ///</summary>
+        public CustomerEmailAddress? defaultEmailAddress { get; set; }
+        ///<summary>
+        ///The customer's default phone number.
+        ///</summary>
+        public CustomerPhoneNumber? defaultPhoneNumber { get; set; }
+        ///<summary>
         ///The full name of the customer, based on the values for first_name and last_name. If the first_name and
         ///last_name are not available, then this falls back to the customer's email address, and if that is not available, the customer's phone number.
         ///</summary>
@@ -12995,9 +14536,11 @@ namespace ShopifyNet.AdminTypes
         ///The customer's locale.
         ///</summary>
         public string? locale { get; set; }
+
         ///<summary>
         ///The market that includes the customer’s default address.
         ///</summary>
+        [Obsolete("This `market` field will be removed in a future version of the API.")]
         public Market? market { get; set; }
         ///<summary>
         ///Whether the customer can be merged with another customer.
@@ -13046,18 +14589,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `defaultPhoneNumber.phoneNumber` instead.")]
         public string? phone { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///Possible subscriber states of a customer defined by their subscription contracts.
         ///</summary>
@@ -13204,6 +14735,14 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class CustomerAccountNativePagePageTypeStringValues
+    {
+        public const string NATIVE_ORDERS = @"NATIVE_ORDERS";
+        public const string NATIVE_SETTINGS = @"NATIVE_SETTINGS";
+        public const string NATIVE_PROFILE = @"NATIVE_PROFILE";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///A customer account page.
     ///</summary>
@@ -13294,6 +14833,12 @@ namespace ShopifyNet.AdminTypes
         NEW_CUSTOMER_ACCOUNTS,
     }
 
+    public static class CustomerAccountsVersionStringValues
+    {
+        public const string CLASSIC = @"CLASSIC";
+        public const string NEW_CUSTOMER_ACCOUNTS = @"NEW_CUSTOMER_ACCOUNTS";
+    }
+
     ///<summary>
     ///Return type for `customerAddTaxExemptions` mutation.
     ///</summary>
@@ -13303,6 +14848,51 @@ namespace ShopifyNet.AdminTypes
         ///The updated customer.
         ///</summary>
         public Customer? customer { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<UserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `customerAddressCreate` mutation.
+    ///</summary>
+    public class CustomerAddressCreatePayload : GraphQLObject<CustomerAddressCreatePayload>
+    {
+        ///<summary>
+        ///The created address.
+        ///</summary>
+        public MailingAddress? address { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<UserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `customerAddressDelete` mutation.
+    ///</summary>
+    public class CustomerAddressDeletePayload : GraphQLObject<CustomerAddressDeletePayload>
+    {
+        ///<summary>
+        ///The ID of the address deleted from the customer.
+        ///</summary>
+        public string? deletedAddressId { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<UserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `customerAddressUpdate` mutation.
+    ///</summary>
+    public class CustomerAddressUpdatePayload : GraphQLObject<CustomerAddressUpdatePayload>
+    {
+        ///<summary>
+        ///The updated address.
+        ///</summary>
+        public MailingAddress? address { get; set; }
         ///<summary>
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
@@ -13326,6 +14916,13 @@ namespace ShopifyNet.AdminTypes
         ///Customer's data is not scheduled for erasure.
         ///</summary>
         NOT_BEING_ERASED,
+    }
+
+    public static class CustomerCancelDataErasureErrorCodeStringValues
+    {
+        public const string DOES_NOT_EXIST = @"DOES_NOT_EXIST";
+        public const string FAILED_TO_CANCEL = @"FAILED_TO_CANCEL";
+        public const string NOT_BEING_ERASED = @"NOT_BEING_ERASED";
     }
 
     ///<summary>
@@ -13394,6 +14991,12 @@ namespace ShopifyNet.AdminTypes
         ///The customer consent was collected outside of Shopify.
         ///</summary>
         OTHER,
+    }
+
+    public static class CustomerConsentCollectedFromStringValues
+    {
+        public const string SHOPIFY = @"SHOPIFY";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -13555,6 +15158,11 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public string? emailAddress { get; set; }
         ///<summary>
+        ///The marketing subscription opt-in level, as described by the M3AAWG best practices guidelines,
+        ///received when the marketing consent was updated.
+        ///</summary>
+        public string? marketingOptInLevel { get; set; }
+        ///<summary>
         ///Whether the customer has subscribed to email marketing.
         ///</summary>
         public string? marketingState { get; set; }
@@ -13563,6 +15171,12 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public string? marketingUnsubscribeUrl { get; set; }
         ///<summary>
+        ///The date and time at which the marketing consent was updated.
+        ///
+        ///No date is provided if the email address never updated its marketing consent.
+        ///</summary>
+        public DateTime? marketingUpdatedAt { get; set; }
+        ///<summary>
         ///Whether the customer has opted in to having their opened emails tracked.
         ///</summary>
         public string? openTrackingLevel { get; set; }
@@ -13570,6 +15184,17 @@ namespace ShopifyNet.AdminTypes
         ///The URL that can be used to opt a customer in or out of email open tracking.
         ///</summary>
         public string? openTrackingUrl { get; set; }
+        ///<summary>
+        ///The location where the customer consented to receive marketing material by email.
+        ///</summary>
+        public Location? sourceLocation { get; set; }
+        ///<summary>
+        ///Whether the email address is formatted correctly.
+        ///
+        ///Returns `true` when the email is formatted correctly. This doesn't guarantee that the email address
+        ///actually exists.
+        ///</summary>
+        public bool? validFormat { get; set; }
     }
 
     ///<summary>
@@ -13599,6 +15224,15 @@ namespace ShopifyNet.AdminTypes
         UNSUBSCRIBED,
     }
 
+    public static class CustomerEmailAddressMarketingStateStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string NOT_SUBSCRIBED = @"NOT_SUBSCRIBED";
+        public const string PENDING = @"PENDING";
+        public const string SUBSCRIBED = @"SUBSCRIBED";
+        public const string UNSUBSCRIBED = @"UNSUBSCRIBED";
+    }
+
     ///<summary>
     ///The different levels related to whether a customer has opted in to having their opened emails tracked.
     ///</summary>
@@ -13616,6 +15250,13 @@ namespace ShopifyNet.AdminTypes
         ///The customer has opted out of having their open emails tracked.
         ///</summary>
         OPTED_OUT,
+    }
+
+    public static class CustomerEmailAddressOpenTrackingLevelStringValues
+    {
+        public const string UNKNOWN = @"UNKNOWN";
+        public const string OPTED_IN = @"OPTED_IN";
+        public const string OPTED_OUT = @"OPTED_OUT";
     }
 
     ///<summary>
@@ -13638,6 +15279,10 @@ namespace ShopifyNet.AdminTypes
         ///The current email marketing state for the customer.
         ///</summary>
         public string? marketingState { get; set; }
+        ///<summary>
+        ///The location where the customer consented to receive marketing material by email.
+        ///</summary>
+        public Location? sourceLocation { get; set; }
     }
 
     ///<summary>
@@ -13697,6 +15342,14 @@ namespace ShopifyNet.AdminTypes
         MISSING_ARGUMENT,
     }
 
+    public static class CustomerEmailMarketingConsentUpdateUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string MISSING_ARGUMENT = @"MISSING_ARGUMENT";
+    }
+
     ///<summary>
     ///The possible email marketing states for a customer.
     ///</summary>
@@ -13726,6 +15379,16 @@ namespace ShopifyNet.AdminTypes
         ///The customer’s email address marketing state is invalid.
         ///</summary>
         INVALID,
+    }
+
+    public static class CustomerEmailMarketingStateStringValues
+    {
+        public const string NOT_SUBSCRIBED = @"NOT_SUBSCRIBED";
+        public const string PENDING = @"PENDING";
+        public const string SUBSCRIBED = @"SUBSCRIBED";
+        public const string UNSUBSCRIBED = @"UNSUBSCRIBED";
+        public const string REDACTED = @"REDACTED";
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -13829,6 +15492,13 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class CustomerMarketingOptInLevelStringValues
+    {
+        public const string SINGLE_OPT_IN = @"SINGLE_OPT_IN";
+        public const string CONFIRMED_OPT_IN = @"CONFIRMED_OPT_IN";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///The error blocking a customer merge.
     ///</summary>
@@ -13873,6 +15543,16 @@ namespace ShopifyNet.AdminTypes
         ///The override attribute is invalid.
         ///</summary>
         OVERRIDE_ATTRIBUTE_INVALID,
+    }
+
+    public static class CustomerMergeErrorCodeStringValues
+    {
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string INVALID_CUSTOMER = @"INVALID_CUSTOMER";
+        public const string INVALID_CUSTOMER_ID = @"INVALID_CUSTOMER_ID";
+        public const string CUSTOMER_HAS_GIFT_CARDS = @"CUSTOMER_HAS_GIFT_CARDS";
+        public const string MISSING_OVERRIDE_ATTRIBUTE = @"MISSING_OVERRIDE_ATTRIBUTE";
+        public const string OVERRIDE_ATTRIBUTE_INVALID = @"OVERRIDE_ATTRIBUTE_INVALID";
     }
 
     ///<summary>
@@ -13924,6 +15604,21 @@ namespace ShopifyNet.AdminTypes
         ///The customer has a multipass identifier.
         ///</summary>
         MULTIPASS_IDENTIFIER,
+    }
+
+    public static class CustomerMergeErrorFieldTypeStringValues
+    {
+        public const string DELETED_AT = @"DELETED_AT";
+        public const string REDACTED_AT = @"REDACTED_AT";
+        public const string SUBSCRIPTIONS = @"SUBSCRIPTIONS";
+        public const string MERGE_IN_PROGRESS = @"MERGE_IN_PROGRESS";
+        public const string GIFT_CARDS = @"GIFT_CARDS";
+        public const string OVERRIDE_FIELDS = @"OVERRIDE_FIELDS";
+        public const string STORE_CREDIT = @"STORE_CREDIT";
+        public const string COMPANY_CONTACT = @"COMPANY_CONTACT";
+        public const string CUSTOMER_PAYMENT_METHODS = @"CUSTOMER_PAYMENT_METHODS";
+        public const string PENDING_DATA_REQUEST = @"PENDING_DATA_REQUEST";
+        public const string MULTIPASS_IDENTIFIER = @"MULTIPASS_IDENTIFIER";
     }
 
     ///<summary>
@@ -14137,6 +15832,14 @@ namespace ShopifyNet.AdminTypes
         ///The customer merge request has failed.
         ///</summary>
         FAILED,
+    }
+
+    public static class CustomerMergeRequestStatusStringValues
+    {
+        public const string REQUESTED = @"REQUESTED";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string COMPLETED = @"COMPLETED";
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
@@ -14391,6 +16094,13 @@ namespace ShopifyNet.AdminTypes
         INVALID_ENCRYPTED_DUPLICATION_DATA,
     }
 
+    public static class CustomerPaymentMethodCreateFromDuplicationDataUserErrorCodeStringValues
+    {
+        public const string TOO_MANY_REQUESTS = @"TOO_MANY_REQUESTS";
+        public const string CUSTOMER_DOES_NOT_EXIST = @"CUSTOMER_DOES_NOT_EXIST";
+        public const string INVALID_ENCRYPTED_DUPLICATION_DATA = @"INVALID_ENCRYPTED_DUPLICATION_DATA";
+    }
+
     ///<summary>
     ///Return type for `customerPaymentMethodCreditCardCreate` mutation.
     ///</summary>
@@ -14509,6 +16219,16 @@ namespace ShopifyNet.AdminTypes
         INVALID_ORGANIZATION_SHOP,
     }
 
+    public static class CustomerPaymentMethodGetDuplicationDataUserErrorCodeStringValues
+    {
+        public const string PAYMENT_METHOD_DOES_NOT_EXIST = @"PAYMENT_METHOD_DOES_NOT_EXIST";
+        public const string INVALID_INSTRUMENT = @"INVALID_INSTRUMENT";
+        public const string TOO_MANY_REQUESTS = @"TOO_MANY_REQUESTS";
+        public const string CUSTOMER_DOES_NOT_EXIST = @"CUSTOMER_DOES_NOT_EXIST";
+        public const string SAME_SHOP = @"SAME_SHOP";
+        public const string INVALID_ORGANIZATION_SHOP = @"INVALID_ORGANIZATION_SHOP";
+    }
+
     ///<summary>
     ///Return type for `customerPaymentMethodGetUpdateUrl` mutation.
     ///</summary>
@@ -14566,6 +16286,14 @@ namespace ShopifyNet.AdminTypes
         CUSTOMER_DOES_NOT_EXIST,
     }
 
+    public static class CustomerPaymentMethodGetUpdateUrlUserErrorCodeStringValues
+    {
+        public const string PAYMENT_METHOD_DOES_NOT_EXIST = @"PAYMENT_METHOD_DOES_NOT_EXIST";
+        public const string INVALID_INSTRUMENT = @"INVALID_INSTRUMENT";
+        public const string TOO_MANY_REQUESTS = @"TOO_MANY_REQUESTS";
+        public const string CUSTOMER_DOES_NOT_EXIST = @"CUSTOMER_DOES_NOT_EXIST";
+    }
+
     ///<summary>
     ///Return type for `customerPaymentMethodPaypalBillingAgreementCreate` mutation.
     ///</summary>
@@ -14609,21 +16337,6 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<CustomerPaymentMethodRemoteUserError>? userErrors { get; set; }
-    }
-
-    ///<summary>
-    ///Return type for `customerPaymentMethodRemoteCreditCardCreate` mutation.
-    ///</summary>
-    public class CustomerPaymentMethodRemoteCreditCardCreatePayload : GraphQLObject<CustomerPaymentMethodRemoteCreditCardCreatePayload>
-    {
-        ///<summary>
-        ///The customer payment method.
-        ///</summary>
-        public CustomerPaymentMethod? customerPaymentMethod { get; set; }
-        ///<summary>
-        ///The list of errors that occurred from executing the mutation.
-        ///</summary>
-        public IEnumerable<CustomerPaymentMethodUserError>? userErrors { get; set; }
     }
 
     ///<summary>
@@ -14674,6 +16387,16 @@ namespace ShopifyNet.AdminTypes
         ///Braintree is not enabled for subscriptions.
         ///</summary>
         BRAINTREE_NOT_ENABLED_FOR_SUBSCRIPTIONS,
+    }
+
+    public static class CustomerPaymentMethodRemoteUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string PRESENT = @"PRESENT";
+        public const string TAKEN = @"TAKEN";
+        public const string EXACTLY_ONE_REMOTE_REFERENCE_REQUIRED = @"EXACTLY_ONE_REMOTE_REFERENCE_REQUIRED";
+        public const string AUTHORIZE_NET_NOT_ENABLED_FOR_SUBSCRIPTIONS = @"AUTHORIZE_NET_NOT_ENABLED_FOR_SUBSCRIPTIONS";
+        public const string BRAINTREE_NOT_ENABLED_FOR_SUBSCRIPTIONS = @"BRAINTREE_NOT_ENABLED_FOR_SUBSCRIPTIONS";
     }
 
     ///<summary>
@@ -14730,6 +16453,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         BRAINTREE_PAYMENT_METHOD_NOT_CARD,
         ///<summary>
+        ///Verification of payment method failed.
+        ///</summary>
+        PAYMENT_METHOD_VERIFICATION_FAILED,
+        ///<summary>
+        ///Verification of the payment method failed due to 3DS not being supported.
+        ///</summary>
+        THREE_D_SECURE_FLOW_IN_VERIFICATION_NOT_IMPLEMENTED,
+        ///<summary>
         ///The payment method was manually revoked.
         ///</summary>
         MANUALLY_REVOKED,
@@ -14741,6 +16472,42 @@ namespace ShopifyNet.AdminTypes
         ///The payment method was replaced with an existing payment method. The associated contracts have been migrated to the other payment method.
         ///</summary>
         MERGED,
+        ///<summary>
+        ///The customer redacted their payment method.
+        ///</summary>
+        CUSTOMER_REDACTED,
+        ///<summary>
+        ///Too many consecutive failed attempts.
+        ///</summary>
+        TOO_MANY_CONSECUTIVE_FAILURES,
+        ///<summary>
+        ///CVV attempts limit exceeded.
+        ///</summary>
+        CVV_ATTEMPTS_LIMIT_EXCEEDED,
+    }
+
+    public static class CustomerPaymentMethodRevocationReasonStringValues
+    {
+        public const string AUTHORIZE_NET_GATEWAY_NOT_ENABLED = @"AUTHORIZE_NET_GATEWAY_NOT_ENABLED";
+        public const string AUTHORIZE_NET_RETURNED_NO_PAYMENT_METHOD = @"AUTHORIZE_NET_RETURNED_NO_PAYMENT_METHOD";
+        public const string FAILED_TO_UPDATE_CREDIT_CARD = @"FAILED_TO_UPDATE_CREDIT_CARD";
+        public const string STRIPE_API_AUTHENTICATION_ERROR = @"STRIPE_API_AUTHENTICATION_ERROR";
+        public const string STRIPE_API_INVALID_REQUEST_ERROR = @"STRIPE_API_INVALID_REQUEST_ERROR";
+        public const string STRIPE_GATEWAY_NOT_ENABLED = @"STRIPE_GATEWAY_NOT_ENABLED";
+        public const string STRIPE_RETURNED_NO_PAYMENT_METHOD = @"STRIPE_RETURNED_NO_PAYMENT_METHOD";
+        public const string STRIPE_PAYMENT_METHOD_NOT_CARD = @"STRIPE_PAYMENT_METHOD_NOT_CARD";
+        public const string BRAINTREE_API_AUTHENTICATION_ERROR = @"BRAINTREE_API_AUTHENTICATION_ERROR";
+        public const string BRAINTREE_GATEWAY_NOT_ENABLED = @"BRAINTREE_GATEWAY_NOT_ENABLED";
+        public const string BRAINTREE_RETURNED_NO_PAYMENT_METHOD = @"BRAINTREE_RETURNED_NO_PAYMENT_METHOD";
+        public const string BRAINTREE_PAYMENT_METHOD_NOT_CARD = @"BRAINTREE_PAYMENT_METHOD_NOT_CARD";
+        public const string PAYMENT_METHOD_VERIFICATION_FAILED = @"PAYMENT_METHOD_VERIFICATION_FAILED";
+        public const string THREE_D_SECURE_FLOW_IN_VERIFICATION_NOT_IMPLEMENTED = @"THREE_D_SECURE_FLOW_IN_VERIFICATION_NOT_IMPLEMENTED";
+        public const string MANUALLY_REVOKED = @"MANUALLY_REVOKED";
+        public const string FAILED_TO_RETRIEVE_BILLING_ADDRESS = @"FAILED_TO_RETRIEVE_BILLING_ADDRESS";
+        public const string MERGED = @"MERGED";
+        public const string CUSTOMER_REDACTED = @"CUSTOMER_REDACTED";
+        public const string TOO_MANY_CONSECUTIVE_FAILURES = @"TOO_MANY_CONSECUTIVE_FAILURES";
+        public const string CVV_ATTEMPTS_LIMIT_EXCEEDED = @"CVV_ATTEMPTS_LIMIT_EXCEEDED";
     }
 
     ///<summary>
@@ -14811,6 +16578,13 @@ namespace ShopifyNet.AdminTypes
         TAKEN,
     }
 
+    public static class CustomerPaymentMethodUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string PRESENT = @"PRESENT";
+        public const string TAKEN = @"TAKEN";
+    }
+
     ///<summary>
     ///Represents a PayPal instrument for customer payment method.
     ///</summary>
@@ -14840,13 +16614,32 @@ namespace ShopifyNet.AdminTypes
     public class CustomerPhoneNumber : GraphQLObject<CustomerPhoneNumber>
     {
         ///<summary>
+        ///The source from which the SMS marketing information for the customer was collected.
+        ///</summary>
+        public string? marketingCollectedFrom { get; set; }
+        ///<summary>
+        ///The marketing subscription opt-in level, as described by the M3AAWG best practices guidelines,
+        ///received when the marketing consent was updated.
+        ///</summary>
+        public string? marketingOptInLevel { get; set; }
+        ///<summary>
         ///Whether the customer has subscribed to SMS marketing material.
         ///</summary>
         public string? marketingState { get; set; }
         ///<summary>
+        ///The date and time at which the marketing consent was updated.
+        ///
+        ///No date is provided if the email address never updated its marketing consent.
+        ///</summary>
+        public DateTime? marketingUpdatedAt { get; set; }
+        ///<summary>
         ///A customer's phone number.
         ///</summary>
         public string? phoneNumber { get; set; }
+        ///<summary>
+        ///The location where the customer consented to receive marketing material by SMS.
+        ///</summary>
+        public Location? sourceLocation { get; set; }
     }
 
     ///<summary>
@@ -14866,6 +16659,13 @@ namespace ShopifyNet.AdminTypes
         ///The customer's spending is predicted to be zero, or in the lowest spending range for the shop in the following year.
         ///</summary>
         LOW,
+    }
+
+    public static class CustomerPredictedSpendTierStringValues
+    {
+        public const string HIGH = @"HIGH";
+        public const string MEDIUM = @"MEDIUM";
+        public const string LOW = @"LOW";
     }
 
     ///<summary>
@@ -14901,6 +16701,16 @@ namespace ShopifyNet.AdminTypes
         ///subscription contracts.
         ///</summary>
         PAUSED,
+    }
+
+    public static class CustomerProductSubscriberStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string CANCELLED = @"CANCELLED";
+        public const string EXPIRED = @"EXPIRED";
+        public const string FAILED = @"FAILED";
+        public const string NEVER_SUBSCRIBED = @"NEVER_SUBSCRIBED";
+        public const string PAUSED = @"PAUSED";
     }
 
     ///<summary>
@@ -14948,6 +16758,12 @@ namespace ShopifyNet.AdminTypes
         FAILED_TO_REQUEST,
     }
 
+    public static class CustomerRequestDataErasureErrorCodeStringValues
+    {
+        public const string DOES_NOT_EXIST = @"DOES_NOT_EXIST";
+        public const string FAILED_TO_REQUEST = @"FAILED_TO_REQUEST";
+    }
+
     ///<summary>
     ///Return type for `customerRequestDataErasure` mutation.
     ///</summary>
@@ -14983,6 +16799,72 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///The RFM (Recency, Frequency, Monetary) group for a customer.
+    ///</summary>
+    public enum CustomerRfmGroup
+    {
+        ///<summary>
+        ///Customers with very recent purchases, many orders, and the most spend.
+        ///</summary>
+        CHAMPIONS,
+        ///<summary>
+        ///Customers with recent purchases, many orders, and the most spend.
+        ///</summary>
+        LOYAL,
+        ///<summary>
+        ///Customers with recent purchases, some orders, and moderate spend.
+        ///</summary>
+        ACTIVE,
+        ///<summary>
+        ///Customers with very recent purchases, few orders, and low spend.
+        ///</summary>
+        NEW,
+        ///<summary>
+        ///Customers with recent purchases, few orders, and low spend.
+        ///</summary>
+        PROMISING,
+        ///<summary>
+        ///Customers with recent purchases, some orders, and moderate spend.
+        ///</summary>
+        NEEDS_ATTENTION,
+        ///<summary>
+        ///Customers without recent purchases, fewer orders, and with lower spend.
+        ///</summary>
+        ALMOST_LOST,
+        ///<summary>
+        ///Customers without recent purchases, but with a very strong history of orders and spend.
+        ///</summary>
+        PREVIOUSLY_LOYAL,
+        ///<summary>
+        ///Customers without recent purchases, but with a strong history of orders and spend.
+        ///</summary>
+        AT_RISK,
+        ///<summary>
+        ///Customers without recent orders, with infrequent orders, and with low spend.
+        ///</summary>
+        DORMANT,
+        ///<summary>
+        ///Customers with no orders yet.
+        ///</summary>
+        PROSPECTS,
+    }
+
+    public static class CustomerRfmGroupStringValues
+    {
+        public const string CHAMPIONS = @"CHAMPIONS";
+        public const string LOYAL = @"LOYAL";
+        public const string ACTIVE = @"ACTIVE";
+        public const string NEW = @"NEW";
+        public const string PROMISING = @"PROMISING";
+        public const string NEEDS_ATTENTION = @"NEEDS_ATTENTION";
+        public const string ALMOST_LOST = @"ALMOST_LOST";
+        public const string PREVIOUSLY_LOYAL = @"PREVIOUSLY_LOYAL";
+        public const string AT_RISK = @"AT_RISK";
+        public const string DORMANT = @"DORMANT";
+        public const string PROSPECTS = @"PROSPECTS";
+    }
+
+    ///<summary>
     ///The set of valid sort keys for the CustomerSavedSearch query.
     ///</summary>
     public enum CustomerSavedSearchSortKeys
@@ -14995,11 +16877,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `name` value.
         ///</summary>
         NAME,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class CustomerSavedSearchSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
     }
 
     ///<summary>
@@ -15066,18 +16949,6 @@ namespace ShopifyNet.AdminTypes
         ///The total number of orders that the member has made.
         ///</summary>
         public ulong? numberOfOrders { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -15182,6 +17053,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class CustomerSegmentMembersQueryUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `customerSendAccountInviteEmail` mutation.
     ///</summary>
@@ -15225,6 +17101,116 @@ namespace ShopifyNet.AdminTypes
         ///The input value is invalid.
         ///</summary>
         INVALID,
+    }
+
+    public static class CustomerSendAccountInviteEmailUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
+    ///<summary>
+    ///Return type for `customerSet` mutation.
+    ///</summary>
+    public class CustomerSetPayload : GraphQLObject<CustomerSetPayload>
+    {
+        ///<summary>
+        ///The created or updated customer.
+        ///</summary>
+        public Customer? customer { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<CustomerSetUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///Defines errors for CustomerSet mutation.
+    ///</summary>
+    public class CustomerSetUserError : GraphQLObject<CustomerSetUserError>, IDisplayableError
+    {
+        ///<summary>
+        ///The error code.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///The path to the input field that caused the error.
+        ///</summary>
+        public IEnumerable<string>? field { get; set; }
+        ///<summary>
+        ///The error message.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///Possible error codes that can be returned by `CustomerSetUserError`.
+    ///</summary>
+    public enum CustomerSetUserErrorCode
+    {
+        ///<summary>
+        ///The input value is invalid.
+        ///</summary>
+        INVALID,
+        ///<summary>
+        ///The input value isn't included in the list.
+        ///</summary>
+        INCLUSION,
+        ///<summary>
+        ///The input value is already taken.
+        ///</summary>
+        TAKEN,
+        ///<summary>
+        ///The input value is too long.
+        ///</summary>
+        TOO_LONG,
+        ///<summary>
+        ///The input value is too short.
+        ///</summary>
+        TOO_SHORT,
+        ///<summary>
+        ///The input value needs to be blank.
+        ///</summary>
+        PRESENT,
+        ///<summary>
+        ///The input value is blank.
+        ///</summary>
+        BLANK,
+        ///<summary>
+        ///The id field is not allowed if identifier is provided.
+        ///</summary>
+        ID_NOT_ALLOWED,
+        ///<summary>
+        ///The input field corresponding to the identifier is required.
+        ///</summary>
+        MISSING_FIELD_REQUIRED,
+        ///<summary>
+        ///The identifier value does not match the value of the corresponding field in the input.
+        ///</summary>
+        INPUT_MISMATCH,
+        ///<summary>
+        ///Resource matching the identifier was not found.
+        ///</summary>
+        NOT_FOUND,
+        ///<summary>
+        ///The input argument `metafields` (if present) must contain the `customId` value.
+        ///</summary>
+        METAFIELD_MISMATCH,
+    }
+
+    public static class CustomerSetUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INCLUSION = @"INCLUSION";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string PRESENT = @"PRESENT";
+        public const string BLANK = @"BLANK";
+        public const string ID_NOT_ALLOWED = @"ID_NOT_ALLOWED";
+        public const string MISSING_FIELD_REQUIRED = @"MISSING_FIELD_REQUIRED";
+        public const string INPUT_MISMATCH = @"INPUT_MISMATCH";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string METAFIELD_MISMATCH = @"METAFIELD_MISMATCH";
     }
 
     ///<summary>
@@ -15312,6 +17298,14 @@ namespace ShopifyNet.AdminTypes
         MISSING_ARGUMENT,
     }
 
+    public static class CustomerSmsMarketingConsentErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string MISSING_ARGUMENT = @"MISSING_ARGUMENT";
+    }
+
     ///<summary>
     ///The record of when a customer consented to receive marketing material by SMS.
     ///
@@ -15336,6 +17330,10 @@ namespace ShopifyNet.AdminTypes
         ///The current SMS marketing state for the customer.
         ///</summary>
         public string? marketingState { get; set; }
+        ///<summary>
+        ///The location where the customer consented to receive marketing material by SMS.
+        ///</summary>
+        public Location? sourceLocation { get; set; }
     }
 
     ///<summary>
@@ -15380,6 +17378,15 @@ namespace ShopifyNet.AdminTypes
         REDACTED,
     }
 
+    public static class CustomerSmsMarketingStateStringValues
+    {
+        public const string NOT_SUBSCRIBED = @"NOT_SUBSCRIBED";
+        public const string PENDING = @"PENDING";
+        public const string SUBSCRIBED = @"SUBSCRIBED";
+        public const string UNSUBSCRIBED = @"UNSUBSCRIBED";
+        public const string REDACTED = @"REDACTED";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the Customer query.
     ///</summary>
@@ -15412,6 +17419,16 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class CustomerSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string LOCATION = @"LOCATION";
+        public const string NAME = @"NAME";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///The valid values for the state of a customer's account with a shop.
     ///</summary>
@@ -15435,6 +17452,14 @@ namespace ShopifyNet.AdminTypes
         INVITED,
     }
 
+    public static class CustomerStateStringValues
+    {
+        public const string DECLINED = @"DECLINED";
+        public const string DISABLED = @"DISABLED";
+        public const string ENABLED = @"ENABLED";
+        public const string INVITED = @"INVITED";
+    }
+
     ///<summary>
     ///A customer's computed statistics.
     ///</summary>
@@ -15444,6 +17469,10 @@ namespace ShopifyNet.AdminTypes
         ///The predicted spend tier of a customer with a shop.
         ///</summary>
         public string? predictedSpendTier { get; set; }
+        ///<summary>
+        ///The RFM (Recency, Frequency, Monetary) group of the customer.
+        ///</summary>
+        public string? rfmGroup { get; set; }
     }
 
     ///<summary>
@@ -15590,6 +17619,17 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///A shop's data sale opt out page.
+    ///</summary>
+    public class DataSaleOptOutPage : GraphQLObject<DataSaleOptOutPage>
+    {
+        ///<summary>
+        ///If the data sale opt out page is auto managed.
+        ///</summary>
+        public bool? autoManaged { get; set; }
+    }
+
+    ///<summary>
     ///Return type for `dataSaleOptOut` mutation.
     ///</summary>
     public class DataSaleOptOutPayload : GraphQLObject<DataSaleOptOutPayload>
@@ -15634,6 +17674,11 @@ namespace ShopifyNet.AdminTypes
         FAILED,
     }
 
+    public static class DataSaleOptOutUserErrorCodeStringValues
+    {
+        public const string FAILED = @"FAILED";
+    }
+
     ///<summary>
     ///Days of the week from Monday to Sunday.
     ///</summary>
@@ -15667,6 +17712,17 @@ namespace ShopifyNet.AdminTypes
         ///Sunday.
         ///</summary>
         SUNDAY,
+    }
+
+    public static class DayOfTheWeekStringValues
+    {
+        public const string MONDAY = @"MONDAY";
+        public const string TUESDAY = @"TUESDAY";
+        public const string WEDNESDAY = @"WEDNESDAY";
+        public const string THURSDAY = @"THURSDAY";
+        public const string FRIDAY = @"FRIDAY";
+        public const string SATURDAY = @"SATURDAY";
+        public const string SUNDAY = @"SUNDAY";
     }
 
     ///<summary>
@@ -15764,6 +17820,17 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN_SCOPES,
     }
 
+    public static class DelegateAccessTokenCreateUserErrorCodeStringValues
+    {
+        public const string EMPTY_ACCESS_SCOPE = @"EMPTY_ACCESS_SCOPE";
+        public const string DELEGATE_ACCESS_TOKEN = @"DELEGATE_ACCESS_TOKEN";
+        public const string NEGATIVE_EXPIRES_IN = @"NEGATIVE_EXPIRES_IN";
+        public const string EXPIRES_AFTER_PARENT = @"EXPIRES_AFTER_PARENT";
+        public const string REFRESH_TOKEN = @"REFRESH_TOKEN";
+        public const string PERSISTENCE_FAILED = @"PERSISTENCE_FAILED";
+        public const string UNKNOWN_SCOPES = @"UNKNOWN_SCOPES";
+    }
+
     ///<summary>
     ///Return type for `delegateAccessTokenDestroy` mutation.
     ///</summary>
@@ -15823,6 +17890,14 @@ namespace ShopifyNet.AdminTypes
         ///Access denied.
         ///</summary>
         ACCESS_DENIED,
+    }
+
+    public static class DelegateAccessTokenDestroyUserErrorCodeStringValues
+    {
+        public const string PERSISTENCE_FAILED = @"PERSISTENCE_FAILED";
+        public const string ACCESS_TOKEN_NOT_FOUND = @"ACCESS_TOKEN_NOT_FOUND";
+        public const string CAN_ONLY_DELETE_DELEGATE_TOKENS = @"CAN_ONLY_DELETE_DELEGATE_TOKENS";
+        public const string ACCESS_DENIED = @"ACCESS_DENIED";
     }
 
     ///<summary>
@@ -15893,11 +17968,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class DeletionEventSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -15907,6 +17983,12 @@ namespace ShopifyNet.AdminTypes
     {
         COLLECTION,
         PRODUCT,
+    }
+
+    public static class DeletionEventSubjectTypeStringValues
+    {
+        public const string COLLECTION = @"COLLECTION";
+        public const string PRODUCT = @"PRODUCT";
     }
 
     ///<summary>
@@ -16238,6 +18320,12 @@ namespace ShopifyNet.AdminTypes
         TOTAL_PRICE,
     }
 
+    public static class DeliveryConditionFieldStringValues
+    {
+        public const string TOTAL_WEIGHT = @"TOTAL_WEIGHT";
+        public const string TOTAL_PRICE = @"TOTAL_PRICE";
+    }
+
     ///<summary>
     ///The operator to use to determine if the condition passes.
     ///</summary>
@@ -16251,6 +18339,12 @@ namespace ShopifyNet.AdminTypes
         ///The condition will check if the field is less than or equal to the criterion.
         ///</summary>
         LESS_THAN_OR_EQUAL_TO,
+    }
+
+    public static class DeliveryConditionOperatorStringValues
+    {
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
     }
 
     ///<summary>
@@ -16366,18 +18460,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The Shopify Function implementing the delivery customization.
         ///</summary>
@@ -16541,6 +18623,22 @@ namespace ShopifyNet.AdminTypes
         INVALID_METAFIELDS,
     }
 
+    public static class DeliveryCustomizationErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string FUNCTION_NOT_FOUND = @"FUNCTION_NOT_FOUND";
+        public const string DELIVERY_CUSTOMIZATION_NOT_FOUND = @"DELIVERY_CUSTOMIZATION_NOT_FOUND";
+        public const string DELIVERY_CUSTOMIZATION_FUNCTION_NOT_ELIGIBLE = @"DELIVERY_CUSTOMIZATION_FUNCTION_NOT_ELIGIBLE";
+        public const string UNAUTHORIZED_APP_SCOPE = @"UNAUTHORIZED_APP_SCOPE";
+        public const string MAXIMUM_ACTIVE_DELIVERY_CUSTOMIZATIONS = @"MAXIMUM_ACTIVE_DELIVERY_CUSTOMIZATIONS";
+        public const string CUSTOM_APP_FUNCTION_NOT_ELIGIBLE = @"CUSTOM_APP_FUNCTION_NOT_ELIGIBLE";
+        public const string FUNCTION_DOES_NOT_IMPLEMENT = @"FUNCTION_DOES_NOT_IMPLEMENT";
+        public const string FUNCTION_PENDING_DELETION = @"FUNCTION_PENDING_DELETION";
+        public const string FUNCTION_ID_CANNOT_BE_CHANGED = @"FUNCTION_ID_CANNOT_BE_CHANGED";
+        public const string REQUIRED_INPUT_FIELD = @"REQUIRED_INPUT_FIELD";
+        public const string INVALID_METAFIELDS = @"INVALID_METAFIELDS";
+    }
+
     ///<summary>
     ///Return type for `deliveryCustomizationUpdate` mutation.
     ///</summary>
@@ -16585,6 +18683,13 @@ namespace ShopifyNet.AdminTypes
         ///There are no locations for this store that can fulfill online orders.
         ///</summary>
         NO_LOCATIONS_FULFILLING_ONLINE_ORDERS,
+    }
+
+    public static class DeliveryLegacyModeBlockedReasonStringValues
+    {
+        [Obsolete("All shops are now using multi-location mode.")]
+        public const string MULTI_LOCATION_DISABLED = @"MULTI_LOCATION_DISABLED";
+        public const string NO_LOCATIONS_FULFILLING_ONLINE_ORDERS = @"NO_LOCATIONS_FULFILLING_ONLINE_ORDERS";
     }
 
     ///<summary>
@@ -16636,6 +18741,18 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Custom pickup time is no longer supported.")]
         CUSTOM,
+    }
+
+    public static class DeliveryLocalPickupTimeStringValues
+    {
+        public const string ONE_HOUR = @"ONE_HOUR";
+        public const string TWO_HOURS = @"TWO_HOURS";
+        public const string FOUR_HOURS = @"FOUR_HOURS";
+        public const string TWENTY_FOUR_HOURS = @"TWENTY_FOUR_HOURS";
+        public const string TWO_TO_FOUR_DAYS = @"TWO_TO_FOUR_DAYS";
+        public const string FIVE_OR_MORE_DAYS = @"FIVE_OR_MORE_DAYS";
+        [Obsolete("Custom pickup time is no longer supported.")]
+        public const string CUSTOM = @"CUSTOM";
     }
 
     ///<summary>
@@ -16747,6 +18864,13 @@ namespace ShopifyNet.AdminTypes
         ///An error occurred while changing the local pickup settings.
         ///</summary>
         GENERIC_ERROR,
+    }
+
+    public static class DeliveryLocationLocalPickupSettingsErrorCodeStringValues
+    {
+        public const string ACTIVE_LOCATION_NOT_FOUND = @"ACTIVE_LOCATION_NOT_FOUND";
+        public const string CUSTOM_PICKUP_TIME_NOT_ALLOWED = @"CUSTOM_PICKUP_TIME_NOT_ALLOWED";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
     }
 
     ///<summary>
@@ -16903,6 +19027,12 @@ namespace ShopifyNet.AdminTypes
         PARTICIPANT,
     }
 
+    public static class DeliveryMethodDefinitionTypeStringValues
+    {
+        public const string MERCHANT = @"MERCHANT";
+        public const string PARTICIPANT = @"PARTICIPANT";
+    }
+
     ///<summary>
     ///Possible method types that a delivery method can have.
     ///</summary>
@@ -16932,6 +19062,16 @@ namespace ShopifyNet.AdminTypes
         ///The order is delivered to a pickup point.
         ///</summary>
         PICKUP_POINT,
+    }
+
+    public static class DeliveryMethodTypeStringValues
+    {
+        public const string SHIPPING = @"SHIPPING";
+        public const string PICK_UP = @"PICK_UP";
+        public const string NONE = @"NONE";
+        public const string RETAIL = @"RETAIL";
+        public const string LOCAL = @"LOCAL";
+        public const string PICKUP_POINT = @"PICKUP_POINT";
     }
 
     ///<summary>
@@ -17217,6 +19357,270 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///Returns enabled delivery promise participants.
+    ///</summary>
+    public class DeliveryPromiseParticipant : GraphQLObject<DeliveryPromiseParticipant>, INode
+    {
+        ///<summary>
+        ///The ID of the promise participant.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The resource that the participant is attached to.
+        ///</summary>
+        public IDeliveryPromiseParticipantOwner? owner { get; set; }
+        ///<summary>
+        ///The owner type of the participant.
+        ///</summary>
+        public string? ownerType { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type for paginating through multiple DeliveryPromiseParticipants.
+    ///</summary>
+    public class DeliveryPromiseParticipantConnection : GraphQLObject<DeliveryPromiseParticipantConnection>, IConnectionWithNodesAndEdges<DeliveryPromiseParticipantEdge, DeliveryPromiseParticipant>
+    {
+        ///<summary>
+        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
+        ///</summary>
+        public IEnumerable<DeliveryPromiseParticipantEdge>? edges { get; set; }
+        ///<summary>
+        ///A list of nodes that are contained in DeliveryPromiseParticipantEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
+        ///</summary>
+        public IEnumerable<DeliveryPromiseParticipant>? nodes { get; set; }
+        ///<summary>
+        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
+        ///</summary>
+        public PageInfo? pageInfo { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type which holds one DeliveryPromiseParticipant and a cursor during pagination.
+    ///</summary>
+    public class DeliveryPromiseParticipantEdge : GraphQLObject<DeliveryPromiseParticipantEdge>, IEdge<DeliveryPromiseParticipant>
+    {
+        ///<summary>
+        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
+        ///</summary>
+        public string? cursor { get; set; }
+        ///<summary>
+        ///The item at the end of DeliveryPromiseParticipantEdge.
+        ///</summary>
+        public DeliveryPromiseParticipant? node { get; set; }
+    }
+
+    ///<summary>
+    ///The object that the participant references.
+    ///</summary>
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "__typename")]
+    [JsonDerivedType(typeof(ProductVariant), typeDiscriminator: "ProductVariant")]
+    public interface IDeliveryPromiseParticipantOwner : IGraphQLObject
+    {
+        public ProductVariant? AsProductVariant() => this as ProductVariant;
+        ///<summary>
+        ///Whether the product variant is available for sale.
+        ///</summary>
+        public bool? availableForSale { get; set; }
+        ///<summary>
+        ///The value of the barcode associated with the product.
+        ///</summary>
+        public string? barcode { get; set; }
+        ///<summary>
+        ///The compare-at price of the variant in the default shop currency.
+        ///</summary>
+        public decimal? compareAtPrice { get; set; }
+        ///<summary>
+        ///The pricing that applies for a customer in a given context. As of API version 2025-04, only active markets are considered in the price resolution.
+        ///</summary>
+        public ProductVariantContextualPricing? contextualPricing { get; set; }
+        ///<summary>
+        ///The date and time when the variant was created.
+        ///</summary>
+        public DateTime? createdAt { get; set; }
+        ///<summary>
+        ///A default [cursor](https://shopify.dev/api/usage/pagination-graphql) that returns the single next record, sorted ascending by ID.
+        ///</summary>
+        public string? defaultCursor { get; set; }
+        ///<summary>
+        ///The [delivery profile](https://shopify.dev/api/admin-graphql/latest/objects/DeliveryProfile) for the variant.
+        ///</summary>
+        public DeliveryProfile? deliveryProfile { get; set; }
+        ///<summary>
+        ///Display name of the variant, based on product's title + variant's title.
+        ///</summary>
+        public string? displayName { get; set; }
+        ///<summary>
+        ///The paginated list of events associated with the host subject.
+        ///</summary>
+        public EventConnection? events { get; set; }
+        ///<summary>
+        ///A globally-unique ID.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The featured image for the variant.
+        ///</summary>
+        public Image? image { get; set; }
+        ///<summary>
+        ///The inventory item, which is used to query for inventory information.
+        ///</summary>
+        public InventoryItem? inventoryItem { get; set; }
+        ///<summary>
+        ///Whether customers are allowed to place an order for the product variant when it's out of stock.
+        ///</summary>
+        public string? inventoryPolicy { get; set; }
+        ///<summary>
+        ///The total sellable quantity of the variant.
+        ///</summary>
+        public int? inventoryQuantity { get; set; }
+        ///<summary>
+        ///The ID of the corresponding resource in the REST Admin API.
+        ///</summary>
+        public ulong? legacyResourceId { get; set; }
+        ///<summary>
+        ///The media associated with the product variant.
+        ///</summary>
+        public MediaConnection? media { get; set; }
+        ///<summary>
+        ///A [custom field](https://shopify.dev/docs/apps/build/custom-data),
+        ///including its `namespace` and `key`, that's associated with a Shopify resource
+        ///for the purposes of adding and storing additional information.
+        ///</summary>
+        public Metafield? metafield { get; set; }
+
+        ///<summary>
+        ///List of metafield definitions.
+        ///</summary>
+        [Obsolete("This field will be removed in a future version. Use the root `metafieldDefinitions` field instead.")]
+        public MetafieldDefinitionConnection? metafieldDefinitions { get; set; }
+        ///<summary>
+        ///A list of [custom fields](https://shopify.dev/docs/apps/build/custom-data)
+        ///that a merchant associates with a Shopify resource.
+        ///</summary>
+        public MetafieldConnection? metafields { get; set; }
+        ///<summary>
+        ///The order of the product variant in the list of product variants. The first position in the list is 1.
+        ///</summary>
+        public int? position { get; set; }
+
+        ///<summary>
+        ///List of prices and compare-at prices in the presentment currencies for this shop.
+        ///</summary>
+        [Obsolete("Use `contextualPricing` instead.")]
+        public ProductVariantPricePairConnection? presentmentPrices { get; set; }
+        ///<summary>
+        ///The price of the product variant in the default shop currency.
+        ///</summary>
+        public decimal? price { get; set; }
+        ///<summary>
+        ///The product that this variant belongs to.
+        ///</summary>
+        public Product? product { get; set; }
+        ///<summary>
+        ///A list of the product variant components.
+        ///</summary>
+        public ProductVariantComponentConnection? productVariantComponents { get; set; }
+        ///<summary>
+        ///Whether a product variant requires components. The default value is `false`.
+        ///If `true`, then the product variant can only be purchased as a parent bundle with components and it will be omitted
+        ///from channels that don't support bundles.
+        ///</summary>
+        public bool? requiresComponents { get; set; }
+        ///<summary>
+        ///List of product options applied to the variant.
+        ///</summary>
+        public IEnumerable<SelectedOption>? selectedOptions { get; set; }
+        ///<summary>
+        ///The total sellable quantity of the variant for online channels.
+        ///This doesn't represent the total available inventory or capture
+        ///[limitations based on customer location](https://help.shopify.com/manual/markets/inventory_and_fulfillment).
+        ///</summary>
+        public int? sellableOnlineQuantity { get; set; }
+
+        ///<summary>
+        ///Count of selling plan groups associated with the product variant.
+        ///</summary>
+        [Obsolete("Use `sellingPlanGroupsCount` instead.")]
+        public int? sellingPlanGroupCount { get; set; }
+        ///<summary>
+        ///A list of all selling plan groups defined in the current shop associated with the product variant.
+        ///</summary>
+        public SellingPlanGroupConnection? sellingPlanGroups { get; set; }
+        ///<summary>
+        ///Count of selling plan groups associated with the product variant.
+        ///</summary>
+        public Count? sellingPlanGroupsCount { get; set; }
+        ///<summary>
+        ///A case-sensitive identifier for the product variant in the shop.
+        ///Required in order to connect to a fulfillment service.
+        ///</summary>
+        public string? sku { get; set; }
+
+        ///<summary>
+        ///The Storefront GraphQL API ID of the `ProductVariant`.
+        ///
+        ///As of the `2022-04` version release, the Storefront GraphQL API will no longer return Base64 encoded IDs to match the behavior of the Admin GraphQL API. Therefore, you can safely use the `id` field's value instead.
+        ///</summary>
+        [Obsolete("Use `id` instead.")]
+        public string? storefrontId { get; set; }
+        ///<summary>
+        ///The tax code for the product variant.
+        ///</summary>
+        public string? taxCode { get; set; }
+        ///<summary>
+        ///Whether a tax is charged when the product variant is sold.
+        ///</summary>
+        public bool? taxable { get; set; }
+        ///<summary>
+        ///The title of the product variant.
+        ///</summary>
+        public string? title { get; set; }
+        ///<summary>
+        ///The published translations associated with the resource.
+        ///</summary>
+        public IEnumerable<Translation>? translations { get; set; }
+        ///<summary>
+        ///The unit price measurement for the variant.
+        ///</summary>
+        public UnitPriceMeasurement? unitPriceMeasurement { get; set; }
+        ///<summary>
+        ///The date and time (ISO 8601 format) when the product variant was last modified.
+        ///</summary>
+        public DateTime? updatedAt { get; set; }
+    }
+
+    ///<summary>
+    ///The type of object that the participant is attached to.
+    ///</summary>
+    public enum DeliveryPromiseParticipantOwnerType
+    {
+        ///<summary>
+        ///A product variant.
+        ///</summary>
+        PRODUCTVARIANT,
+    }
+
+    public static class DeliveryPromiseParticipantOwnerTypeStringValues
+    {
+        public const string PRODUCTVARIANT = @"PRODUCTVARIANT";
+    }
+
+    ///<summary>
+    ///Return type for `deliveryPromiseParticipantsUpdate` mutation.
+    ///</summary>
+    public class DeliveryPromiseParticipantsUpdatePayload : GraphQLObject<DeliveryPromiseParticipantsUpdatePayload>
+    {
+        ///<summary>
+        ///The promise participants that were added.
+        ///</summary>
+        public IEnumerable<DeliveryPromiseParticipant>? promiseParticipants { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<UserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
     ///A delivery promise provider. Currently restricted to select approved delivery promise partners.
     ///</summary>
     public class DeliveryPromiseProvider : GraphQLObject<DeliveryPromiseProvider>, INode
@@ -17298,6 +19702,29 @@ namespace ShopifyNet.AdminTypes
         ///The time zone is invalid.
         ///</summary>
         INVALID_TIME_ZONE,
+    }
+
+    public static class DeliveryPromiseProviderUpsertUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string MUST_BELONG_TO_APP = @"MUST_BELONG_TO_APP";
+        public const string INVALID_TIME_ZONE = @"INVALID_TIME_ZONE";
+    }
+
+    ///<summary>
+    ///The delivery promise settings.
+    ///</summary>
+    public class DeliveryPromiseSetting : GraphQLObject<DeliveryPromiseSetting>
+    {
+        ///<summary>
+        ///Whether delivery dates is enabled.
+        ///</summary>
+        public bool? deliveryDatesEnabled { get; set; }
+        ///<summary>
+        ///The number of business days required for processing the order before the package is handed off to the carrier. Expressed as an ISO8601 duration.
+        ///</summary>
+        public string? processingTime { get; set; }
     }
 
     ///<summary>
@@ -17472,6 +19899,16 @@ namespace ShopifyNet.AdminTypes
         AMAZON_PAY,
     }
 
+    public static class DigitalWalletStringValues
+    {
+        public const string APPLE_PAY = @"APPLE_PAY";
+        public const string ANDROID_PAY = @"ANDROID_PAY";
+        public const string GOOGLE_PAY = @"GOOGLE_PAY";
+        public const string SHOPIFY_PAY = @"SHOPIFY_PAY";
+        public const string FACEBOOK_PAY = @"FACEBOOK_PAY";
+        public const string AMAZON_PAY = @"AMAZON_PAY";
+    }
+
     ///<summary>
     ///A discount.
     ///</summary>
@@ -17515,12 +19952,18 @@ namespace ShopifyNet.AdminTypes
         ///The date and time when the discount was created.
         ///</summary>
         public DateTime? createdAt { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -17674,6 +20117,14 @@ namespace ShopifyNet.AdminTypes
         ONE,
     }
 
+    public static class DiscountApplicationAllocationMethodStringValues
+    {
+        public const string ACROSS = @"ACROSS";
+        public const string EACH = @"EACH";
+        [Obsolete("Use ACROSS instead.")]
+        public const string ONE = @"ONE";
+    }
+
     ///<summary>
     ///An auto-generated type for paginating through multiple DiscountApplications.
     ///</summary>
@@ -17725,6 +20176,12 @@ namespace ShopifyNet.AdminTypes
         LINE,
     }
 
+    public static class DiscountApplicationLevelStringValues
+    {
+        public const string ORDER = @"ORDER";
+        public const string LINE = @"LINE";
+    }
+
     ///<summary>
     ///The lines on the order to which the discount is applied, of the type defined by
     ///the discount application's `targetType`. For example, the value `ENTITLED`, combined with a `targetType` of
@@ -17747,6 +20204,13 @@ namespace ShopifyNet.AdminTypes
         EXPLICIT,
     }
 
+    public static class DiscountApplicationTargetSelectionStringValues
+    {
+        public const string ALL = @"ALL";
+        public const string ENTITLED = @"ENTITLED";
+        public const string EXPLICIT = @"EXPLICIT";
+    }
+
     ///<summary>
     ///The type of line (i.e. line item or shipping line) on an order that the discount is applicable towards.
     ///</summary>
@@ -17760,6 +20224,12 @@ namespace ShopifyNet.AdminTypes
         ///The discount applies onto shipping lines.
         ///</summary>
         SHIPPING_LINE,
+    }
+
+    public static class DiscountApplicationTargetTypeStringValues
+    {
+        public const string LINE_ITEM = @"LINE_ITEM";
+        public const string SHIPPING_LINE = @"SHIPPING_LINE";
     }
 
     ///<summary>
@@ -17797,12 +20267,18 @@ namespace ShopifyNet.AdminTypes
         ///The date and time when the discount was created.
         ///</summary>
         public DateTime? createdAt { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -17872,6 +20348,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public AppDiscountType? appDiscountType { get; set; }
         ///<summary>
+        ///Whether the discount applies on one-time purchases.
+        ///</summary>
+        public bool? appliesOnOneTimePurchase { get; set; }
+        ///<summary>
         ///Whether the discount applies on subscription items.
         ///[Subscriptions](https://shopify.dev/docs/apps/launch/billing/subscription-billing/offer-subscription-discounts)
         ///enable customers to purchase products
@@ -17899,12 +20379,18 @@ namespace ShopifyNet.AdminTypes
         ///The date and time when the discount was created.
         ///</summary>
         public DateTime? createdAt { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The [globally-unique ID](https://shopify.dev/docs/api/usage/gids)
         ///for the discount.
@@ -18029,6 +20515,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -18184,6 +20674,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -18400,6 +20894,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
         ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
+        ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
         ///</summary>
@@ -18527,18 +21025,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -18601,6 +21087,13 @@ namespace ShopifyNet.AdminTypes
         SHIPPING,
     }
 
+    public static class DiscountClassStringValues
+    {
+        public const string PRODUCT = @"PRODUCT";
+        public const string ORDER = @"ORDER";
+        public const string SHIPPING = @"SHIPPING";
+    }
+
     ///<summary>
     ///The type of discount associated with the discount code. For example, the discount code might offer a basic discount of a fixed percentage, or a fixed amount, on specific products or the order. Alternatively, the discount might offer the customer free shipping on their order. A third option is a Buy X, Get Y (BXGY) discount, which offers a customer discounts on select products if they add a specific product to their order.
     ///</summary>
@@ -18652,12 +21145,18 @@ namespace ShopifyNet.AdminTypes
         ///The customers that can use the discount.
         ///</summary>
         public IDiscountCustomerSelection? customerSelection { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -18746,6 +21245,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public AppDiscountType? appDiscountType { get; set; }
         ///<summary>
+        ///Whether the discount applies on regular one-time-purchase items.
+        ///</summary>
+        public bool? appliesOnOneTimePurchase { get; set; }
+        ///<summary>
+        ///Whether the discount applies to subscriptions items.
+        ///</summary>
+        public bool? appliesOnSubscription { get; set; }
+        ///<summary>
         ///Whether a customer can only use the discount once.
         ///</summary>
         public bool? appliesOncePerCustomer { get; set; }
@@ -18782,12 +21289,18 @@ namespace ShopifyNet.AdminTypes
         ///The customers that can use the discount.
         ///</summary>
         public IDiscountCustomerSelection? customerSelection { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The [globally-unique ID](https://shopify.dev/docs/api/usage/gids)
         ///for the discount.
@@ -18982,6 +21495,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
@@ -19198,6 +21715,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
         ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
+        ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
         ///</summary>
@@ -19399,6 +21920,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
         ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
+        ///<summary>
         ///The date and time when the discount expires and is no longer available to customers.
         ///For discounts without a fixed expiration date, specify `null`.
         ///</summary>
@@ -19535,18 +22060,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -19620,6 +22133,14 @@ namespace ShopifyNet.AdminTypes
         ///Don't use this sort key when no search query is specified.
         ///</summary>
         RELEVANCE,
+    }
+
+    public static class DiscountCodeSortKeysStringValues
+    {
+        public const string CODE = @"CODE";
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
     }
 
     ///<summary>
@@ -19702,6 +22223,14 @@ namespace ShopifyNet.AdminTypes
     ///</summary>
     public class DiscountCustomerBuys : GraphQLObject<DiscountCustomerBuys>
     {
+        ///<summary>
+        ///If the discount is applicable when a customer buys a one-time purchase.
+        ///</summary>
+        public bool? isOneTimePurchase { get; set; }
+        ///<summary>
+        ///If the discount is applicable when a customer buys a subscription purchase.
+        ///</summary>
+        public bool? isSubscription { get; set; }
         ///<summary>
         ///The items required for the discount to be applicable.
         ///</summary>
@@ -19935,6 +22464,39 @@ namespace ShopifyNet.AdminTypes
         MULTIPLE_RECURRING_CYCLE_LIMIT_FOR_NON_SUBSCRIPTION_ITEMS,
     }
 
+    public static class DiscountErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string PRESENT = @"PRESENT";
+        public const string EQUAL_TO = @"EQUAL_TO";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string INVALID = @"INVALID";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string LESS_THAN = @"LESS_THAN";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string TOO_MANY_ARGUMENTS = @"TOO_MANY_ARGUMENTS";
+        public const string MISSING_ARGUMENT = @"MISSING_ARGUMENT";
+        public const string ACTIVE_PERIOD_OVERLAP = @"ACTIVE_PERIOD_OVERLAP";
+        public const string END_DATE_BEFORE_START_DATE = @"END_DATE_BEFORE_START_DATE";
+        public const string EXCEEDED_MAX = @"EXCEEDED_MAX";
+        public const string MINIMUM_SUBTOTAL_AND_QUANTITY_RANGE_BOTH_PRESENT = @"MINIMUM_SUBTOTAL_AND_QUANTITY_RANGE_BOTH_PRESENT";
+        public const string VALUE_OUTSIDE_RANGE = @"VALUE_OUTSIDE_RANGE";
+        public const string CONFLICT = @"CONFLICT";
+        public const string IMPLICIT_DUPLICATE = @"IMPLICIT_DUPLICATE";
+        public const string DUPLICATE = @"DUPLICATE";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INVALID_COMBINES_WITH_FOR_DISCOUNT_CLASS = @"INVALID_COMBINES_WITH_FOR_DISCOUNT_CLASS";
+        public const string INVALID_DISCOUNT_CLASS_FOR_PRICE_RULE = @"INVALID_DISCOUNT_CLASS_FOR_PRICE_RULE";
+        public const string MAX_APP_DISCOUNTS = @"MAX_APP_DISCOUNTS";
+        public const string APPLIES_ON_NOTHING = @"APPLIES_ON_NOTHING";
+        public const string RECURRING_CYCLE_LIMIT_NOT_A_VALID_INTEGER = @"RECURRING_CYCLE_LIMIT_NOT_A_VALID_INTEGER";
+        public const string MULTIPLE_RECURRING_CYCLE_LIMIT_FOR_NON_SUBSCRIPTION_ITEMS = @"MULTIPLE_RECURRING_CYCLE_LIMIT_FOR_NON_SUBSCRIPTION_ITEMS";
+    }
+
     ///<summary>
     ///The type used to target the items required for discount eligibility, or the items to which the application of a discount might apply. For example, for a customer to be eligible for a discount, they're required to add an item from a specified collection to their order. Alternatively, a customer might be required to add a specific product or product variant. When using this type to target which items the discount will apply to, the discount might apply to all items on the order, or to specific products and product variants, or items in a given collection.
     ///</summary>
@@ -20026,18 +22588,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -20348,6 +22898,13 @@ namespace ShopifyNet.AdminTypes
         COLLECTION,
     }
 
+    public static class DiscountShareableUrlTargetTypeStringValues
+    {
+        public const string HOME = @"HOME";
+        public const string PRODUCT = @"PRODUCT";
+        public const string COLLECTION = @"COLLECTION";
+    }
+
     ///<summary>
     ///The type used to target the eligible countries of an order's shipping destination for which the discount applies. For example, the discount might be applicable when shipping to all countries, or only to a set of countries.
     ///</summary>
@@ -20396,6 +22953,17 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class DiscountSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ENDS_AT = @"ENDS_AT";
+        public const string ID = @"ID";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string STARTS_AT = @"STARTS_AT";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///The status of the discount that describes its availability,
     ///expiration, or pending activation.
@@ -20416,6 +22984,13 @@ namespace ShopifyNet.AdminTypes
         SCHEDULED,
     }
 
+    public static class DiscountStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string EXPIRED = @"EXPIRED";
+        public const string SCHEDULED = @"SCHEDULED";
+    }
+
     ///<summary>
     ///The type of line (line item or shipping line) on an order that the subscription discount is applicable towards.
     ///</summary>
@@ -20429,6 +23004,12 @@ namespace ShopifyNet.AdminTypes
         ///The discount applies onto shipping lines.
         ///</summary>
         SHIPPING_LINE,
+    }
+
+    public static class DiscountTargetTypeStringValues
+    {
+        public const string LINE_ITEM = @"LINE_ITEM";
+        public const string SHIPPING_LINE = @"SHIPPING_LINE";
     }
 
     ///<summary>
@@ -20448,6 +23029,13 @@ namespace ShopifyNet.AdminTypes
         ///Automatic discount type.
         ///</summary>
         AUTOMATIC_DISCOUNT,
+    }
+
+    public static class DiscountTypeStringValues
+    {
+        public const string MANUAL = @"MANUAL";
+        public const string CODE_DISCOUNT = @"CODE_DISCOUNT";
+        public const string AUTOMATIC_DISCOUNT = @"AUTOMATIC_DISCOUNT";
     }
 
     ///<summary>
@@ -20489,6 +23077,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(BlogDeleteUserError), typeDiscriminator: "BlogDeleteUserError")]
     [JsonDerivedType(typeof(BlogUpdateUserError), typeDiscriminator: "BlogUpdateUserError")]
     [JsonDerivedType(typeof(BulkMutationUserError), typeDiscriminator: "BulkMutationUserError")]
+    [JsonDerivedType(typeof(BulkOperationUserError), typeDiscriminator: "BulkOperationUserError")]
     [JsonDerivedType(typeof(BulkProductResourceFeedbackCreateUserError), typeDiscriminator: "BulkProductResourceFeedbackCreateUserError")]
     [JsonDerivedType(typeof(BusinessCustomerUserError), typeDiscriminator: "BusinessCustomerUserError")]
     [JsonDerivedType(typeof(CarrierServiceCreateUserError), typeDiscriminator: "CarrierServiceCreateUserError")]
@@ -20504,6 +23093,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(CommentDeleteUserError), typeDiscriminator: "CommentDeleteUserError")]
     [JsonDerivedType(typeof(CommentNotSpamUserError), typeDiscriminator: "CommentNotSpamUserError")]
     [JsonDerivedType(typeof(CommentSpamUserError), typeDiscriminator: "CommentSpamUserError")]
+    [JsonDerivedType(typeof(ConsentPolicyError), typeDiscriminator: "ConsentPolicyError")]
     [JsonDerivedType(typeof(CustomerCancelDataErasureUserError), typeDiscriminator: "CustomerCancelDataErasureUserError")]
     [JsonDerivedType(typeof(CustomerEmailMarketingConsentUpdateUserError), typeDiscriminator: "CustomerEmailMarketingConsentUpdateUserError")]
     [JsonDerivedType(typeof(CustomerMergeUserError), typeDiscriminator: "CustomerMergeUserError")]
@@ -20515,6 +23105,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(CustomerRequestDataErasureUserError), typeDiscriminator: "CustomerRequestDataErasureUserError")]
     [JsonDerivedType(typeof(CustomerSegmentMembersQueryUserError), typeDiscriminator: "CustomerSegmentMembersQueryUserError")]
     [JsonDerivedType(typeof(CustomerSendAccountInviteEmailUserError), typeDiscriminator: "CustomerSendAccountInviteEmailUserError")]
+    [JsonDerivedType(typeof(CustomerSetUserError), typeDiscriminator: "CustomerSetUserError")]
     [JsonDerivedType(typeof(CustomerSmsMarketingConsentError), typeDiscriminator: "CustomerSmsMarketingConsentError")]
     [JsonDerivedType(typeof(DataSaleOptOutUserError), typeDiscriminator: "DataSaleOptOutUserError")]
     [JsonDerivedType(typeof(DelegateAccessTokenCreateUserError), typeDiscriminator: "DelegateAccessTokenCreateUserError")]
@@ -20571,6 +23162,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(OnlineStoreThemeFilesUserErrors), typeDiscriminator: "OnlineStoreThemeFilesUserErrors")]
     [JsonDerivedType(typeof(OrderCancelUserError), typeDiscriminator: "OrderCancelUserError")]
     [JsonDerivedType(typeof(OrderCreateMandatePaymentUserError), typeDiscriminator: "OrderCreateMandatePaymentUserError")]
+    [JsonDerivedType(typeof(OrderCreateManualPaymentOrderCreateManualPaymentError), typeDiscriminator: "OrderCreateManualPaymentOrderCreateManualPaymentError")]
     [JsonDerivedType(typeof(OrderCreateUserError), typeDiscriminator: "OrderCreateUserError")]
     [JsonDerivedType(typeof(OrderDeleteUserError), typeDiscriminator: "OrderDeleteUserError")]
     [JsonDerivedType(typeof(OrderEditAddShippingLineUserError), typeDiscriminator: "OrderEditAddShippingLineUserError")]
@@ -20591,6 +23183,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(PriceListFixedPricesByProductBulkUpdateUserError), typeDiscriminator: "PriceListFixedPricesByProductBulkUpdateUserError")]
     [JsonDerivedType(typeof(PriceListPriceUserError), typeDiscriminator: "PriceListPriceUserError")]
     [JsonDerivedType(typeof(PriceListUserError), typeDiscriminator: "PriceListUserError")]
+    [JsonDerivedType(typeof(PrivacyFeaturesDisableUserError), typeDiscriminator: "PrivacyFeaturesDisableUserError")]
     [JsonDerivedType(typeof(ProductBundleMutationUserError), typeDiscriminator: "ProductBundleMutationUserError")]
     [JsonDerivedType(typeof(ProductChangeStatusUserError), typeDiscriminator: "ProductChangeStatusUserError")]
     [JsonDerivedType(typeof(ProductFeedCreateUserError), typeDiscriminator: "ProductFeedCreateUserError")]
@@ -20654,6 +23247,7 @@ namespace ShopifyNet.AdminTypes
         public BlogDeleteUserError? AsBlogDeleteUserError() => this as BlogDeleteUserError;
         public BlogUpdateUserError? AsBlogUpdateUserError() => this as BlogUpdateUserError;
         public BulkMutationUserError? AsBulkMutationUserError() => this as BulkMutationUserError;
+        public BulkOperationUserError? AsBulkOperationUserError() => this as BulkOperationUserError;
         public BulkProductResourceFeedbackCreateUserError? AsBulkProductResourceFeedbackCreateUserError() => this as BulkProductResourceFeedbackCreateUserError;
         public BusinessCustomerUserError? AsBusinessCustomerUserError() => this as BusinessCustomerUserError;
         public CarrierServiceCreateUserError? AsCarrierServiceCreateUserError() => this as CarrierServiceCreateUserError;
@@ -20669,6 +23263,7 @@ namespace ShopifyNet.AdminTypes
         public CommentDeleteUserError? AsCommentDeleteUserError() => this as CommentDeleteUserError;
         public CommentNotSpamUserError? AsCommentNotSpamUserError() => this as CommentNotSpamUserError;
         public CommentSpamUserError? AsCommentSpamUserError() => this as CommentSpamUserError;
+        public ConsentPolicyError? AsConsentPolicyError() => this as ConsentPolicyError;
         public CustomerCancelDataErasureUserError? AsCustomerCancelDataErasureUserError() => this as CustomerCancelDataErasureUserError;
         public CustomerEmailMarketingConsentUpdateUserError? AsCustomerEmailMarketingConsentUpdateUserError() => this as CustomerEmailMarketingConsentUpdateUserError;
         public CustomerMergeUserError? AsCustomerMergeUserError() => this as CustomerMergeUserError;
@@ -20680,6 +23275,7 @@ namespace ShopifyNet.AdminTypes
         public CustomerRequestDataErasureUserError? AsCustomerRequestDataErasureUserError() => this as CustomerRequestDataErasureUserError;
         public CustomerSegmentMembersQueryUserError? AsCustomerSegmentMembersQueryUserError() => this as CustomerSegmentMembersQueryUserError;
         public CustomerSendAccountInviteEmailUserError? AsCustomerSendAccountInviteEmailUserError() => this as CustomerSendAccountInviteEmailUserError;
+        public CustomerSetUserError? AsCustomerSetUserError() => this as CustomerSetUserError;
         public CustomerSmsMarketingConsentError? AsCustomerSmsMarketingConsentError() => this as CustomerSmsMarketingConsentError;
         public DataSaleOptOutUserError? AsDataSaleOptOutUserError() => this as DataSaleOptOutUserError;
         public DelegateAccessTokenCreateUserError? AsDelegateAccessTokenCreateUserError() => this as DelegateAccessTokenCreateUserError;
@@ -20736,6 +23332,7 @@ namespace ShopifyNet.AdminTypes
         public OnlineStoreThemeFilesUserErrors? AsOnlineStoreThemeFilesUserErrors() => this as OnlineStoreThemeFilesUserErrors;
         public OrderCancelUserError? AsOrderCancelUserError() => this as OrderCancelUserError;
         public OrderCreateMandatePaymentUserError? AsOrderCreateMandatePaymentUserError() => this as OrderCreateMandatePaymentUserError;
+        public OrderCreateManualPaymentOrderCreateManualPaymentError? AsOrderCreateManualPaymentOrderCreateManualPaymentError() => this as OrderCreateManualPaymentOrderCreateManualPaymentError;
         public OrderCreateUserError? AsOrderCreateUserError() => this as OrderCreateUserError;
         public OrderDeleteUserError? AsOrderDeleteUserError() => this as OrderDeleteUserError;
         public OrderEditAddShippingLineUserError? AsOrderEditAddShippingLineUserError() => this as OrderEditAddShippingLineUserError;
@@ -20756,6 +23353,7 @@ namespace ShopifyNet.AdminTypes
         public PriceListFixedPricesByProductBulkUpdateUserError? AsPriceListFixedPricesByProductBulkUpdateUserError() => this as PriceListFixedPricesByProductBulkUpdateUserError;
         public PriceListPriceUserError? AsPriceListPriceUserError() => this as PriceListPriceUserError;
         public PriceListUserError? AsPriceListUserError() => this as PriceListUserError;
+        public PrivacyFeaturesDisableUserError? AsPrivacyFeaturesDisableUserError() => this as PrivacyFeaturesDisableUserError;
         public ProductBundleMutationUserError? AsProductBundleMutationUserError() => this as ProductBundleMutationUserError;
         public ProductChangeStatusUserError? AsProductChangeStatusUserError() => this as ProductChangeStatusUserError;
         public ProductFeedCreateUserError? AsProductFeedCreateUserError() => this as ProductFeedCreateUserError;
@@ -20884,6 +23482,17 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class DisputeEvidenceUpdateUserErrorCodeStringValues
+    {
+        public const string DISPUTE_EVIDENCE_NOT_FOUND = @"DISPUTE_EVIDENCE_NOT_FOUND";
+        public const string EVIDENCE_ALREADY_ACCEPTED = @"EVIDENCE_ALREADY_ACCEPTED";
+        public const string EVIDENCE_PAST_DUE_DATE = @"EVIDENCE_PAST_DUE_DATE";
+        public const string FILES_SIZE_EXCEEDED_LIMIT = @"FILES_SIZE_EXCEEDED_LIMIT";
+        public const string FILE_NOT_FOUND = @"FILE_NOT_FOUND";
+        public const string TOO_LARGE = @"TOO_LARGE";
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///The possible statuses of a dispute.
     ///</summary>
@@ -20901,6 +23510,17 @@ namespace ShopifyNet.AdminTypes
         CHARGE_REFUNDED,
     }
 
+    public static class DisputeStatusStringValues
+    {
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string LOST = @"LOST";
+        public const string NEEDS_RESPONSE = @"NEEDS_RESPONSE";
+        public const string UNDER_REVIEW = @"UNDER_REVIEW";
+        public const string WON = @"WON";
+        [Obsolete("CHARGE_REFUNDED is no longer supported.")]
+        public const string CHARGE_REFUNDED = @"CHARGE_REFUNDED";
+    }
+
     ///<summary>
     ///The possible types for a dispute.
     ///</summary>
@@ -20914,6 +23534,12 @@ namespace ShopifyNet.AdminTypes
         ///The dispute is in the inquiry phase.
         ///</summary>
         INQUIRY,
+    }
+
+    public static class DisputeTypeStringValues
+    {
+        public const string CHARGEBACK = @"CHARGEBACK";
+        public const string INQUIRY = @"INQUIRY";
     }
 
     ///<summary>
@@ -20975,7 +23601,6 @@ namespace ShopifyNet.AdminTypes
     ///- Re-create orders manually from active sales channels.
     ///- Sell products at discount or wholesale rates.
     ///- Take pre-orders.
-    ///- Save an order as a draft and resume working on it later.
     ///
     ///For draft orders in multiple currencies `presentment_money` is the source of truth for what a customer is going to be charged and `shop_money` is an estimate of what the merchant might receive in their shop currency.
     ///
@@ -20983,7 +23608,7 @@ namespace ShopifyNet.AdminTypes
     ///
     ///Draft orders created on or after April 1, 2025 will be automatically purged after one year of inactivity.
     ///</summary>
-    public class DraftOrder : GraphQLObject<DraftOrder>, ICommentEventSubject, IHasEvents, IHasLocalizationExtensions, IHasMetafields, ILegacyInteroperability, INavigable, INode, ICommentEventEmbed, IMetafieldReferencer
+    public class DraftOrder : GraphQLObject<DraftOrder>, ICommentEventSubject, IHasEvents, IHasLocalizationExtensions, IHasLocalizedFields, IHasMetafields, ILegacyInteroperability, INavigable, INode, ICommentEventEmbed, IMetafieldReferencer
     {
         ///<summary>
         ///Whether or not to accept automatic discounts on the draft order during calculation.
@@ -20992,9 +23617,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public bool? acceptAutomaticDiscounts { get; set; }
         ///<summary>
+        ///Whether all variant prices have been overridden.
+        ///</summary>
+        public bool? allVariantPricesOverridden { get; set; }
+        ///<summary>
         ///Whether discount codes are allowed during checkout of this draft order.
         ///</summary>
         public bool? allowDiscountCodesInCheckout { get; set; }
+        ///<summary>
+        ///Whether any variant prices have been overridden.
+        ///</summary>
+        public bool? anyVariantPricesOverridden { get; set; }
         ///<summary>
         ///The custom order-level discount applied.
         ///</summary>
@@ -21083,6 +23716,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("This connection will be removed in a future version. Use `localizedFields` instead.")]
         public LocalizationExtensionConnection? localizationExtensions { get; set; }
+        ///<summary>
+        ///List of localized fields for the resource.
+        ///</summary>
+        public LocalizedFieldConnection? localizedFields { get; set; }
 
         ///<summary>
         ///The name of the selected market.
@@ -21138,18 +23775,6 @@ namespace ShopifyNet.AdminTypes
         ///The payment currency used for calculation.
         ///</summary>
         public string? presentmentCurrencyCode { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The purchasing entity.
         ///</summary>
@@ -21323,6 +23948,12 @@ namespace ShopifyNet.AdminTypes
         ///A percentage of the order subtotal.
         ///</summary>
         PERCENTAGE,
+    }
+
+    public static class DraftOrderAppliedDiscountTypeStringValues
+    {
+        public const string FIXED_AMOUNT = @"FIXED_AMOUNT";
+        public const string PERCENTAGE = @"PERCENTAGE";
     }
 
     ///<summary>
@@ -21604,10 +24235,16 @@ namespace ShopifyNet.AdminTypes
         ///This value doesn't include discounts applied to the entire draft order.
         ///</summary>
         public MoneyBag? approximateDiscountedUnitPriceSet { get; set; }
+
         ///<summary>
         ///The list of bundle components if applicable.
         ///</summary>
+        [Obsolete("Use `components` instead.")]
         public IEnumerable<DraftOrderLineItem>? bundleComponents { get; set; }
+        ///<summary>
+        ///The components of the draft order line item.
+        ///</summary>
+        public IEnumerable<DraftOrderLineItem>? components { get; set; }
         ///<summary>
         ///Whether the line item is custom (`true`) or contains a product variant (`false`).
         ///</summary>
@@ -21697,6 +24334,10 @@ namespace ShopifyNet.AdminTypes
         ///The original custom line item input price.
         ///</summary>
         public MoneyV2? originalUnitPriceWithCurrency { get; set; }
+        ///<summary>
+        ///The price override for the line item.
+        ///</summary>
+        public MoneyV2? priceOverride { get; set; }
         ///<summary>
         ///The product for the line item.
         ///</summary>
@@ -21939,6 +24580,17 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class DraftOrderSortKeysStringValues
+    {
+        public const string CUSTOMER_NAME = @"CUSTOMER_NAME";
+        public const string ID = @"ID";
+        public const string NUMBER = @"NUMBER";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string STATUS = @"STATUS";
+        public const string TOTAL_PRICE = @"TOTAL_PRICE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///The valid statuses for a draft order.
     ///</summary>
@@ -21956,6 +24608,13 @@ namespace ShopifyNet.AdminTypes
         ///The draft order is open. It has not been paid, and an invoice hasn't been sent.
         ///</summary>
         OPEN,
+    }
+
+    public static class DraftOrderStatusStringValues
+    {
+        public const string COMPLETED = @"COMPLETED";
+        public const string INVOICE_SENT = @"INVOICE_SENT";
+        public const string OPEN = @"OPEN";
     }
 
     ///<summary>
@@ -22106,6 +24765,17 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///The shop's entitlements.
+    ///</summary>
+    public class EntitlementsType : GraphQLObject<EntitlementsType>
+    {
+        ///<summary>
+        ///Represents the markets for the shop.
+        ///</summary>
+        public MarketsType? markets { get; set; }
+    }
+
+    ///<summary>
     ///An error that occurs during the execution of a server pixel mutation.
     ///</summary>
     public class ErrorsServerPixelUserError : GraphQLObject<ErrorsServerPixelUserError>, IDisplayableError
@@ -22145,6 +24815,14 @@ namespace ShopifyNet.AdminTypes
         ///Server Pixel must be configured with a valid AWS Event Bridge or GCP pub/sub endpoint address to be connected.
         ///</summary>
         NEEDS_CONFIGURATION_TO_CONNECT,
+    }
+
+    public static class ErrorsServerPixelUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string ALREADY_EXISTS = @"ALREADY_EXISTS";
+        public const string PUB_SUB_ERROR = @"PUB_SUB_ERROR";
+        public const string NEEDS_CONFIGURATION_TO_CONNECT = @"NEEDS_CONFIGURATION_TO_CONNECT";
     }
 
     ///<summary>
@@ -22212,6 +24890,21 @@ namespace ShopifyNet.AdminTypes
         ///The provided runtime context is invalid.
         ///</summary>
         INVALID_RUNTIME_CONTEXT,
+    }
+
+    public static class ErrorsWebPixelUserErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string TAKEN = @"TAKEN";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID_SETTINGS = @"INVALID_SETTINGS";
+        [Obsolete("`UNABLE_TO_DELETE` is deprecated. Use `UNEXPECTED_ERROR` instead.")]
+        public const string UNABLE_TO_DELETE = @"UNABLE_TO_DELETE";
+        public const string NO_EXTENSION = @"NO_EXTENSION";
+        public const string INVALID_CONFIGURATION_JSON = @"INVALID_CONFIGURATION_JSON";
+        public const string INVALID_SETTINGS_DEFINITION = @"INVALID_SETTINGS_DEFINITION";
+        public const string UNEXPECTED_ERROR = @"UNEXPECTED_ERROR";
+        public const string INVALID_RUNTIME_CONTEXT = @"INVALID_RUNTIME_CONTEXT";
     }
 
     ///<summary>
@@ -22351,11 +25044,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class EventSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -22438,6 +25132,28 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class EventSubjectTypeStringValues
+    {
+        public const string COMPANY_LOCATION = @"COMPANY_LOCATION";
+        public const string COMPANY = @"COMPANY";
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string DRAFT_ORDER = @"DRAFT_ORDER";
+        public const string COLLECTION = @"COLLECTION";
+        public const string PRODUCT = @"PRODUCT";
+        public const string PRODUCT_VARIANT = @"PRODUCT_VARIANT";
+        public const string ARTICLE = @"ARTICLE";
+        public const string BLOG = @"BLOG";
+        public const string COMMENT = @"COMMENT";
+        public const string PAGE = @"PAGE";
+        public const string DISCOUNT_AUTOMATIC_BXGY = @"DISCOUNT_AUTOMATIC_BXGY";
+        public const string DISCOUNT_AUTOMATIC_NODE = @"DISCOUNT_AUTOMATIC_NODE";
+        public const string DISCOUNT_CODE_NODE = @"DISCOUNT_CODE_NODE";
+        public const string DISCOUNT_NODE = @"DISCOUNT_NODE";
+        public const string PRICE_RULE = @"PRICE_RULE";
+        public const string ORDER = @"ORDER";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///An item for exchange.
     ///</summary>
@@ -22512,6 +25228,10 @@ namespace ShopifyNet.AdminTypes
         ///The location where the exchange happened.
         ///</summary>
         public Location? location { get; set; }
+        ///<summary>
+        ///Mirrored from Admin Exchanges.
+        ///</summary>
+        public bool? mirrored { get; set; }
         ///<summary>
         ///The text of an optional note that a shop owner can attach to the exchange.
         ///</summary>
@@ -22983,6 +25703,15 @@ namespace ShopifyNet.AdminTypes
         MODEL_3D,
     }
 
+    public static class FileContentTypeStringValues
+    {
+        public const string IMAGE = @"IMAGE";
+        public const string FILE = @"FILE";
+        public const string VIDEO = @"VIDEO";
+        public const string EXTERNAL_VIDEO = @"EXTERNAL_VIDEO";
+        public const string MODEL_3D = @"MODEL_3D";
+    }
+
     ///<summary>
     ///The input fields for handling if filename is already in use.
     ///</summary>
@@ -23000,6 +25729,13 @@ namespace ShopifyNet.AdminTypes
         ///Replace the existing file if filename is already in use.
         ///</summary>
         REPLACE,
+    }
+
+    public static class FileCreateInputDuplicateResolutionModeStringValues
+    {
+        public const string APPEND_UUID = @"APPEND_UUID";
+        public const string RAISE_ERROR = @"RAISE_ERROR";
+        public const string REPLACE = @"REPLACE";
     }
 
     ///<summary>
@@ -23206,6 +25942,43 @@ namespace ShopifyNet.AdminTypes
         DUPLICATE_FILENAME_ERROR,
     }
 
+    public static class FileErrorCodeStringValues
+    {
+        public const string UNKNOWN = @"UNKNOWN";
+        public const string INVALID_SIGNED_URL = @"INVALID_SIGNED_URL";
+        public const string IMAGE_DOWNLOAD_FAILURE = @"IMAGE_DOWNLOAD_FAILURE";
+        public const string IMAGE_PROCESSING_FAILURE = @"IMAGE_PROCESSING_FAILURE";
+        public const string MEDIA_TIMEOUT_ERROR = @"MEDIA_TIMEOUT_ERROR";
+        public const string EXTERNAL_VIDEO_NOT_FOUND = @"EXTERNAL_VIDEO_NOT_FOUND";
+        public const string EXTERNAL_VIDEO_UNLISTED = @"EXTERNAL_VIDEO_UNLISTED";
+        public const string EXTERNAL_VIDEO_INVALID_ASPECT_RATIO = @"EXTERNAL_VIDEO_INVALID_ASPECT_RATIO";
+        public const string EXTERNAL_VIDEO_EMBED_DISABLED = @"EXTERNAL_VIDEO_EMBED_DISABLED";
+        public const string EXTERNAL_VIDEO_EMBED_NOT_FOUND_OR_TRANSCODING = @"EXTERNAL_VIDEO_EMBED_NOT_FOUND_OR_TRANSCODING";
+        public const string GENERIC_FILE_DOWNLOAD_FAILURE = @"GENERIC_FILE_DOWNLOAD_FAILURE";
+        public const string GENERIC_FILE_INVALID_SIZE = @"GENERIC_FILE_INVALID_SIZE";
+        public const string VIDEO_METADATA_READ_ERROR = @"VIDEO_METADATA_READ_ERROR";
+        public const string VIDEO_INVALID_FILETYPE_ERROR = @"VIDEO_INVALID_FILETYPE_ERROR";
+        public const string VIDEO_MIN_WIDTH_ERROR = @"VIDEO_MIN_WIDTH_ERROR";
+        public const string VIDEO_MAX_WIDTH_ERROR = @"VIDEO_MAX_WIDTH_ERROR";
+        public const string VIDEO_MIN_HEIGHT_ERROR = @"VIDEO_MIN_HEIGHT_ERROR";
+        public const string VIDEO_MAX_HEIGHT_ERROR = @"VIDEO_MAX_HEIGHT_ERROR";
+        public const string VIDEO_MIN_DURATION_ERROR = @"VIDEO_MIN_DURATION_ERROR";
+        public const string VIDEO_MAX_DURATION_ERROR = @"VIDEO_MAX_DURATION_ERROR";
+        public const string VIDEO_VALIDATION_ERROR = @"VIDEO_VALIDATION_ERROR";
+        public const string MODEL3D_VALIDATION_ERROR = @"MODEL3D_VALIDATION_ERROR";
+        public const string MODEL3D_THUMBNAIL_GENERATION_ERROR = @"MODEL3D_THUMBNAIL_GENERATION_ERROR";
+        public const string MODEL3D_THUMBNAIL_REGENERATION_ERROR = @"MODEL3D_THUMBNAIL_REGENERATION_ERROR";
+        public const string MODEL3D_GLB_TO_USDZ_CONVERSION_ERROR = @"MODEL3D_GLB_TO_USDZ_CONVERSION_ERROR";
+        public const string MODEL3D_GLB_OUTPUT_CREATION_ERROR = @"MODEL3D_GLB_OUTPUT_CREATION_ERROR";
+        public const string MODEL3D_PROCESSING_FAILURE = @"MODEL3D_PROCESSING_FAILURE";
+        public const string UNSUPPORTED_IMAGE_FILE_TYPE = @"UNSUPPORTED_IMAGE_FILE_TYPE";
+        public const string INVALID_IMAGE_FILE_SIZE = @"INVALID_IMAGE_FILE_SIZE";
+        public const string INVALID_IMAGE_ASPECT_RATIO = @"INVALID_IMAGE_ASPECT_RATIO";
+        public const string INVALID_IMAGE_RESOLUTION = @"INVALID_IMAGE_RESOLUTION";
+        public const string FILE_STORAGE_LIMIT_EXCEEDED = @"FILE_STORAGE_LIMIT_EXCEEDED";
+        public const string DUPLICATE_FILENAME_ERROR = @"DUPLICATE_FILENAME_ERROR";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the File query.
     ///</summary>
@@ -23238,6 +26011,16 @@ namespace ShopifyNet.AdminTypes
         UPDATED_AT,
     }
 
+    public static class FileSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string FILENAME = @"FILENAME";
+        public const string ID = @"ID";
+        public const string ORIGINAL_UPLOAD_SIZE = @"ORIGINAL_UPLOAD_SIZE";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
     ///<summary>
     ///The possible statuses for a file object.
     ///</summary>
@@ -23259,6 +26042,14 @@ namespace ShopifyNet.AdminTypes
         ///File processing has failed.
         ///</summary>
         FAILED,
+    }
+
+    public static class FileStatusStringValues
+    {
+        public const string UPLOADED = @"UPLOADED";
+        public const string PROCESSING = @"PROCESSING";
+        public const string READY = @"READY";
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
@@ -23387,6 +26178,36 @@ namespace ShopifyNet.AdminTypes
         TOO_MANY_FILE_REFERENCE,
     }
 
+    public static class FilesErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string FILE_DOES_NOT_EXIST = @"FILE_DOES_NOT_EXIST";
+        public const string FILE_LOCKED = @"FILE_LOCKED";
+        public const string UNSUPPORTED_MEDIA_TYPE_FOR_FILENAME_UPDATE = @"UNSUPPORTED_MEDIA_TYPE_FOR_FILENAME_UPDATE";
+        public const string TOO_MANY_ARGUMENTS = @"TOO_MANY_ARGUMENTS";
+        public const string BLANK_SEARCH = @"BLANK_SEARCH";
+        public const string MISSING_ARGUMENTS = @"MISSING_ARGUMENTS";
+        public const string INVALID_QUERY = @"INVALID_QUERY";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string INVALID_FILENAME_EXTENSION = @"INVALID_FILENAME_EXTENSION";
+        public const string INVALID_FILENAME = @"INVALID_FILENAME";
+        public const string FILENAME_ALREADY_EXISTS = @"FILENAME_ALREADY_EXISTS";
+        public const string UNACCEPTABLE_UNVERIFIED_TRIAL_ASSET = @"UNACCEPTABLE_UNVERIFIED_TRIAL_ASSET";
+        public const string UNACCEPTABLE_ASSET = @"UNACCEPTABLE_ASSET";
+        public const string UNACCEPTABLE_TRIAL_ASSET = @"UNACCEPTABLE_TRIAL_ASSET";
+        public const string ALT_VALUE_LIMIT_EXCEEDED = @"ALT_VALUE_LIMIT_EXCEEDED";
+        public const string NON_READY_STATE = @"NON_READY_STATE";
+        public const string NON_IMAGE_MEDIA_PER_SHOP_LIMIT_EXCEEDED = @"NON_IMAGE_MEDIA_PER_SHOP_LIMIT_EXCEEDED";
+        public const string MISMATCHED_FILENAME_AND_ORIGINAL_SOURCE = @"MISMATCHED_FILENAME_AND_ORIGINAL_SOURCE";
+        public const string INVALID_DUPLICATE_MODE_FOR_TYPE = @"INVALID_DUPLICATE_MODE_FOR_TYPE";
+        public const string INVALID_IMAGE_SOURCE_URL = @"INVALID_IMAGE_SOURCE_URL";
+        public const string MISSING_FILENAME_FOR_DUPLICATE_MODE_REPLACE = @"MISSING_FILENAME_FOR_DUPLICATE_MODE_REPLACE";
+        public const string PRODUCT_MEDIA_LIMIT_EXCEEDED = @"PRODUCT_MEDIA_LIMIT_EXCEEDED";
+        public const string UNSUPPORTED_FILE_REFERENCE = @"UNSUPPORTED_FILE_REFERENCE";
+        public const string REFERENCE_TARGET_DOES_NOT_EXIST = @"REFERENCE_TARGET_DOES_NOT_EXIST";
+        public const string TOO_MANY_FILE_REFERENCE = @"TOO_MANY_FILE_REFERENCE";
+    }
+
     ///<summary>
     ///An error that happens during the execution of a Files API query or mutation.
     ///</summary>
@@ -23419,6 +26240,75 @@ namespace ShopifyNet.AdminTypes
         ///The filter option's value.
         ///</summary>
         public string? value { get; set; }
+    }
+
+    ///<summary>
+    ///Current user's access policy for a finance app.
+    ///</summary>
+    public class FinanceAppAccessPolicy : GraphQLObject<FinanceAppAccessPolicy>
+    {
+        ///<summary>
+        ///Current shop staff's access within the app.
+        ///</summary>
+        public IEnumerable<string>? access { get; set; }
+    }
+
+    ///<summary>
+    ///Shopify Payments account information shared with embedded finance applications.
+    ///</summary>
+    public class FinanceKycInformation : GraphQLObject<FinanceKycInformation>
+    {
+        ///<summary>
+        ///The legal entity business address.
+        ///</summary>
+        public ShopifyPaymentsAddressBasic? businessAddress { get; set; }
+        ///<summary>
+        ///The legal entity business type.
+        ///</summary>
+        public string? businessType { get; set; }
+        ///<summary>
+        ///Business industry.
+        ///</summary>
+        public ShopifyPaymentsMerchantCategoryCode? industry { get; set; }
+        ///<summary>
+        ///Returns the business legal name.
+        ///</summary>
+        public string? legalName { get; set; }
+        ///<summary>
+        ///The shop owner information for financial KYC purposes.
+        ///</summary>
+        public FinancialKycShopOwner? shopOwner { get; set; }
+        ///<summary>
+        ///Tax identification information.
+        ///</summary>
+        public ShopifyPaymentsTaxIdentification? taxIdentification { get; set; }
+    }
+
+    ///<summary>
+    ///Represents the shop owner information for financial KYC purposes.
+    ///</summary>
+    public class FinancialKycShopOwner : GraphQLObject<FinancialKycShopOwner>
+    {
+        ///<summary>
+        ///The email of the shop owner.
+        ///</summary>
+        public string? email { get; set; }
+        ///<summary>
+        ///The first name of the shop owner.
+        ///</summary>
+        public string? firstName { get; set; }
+        ///<summary>
+        ///A globally-unique ID.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The last name of the shop owner.
+        ///</summary>
+        public string? lastName { get; set; }
+        ///<summary>
+        ///The phone number of the shop owner.
+        ///</summary>
+        public string? phone { get; set; }
     }
 
     ///<summary>
@@ -23640,18 +26530,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
     }
 
     ///<summary>
@@ -23723,6 +26601,17 @@ namespace ShopifyNet.AdminTypes
         MAXIMUM_FULFILLMENT_CONSTRAINT_RULES_REACHED,
     }
 
+    public static class FulfillmentConstraintRuleCreateUserErrorCodeStringValues
+    {
+        public const string INPUT_INVALID = @"INPUT_INVALID";
+        public const string FUNCTION_NOT_FOUND = @"FUNCTION_NOT_FOUND";
+        public const string FUNCTION_ALREADY_REGISTERED = @"FUNCTION_ALREADY_REGISTERED";
+        public const string FUNCTION_DOES_NOT_IMPLEMENT = @"FUNCTION_DOES_NOT_IMPLEMENT";
+        public const string CUSTOM_APP_FUNCTION_NOT_ELIGIBLE = @"CUSTOM_APP_FUNCTION_NOT_ELIGIBLE";
+        public const string FUNCTION_PENDING_DELETION = @"FUNCTION_PENDING_DELETION";
+        public const string MAXIMUM_FULFILLMENT_CONSTRAINT_RULES_REACHED = @"MAXIMUM_FULFILLMENT_CONSTRAINT_RULES_REACHED";
+    }
+
     ///<summary>
     ///Return type for `fulfillmentConstraintRuleDelete` mutation.
     ///</summary>
@@ -23770,6 +26659,12 @@ namespace ShopifyNet.AdminTypes
         ///Unauthorized app scope.
         ///</summary>
         UNAUTHORIZED_APP_SCOPE,
+    }
+
+    public static class FulfillmentConstraintRuleDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string UNAUTHORIZED_APP_SCOPE = @"UNAUTHORIZED_APP_SCOPE";
     }
 
     ///<summary>
@@ -23821,6 +26716,12 @@ namespace ShopifyNet.AdminTypes
         UNAUTHORIZED_APP_SCOPE,
     }
 
+    public static class FulfillmentConstraintRuleUpdateUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string UNAUTHORIZED_APP_SCOPE = @"UNAUTHORIZED_APP_SCOPE";
+    }
+
     ///<summary>
     ///Return type for `fulfillmentCreate` mutation.
     ///</summary>
@@ -23868,6 +26769,10 @@ namespace ShopifyNet.AdminTypes
         ///Displayed as **Confirmed**.
         ///</summary>
         CONFIRMED,
+        ///<summary>
+        ///Displayed as **Delayed**.
+        ///</summary>
+        DELAYED,
         ///<summary>
         ///Displayed as **Delivered**.
         ///</summary>
@@ -23920,6 +26825,27 @@ namespace ShopifyNet.AdminTypes
         ///Displayed as **Submitted**.
         ///</summary>
         SUBMITTED,
+    }
+
+    public static class FulfillmentDisplayStatusStringValues
+    {
+        public const string ATTEMPTED_DELIVERY = @"ATTEMPTED_DELIVERY";
+        public const string CANCELED = @"CANCELED";
+        public const string CONFIRMED = @"CONFIRMED";
+        public const string DELAYED = @"DELAYED";
+        public const string DELIVERED = @"DELIVERED";
+        public const string FAILURE = @"FAILURE";
+        public const string FULFILLED = @"FULFILLED";
+        public const string IN_TRANSIT = @"IN_TRANSIT";
+        public const string LABEL_PRINTED = @"LABEL_PRINTED";
+        public const string LABEL_PURCHASED = @"LABEL_PURCHASED";
+        public const string LABEL_VOIDED = @"LABEL_VOIDED";
+        public const string MARKED_AS_FULFILLED = @"MARKED_AS_FULFILLED";
+        public const string NOT_DELIVERED = @"NOT_DELIVERED";
+        public const string OUT_FOR_DELIVERY = @"OUT_FOR_DELIVERY";
+        public const string READY_FOR_PICKUP = @"READY_FOR_PICKUP";
+        public const string PICKED_UP = @"PICKED_UP";
+        public const string SUBMITTED = @"SUBMITTED";
     }
 
     ///<summary>
@@ -24058,11 +26984,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class FulfillmentEventSortKeysStringValues
+    {
+        public const string HAPPENED_AT = @"HAPPENED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -24099,6 +27026,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ATTEMPTED_DELIVERY,
         ///<summary>
+        ///The fulfillment is delayed.
+        ///</summary>
+        DELAYED,
+        ///<summary>
         ///The fulfillment was successfully delivered.
         ///</summary>
         DELIVERED,
@@ -24106,6 +27037,20 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment request failed.
         ///</summary>
         FAILURE,
+    }
+
+    public static class FulfillmentEventStatusStringValues
+    {
+        public const string LABEL_PURCHASED = @"LABEL_PURCHASED";
+        public const string LABEL_PRINTED = @"LABEL_PRINTED";
+        public const string READY_FOR_PICKUP = @"READY_FOR_PICKUP";
+        public const string CONFIRMED = @"CONFIRMED";
+        public const string IN_TRANSIT = @"IN_TRANSIT";
+        public const string OUT_FOR_DELIVERY = @"OUT_FOR_DELIVERY";
+        public const string ATTEMPTED_DELIVERY = @"ATTEMPTED_DELIVERY";
+        public const string DELAYED = @"DELAYED";
+        public const string DELIVERED = @"DELIVERED";
+        public const string FAILURE = @"FAILURE";
     }
 
     ///<summary>
@@ -24117,12 +27062,15 @@ namespace ShopifyNet.AdminTypes
         ///The localized reason for the fulfillment hold for display purposes.
         ///</summary>
         public string? displayReason { get; set; }
-
         ///<summary>
-        ///The name of the app or service that applied the fulfillment hold.
+        ///An identifier an app can use to reference one of many holds it applied to a fulfillment order.
+        ///This field must be unique among the holds that a single app applies to a single fulfillment order.
         ///</summary>
-        [Obsolete("Use `heldByApp.title` instead.\nFor more information, see the following [changelog post](https://shopify.dev/changelog/update-to-fulfillmenthold-heldbyapp-field-from-fulfillmenthold-heldby-field).")]
-        public string? heldBy { get; set; }
+        public string? handle { get; set; }
+        ///<summary>
+        ///The app that created the fulfillment hold.
+        ///</summary>
+        public App? heldByApp { get; set; }
         ///<summary>
         ///A boolean value that indicates whether the requesting app created the fulfillment hold.
         ///</summary>
@@ -24178,6 +27126,18 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment hold is applied for another reason.
         ///</summary>
         OTHER,
+    }
+
+    public static class FulfillmentHoldReasonStringValues
+    {
+        public const string AWAITING_PAYMENT = @"AWAITING_PAYMENT";
+        public const string HIGH_RISK_OF_FRAUD = @"HIGH_RISK_OF_FRAUD";
+        public const string INCORRECT_ADDRESS = @"INCORRECT_ADDRESS";
+        public const string INVENTORY_OUT_OF_STOCK = @"INVENTORY_OUT_OF_STOCK";
+        public const string UNKNOWN_DELIVERY_DATE = @"UNKNOWN_DELIVERY_DATE";
+        public const string ONLINE_STORE_POST_PURCHASE_CROSS_SELL = @"ONLINE_STORE_POST_PURCHASE_CROSS_SELL";
+        public const string AWAITING_RETURN_ITEMS = @"AWAITING_RETURN_ITEMS";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -24608,6 +27568,21 @@ namespace ShopifyNet.AdminTypes
         MERGE,
     }
 
+    public static class FulfillmentOrderActionStringValues
+    {
+        public const string CREATE_FULFILLMENT = @"CREATE_FULFILLMENT";
+        public const string REQUEST_FULFILLMENT = @"REQUEST_FULFILLMENT";
+        public const string CANCEL_FULFILLMENT_ORDER = @"CANCEL_FULFILLMENT_ORDER";
+        public const string MOVE = @"MOVE";
+        public const string REQUEST_CANCELLATION = @"REQUEST_CANCELLATION";
+        public const string MARK_AS_OPEN = @"MARK_AS_OPEN";
+        public const string RELEASE_HOLD = @"RELEASE_HOLD";
+        public const string HOLD = @"HOLD";
+        public const string EXTERNAL = @"EXTERNAL";
+        public const string SPLIT = @"SPLIT";
+        public const string MERGE = @"MERGE";
+    }
+
     ///<summary>
     ///The fulfillment order's assigned location. This is the location where the fulfillment is expected to happen.
     ///
@@ -24710,6 +27685,14 @@ namespace ShopifyNet.AdminTypes
         ///Fulfillment orders for which the merchant hasn't yet requested fulfillment.
         ///</summary>
         FULFILLMENT_UNSUBMITTED,
+    }
+
+    public static class FulfillmentOrderAssignmentStatusStringValues
+    {
+        public const string CANCELLATION_REQUESTED = @"CANCELLATION_REQUESTED";
+        public const string FULFILLMENT_REQUESTED = @"FULFILLMENT_REQUESTED";
+        public const string FULFILLMENT_ACCEPTED = @"FULFILLMENT_ACCEPTED";
+        public const string FULFILLMENT_UNSUBMITTED = @"FULFILLMENT_UNSUBMITTED";
     }
 
     ///<summary>
@@ -24921,6 +27904,18 @@ namespace ShopifyNet.AdminTypes
         DUPLICATED_FULFILLMENT_ORDER_LINE_ITEMS,
     }
 
+    public static class FulfillmentOrderHoldUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDER_NOT_FOUND = @"FULFILLMENT_ORDER_NOT_FOUND";
+        public const string TAKEN = @"TAKEN";
+        public const string GREATER_THAN_ZERO = @"GREATER_THAN_ZERO";
+        public const string FULFILLMENT_ORDER_HOLD_LIMIT_REACHED = @"FULFILLMENT_ORDER_HOLD_LIMIT_REACHED";
+        public const string DUPLICATE_FULFILLMENT_HOLD_HANDLE = @"DUPLICATE_FULFILLMENT_HOLD_HANDLE";
+        public const string INVALID_LINE_ITEM_QUANTITY = @"INVALID_LINE_ITEM_QUANTITY";
+        public const string FULFILLMENT_ORDER_NOT_SPLITTABLE = @"FULFILLMENT_ORDER_NOT_SPLITTABLE";
+        public const string DUPLICATED_FULFILLMENT_ORDER_LINE_ITEMS = @"DUPLICATED_FULFILLMENT_ORDER_LINE_ITEMS";
+    }
+
     ///<summary>
     ///The international duties relevant to a fulfillment order.
     ///</summary>
@@ -25126,6 +28121,13 @@ namespace ShopifyNet.AdminTypes
         UNABLE_TO_PREPARE_QUANTITY,
     }
 
+    public static class FulfillmentOrderLineItemsPreparedForPickupUserErrorCodeStringValues
+    {
+        public const string NO_LINE_ITEMS_TO_PREPARE_FOR_FULFILLMENT_ORDER = @"NO_LINE_ITEMS_TO_PREPARE_FOR_FULFILLMENT_ORDER";
+        public const string FULFILLMENT_ORDER_INVALID = @"FULFILLMENT_ORDER_INVALID";
+        public const string UNABLE_TO_PREPARE_QUANTITY = @"UNABLE_TO_PREPARE_QUANTITY";
+    }
+
     ///<summary>
     ///A location that a fulfillment order can potentially move to.
     ///</summary>
@@ -25286,6 +28288,12 @@ namespace ShopifyNet.AdminTypes
         CANCELLATION_REQUEST,
     }
 
+    public static class FulfillmentOrderMerchantRequestKindStringValues
+    {
+        public const string FULFILLMENT_REQUEST = @"FULFILLMENT_REQUEST";
+        public const string CANCELLATION_REQUEST = @"CANCELLATION_REQUEST";
+    }
+
     ///<summary>
     ///Return type for `fulfillmentOrderMerge` mutation.
     ///</summary>
@@ -25348,6 +28356,13 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment order line item quantity is invalid.
         ///</summary>
         INVALID_LINE_ITEM_QUANTITY,
+    }
+
+    public static class FulfillmentOrderMergeUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDER_NOT_FOUND = @"FULFILLMENT_ORDER_NOT_FOUND";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string INVALID_LINE_ITEM_QUANTITY = @"INVALID_LINE_ITEM_QUANTITY";
     }
 
     ///<summary>
@@ -25446,9 +28461,63 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         UNDELIVERABLE_DESTINATION,
         ///<summary>
+        ///The fulfillment order was rejected because international address shipping hasn't been enabled.
+        ///</summary>
+        INTERNATIONAL_SHIPPING_UNAVAILABLE,
+        ///<summary>
+        ///The fulfillment order was rejected because product information is incorrect to be able to ship.
+        ///</summary>
+        INCORRECT_PRODUCT_INFO,
+        ///<summary>
+        ///The fulfillment order was rejected because customs information was missing for international shipping.
+        ///</summary>
+        MISSING_CUSTOMS_INFO,
+        ///<summary>
+        ///The fulfillment order was rejected because of an invalid SKU.
+        ///</summary>
+        INVALID_SKU,
+        ///<summary>
+        ///The fulfillment order was rejected because the payment method was declined.
+        ///</summary>
+        PAYMENT_DECLINED,
+        ///<summary>
+        ///The fulfillment order was rejected because the package preference was not set.
+        ///</summary>
+        PACKAGE_PREFERENCE_NOT_SET,
+        ///<summary>
+        ///The fulfillment order was rejected because of invalid customer contact information.
+        ///</summary>
+        INVALID_CONTACT_INFORMATION,
+        ///<summary>
+        ///The fulfillment order was rejected because the order is too large.
+        ///</summary>
+        ORDER_TOO_LARGE,
+        ///<summary>
+        ///The fulfillment order was rejected because the merchant is blocked or suspended.
+        ///</summary>
+        MERCHANT_BLOCKED_OR_SUSPENDED,
+        ///<summary>
         ///The fulfillment order was rejected for another reason.
         ///</summary>
         OTHER,
+    }
+
+    public static class FulfillmentOrderRejectionReasonStringValues
+    {
+        public const string INCORRECT_ADDRESS = @"INCORRECT_ADDRESS";
+        public const string INVENTORY_OUT_OF_STOCK = @"INVENTORY_OUT_OF_STOCK";
+        public const string INELIGIBLE_PRODUCT = @"INELIGIBLE_PRODUCT";
+        public const string UNDELIVERABLE_DESTINATION = @"UNDELIVERABLE_DESTINATION";
+        public const string INTERNATIONAL_SHIPPING_UNAVAILABLE = @"INTERNATIONAL_SHIPPING_UNAVAILABLE";
+        public const string INCORRECT_PRODUCT_INFO = @"INCORRECT_PRODUCT_INFO";
+        public const string MISSING_CUSTOMS_INFO = @"MISSING_CUSTOMS_INFO";
+        public const string INVALID_SKU = @"INVALID_SKU";
+        public const string PAYMENT_DECLINED = @"PAYMENT_DECLINED";
+        public const string PACKAGE_PREFERENCE_NOT_SET = @"PACKAGE_PREFERENCE_NOT_SET";
+        public const string INVALID_CONTACT_INFORMATION = @"INVALID_CONTACT_INFORMATION";
+        public const string ORDER_TOO_LARGE = @"ORDER_TOO_LARGE";
+        public const string MERCHANT_BLOCKED_OR_SUSPENDED = @"MERCHANT_BLOCKED_OR_SUSPENDED";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -25500,6 +28569,12 @@ namespace ShopifyNet.AdminTypes
         INVALID_ACCESS,
     }
 
+    public static class FulfillmentOrderReleaseHoldUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDER_NOT_FOUND = @"FULFILLMENT_ORDER_NOT_FOUND";
+        public const string INVALID_ACCESS = @"INVALID_ACCESS";
+    }
+
     ///<summary>
     ///The request status of a fulfillment order.
     ///</summary>
@@ -25538,6 +28613,18 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment service closed the fulfillment order without completing it.
         ///</summary>
         CLOSED,
+    }
+
+    public static class FulfillmentOrderRequestStatusStringValues
+    {
+        public const string UNSUBMITTED = @"UNSUBMITTED";
+        public const string SUBMITTED = @"SUBMITTED";
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string REJECTED = @"REJECTED";
+        public const string CANCELLATION_REQUESTED = @"CANCELLATION_REQUESTED";
+        public const string CANCELLATION_ACCEPTED = @"CANCELLATION_ACCEPTED";
+        public const string CANCELLATION_REJECTED = @"CANCELLATION_REJECTED";
+        public const string CLOSED = @"CLOSED";
     }
 
     ///<summary>
@@ -25590,6 +28677,11 @@ namespace ShopifyNet.AdminTypes
         FULFILLMENT_ORDER_NOT_FOUND,
     }
 
+    public static class FulfillmentOrderRescheduleUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDER_NOT_FOUND = @"FULFILLMENT_ORDER_NOT_FOUND";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the FulfillmentOrder query.
     ///</summary>
@@ -25600,14 +28692,15 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class FulfillmentOrderSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -25686,6 +28779,14 @@ namespace ShopifyNet.AdminTypes
         NO_LINE_ITEMS_PROVIDED_TO_SPLIT,
     }
 
+    public static class FulfillmentOrderSplitUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDER_NOT_FOUND = @"FULFILLMENT_ORDER_NOT_FOUND";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string INVALID_LINE_ITEM_QUANTITY = @"INVALID_LINE_ITEM_QUANTITY";
+        public const string NO_LINE_ITEMS_PROVIDED_TO_SPLIT = @"NO_LINE_ITEMS_PROVIDED_TO_SPLIT";
+    }
+
     ///<summary>
     ///The status of a fulfillment order.
     ///</summary>
@@ -25719,6 +28820,17 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment order is on hold. The fulfillment process can't be initiated until the hold on the fulfillment order is released.
         ///</summary>
         ON_HOLD,
+    }
+
+    public static class FulfillmentOrderStatusStringValues
+    {
+        public const string OPEN = @"OPEN";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string CANCELLED = @"CANCELLED";
+        public const string INCOMPLETE = @"INCOMPLETE";
+        public const string CLOSED = @"CLOSED";
+        public const string SCHEDULED = @"SCHEDULED";
+        public const string ON_HOLD = @"ON_HOLD";
     }
 
     ///<summary>
@@ -25821,6 +28933,11 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment orders could not be found.
         ///</summary>
         FULFILLMENT_ORDERS_NOT_FOUND,
+    }
+
+    public static class FulfillmentOrdersSetFulfillmentDeadlineUserErrorCodeStringValues
+    {
+        public const string FULFILLMENT_ORDERS_NOT_FOUND = @"FULFILLMENT_ORDERS_NOT_FOUND";
     }
 
     ///<summary>
@@ -25962,6 +29079,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public bool? permitsSkuSharing { get; set; }
         ///<summary>
+        ///Whether the fulfillment service requires products to be physically shipped.
+        ///</summary>
+        public bool? requiresShippingMethod { get; set; }
+        ///<summary>
         ///The name of the fulfillment service as seen by merchants.
         ///</summary>
         public string? serviceName { get; set; }
@@ -26009,6 +29130,13 @@ namespace ShopifyNet.AdminTypes
         TRANSFER,
     }
 
+    public static class FulfillmentServiceDeleteInventoryActionStringValues
+    {
+        public const string DELETE = @"DELETE";
+        public const string KEEP = @"KEEP";
+        public const string TRANSFER = @"TRANSFER";
+    }
+
     ///<summary>
     ///Return type for `fulfillmentServiceDelete` mutation.
     ///</summary>
@@ -26041,6 +29169,13 @@ namespace ShopifyNet.AdminTypes
         ///Fullfillment by a third-party fulfillment service.
         ///</summary>
         THIRD_PARTY,
+    }
+
+    public static class FulfillmentServiceTypeStringValues
+    {
+        public const string GIFT_CARD = @"GIFT_CARD";
+        public const string MANUAL = @"MANUAL";
+        public const string THIRD_PARTY = @"THIRD_PARTY";
     }
 
     ///<summary>
@@ -26089,6 +29224,18 @@ namespace ShopifyNet.AdminTypes
         ///The fulfillment request failed.
         ///</summary>
         FAILURE,
+    }
+
+    public static class FulfillmentStatusStringValues
+    {
+        [Obsolete("This is a legacy status and is due to be deprecated.")]
+        public const string PENDING = @"PENDING";
+        [Obsolete("This is a legacy status and is due to be deprecated.")]
+        public const string OPEN = @"OPEN";
+        public const string SUCCESS = @"SUCCESS";
+        public const string CANCELLED = @"CANCELLED";
+        public const string ERROR = @"ERROR";
+        public const string FAILURE = @"FAILURE";
     }
 
     ///<summary>
@@ -26460,6 +29607,21 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///Represents information about the configuration of gift cards on the shop.
+    ///</summary>
+    public class GiftCardConfiguration : GraphQLObject<GiftCardConfiguration>
+    {
+        ///<summary>
+        ///The issue limit for gift cards in the default shop currency.
+        ///</summary>
+        public MoneyV2? issueLimit { get; set; }
+        ///<summary>
+        ///The purchase limit for gift cards in the default shop currency.
+        ///</summary>
+        public MoneyV2? purchaseLimit { get; set; }
+    }
+
+    ///<summary>
     ///An auto-generated type for paginating through multiple GiftCards.
     ///</summary>
     public class GiftCardConnection : GraphQLObject<GiftCardConnection>, IConnectionWithNodesAndEdges<GiftCardEdge, GiftCard>
@@ -26544,18 +29706,6 @@ namespace ShopifyNet.AdminTypes
         ///A note about the transaction.
         ///</summary>
         public string? note { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time when the transaction was processed.
         ///</summary>
@@ -26607,6 +29757,11 @@ namespace ShopifyNet.AdminTypes
         GIFT_CARD_NOT_FOUND,
     }
 
+    public static class GiftCardDeactivateUserErrorCodeStringValues
+    {
+        public const string GIFT_CARD_NOT_FOUND = @"GIFT_CARD_NOT_FOUND";
+    }
+
     ///<summary>
     ///Return type for `giftCardDebit` mutation.
     ///</summary>
@@ -26654,18 +29809,6 @@ namespace ShopifyNet.AdminTypes
         ///A note about the transaction.
         ///</summary>
         public string? note { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time when the transaction was processed.
         ///</summary>
@@ -26732,6 +29875,20 @@ namespace ShopifyNet.AdminTypes
         ///The recipient could not be found.
         ///</summary>
         RECIPIENT_NOT_FOUND,
+    }
+
+    public static class GiftCardErrorCodeStringValues
+    {
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string TAKEN = @"TAKEN";
+        public const string INVALID = @"INVALID";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string MISSING_ARGUMENT = @"MISSING_ARGUMENT";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string GIFT_CARD_LIMIT_EXCEEDED = @"GIFT_CARD_LIMIT_EXCEEDED";
+        public const string CUSTOMER_NOT_FOUND = @"CUSTOMER_NOT_FOUND";
+        public const string RECIPIENT_NOT_FOUND = @"RECIPIENT_NOT_FOUND";
     }
 
     ///<summary>
@@ -26857,6 +30014,13 @@ namespace ShopifyNet.AdminTypes
         GIFT_CARD_NOT_FOUND,
     }
 
+    public static class GiftCardSendNotificationToCustomerUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string CUSTOMER_NOT_FOUND = @"CUSTOMER_NOT_FOUND";
+        public const string GIFT_CARD_NOT_FOUND = @"GIFT_CARD_NOT_FOUND";
+    }
+
     ///<summary>
     ///Return type for `giftCardSendNotificationToRecipient` mutation.
     ///</summary>
@@ -26910,6 +30074,13 @@ namespace ShopifyNet.AdminTypes
         GIFT_CARD_NOT_FOUND,
     }
 
+    public static class GiftCardSendNotificationToRecipientUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string RECIPIENT_NOT_FOUND = @"RECIPIENT_NOT_FOUND";
+        public const string GIFT_CARD_NOT_FOUND = @"GIFT_CARD_NOT_FOUND";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the GiftCard query.
     ///</summary>
@@ -26952,14 +30123,23 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         INITIAL_VALUE,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class GiftCardSortKeysStringValues
+    {
+        public const string AMOUNT_SPENT = @"AMOUNT_SPENT";
+        public const string BALANCE = @"BALANCE";
+        public const string CODE = @"CODE";
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string CUSTOMER_NAME = @"CUSTOMER_NAME";
+        public const string DISABLED_AT = @"DISABLED_AT";
+        public const string EXPIRES_ON = @"EXPIRES_ON";
+        public const string ID = @"ID";
+        public const string INITIAL_VALUE = @"INITIAL_VALUE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -27080,6 +30260,17 @@ namespace ShopifyNet.AdminTypes
         MISMATCHING_CURRENCY,
     }
 
+    public static class GiftCardTransactionUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string GIFT_CARD_LIMIT_EXCEEDED = @"GIFT_CARD_LIMIT_EXCEEDED";
+        public const string GIFT_CARD_NOT_FOUND = @"GIFT_CARD_NOT_FOUND";
+        public const string NEGATIVE_OR_ZERO_AMOUNT = @"NEGATIVE_OR_ZERO_AMOUNT";
+        public const string INSUFFICIENT_FUNDS = @"INSUFFICIENT_FUNDS";
+        public const string MISMATCHING_CURRENCY = @"MISMATCHING_CURRENCY";
+    }
+
     ///<summary>
     ///Return type for `giftCardUpdate` mutation.
     ///</summary>
@@ -27191,6 +30382,22 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("This connection will be removed in a future version. Use `localizedFields` instead.")]
         public LocalizationExtensionConnection? localizationExtensions { get; }
+    }
+
+    ///<summary>
+    ///Localized fields associated with the specified resource.
+    ///</summary>
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "__typename")]
+    [JsonDerivedType(typeof(DraftOrder), typeDiscriminator: "DraftOrder")]
+    [JsonDerivedType(typeof(Order), typeDiscriminator: "Order")]
+    public interface IHasLocalizedFields : IGraphQLObject
+    {
+        public DraftOrder? AsDraftOrder() => this as DraftOrder;
+        public Order? AsOrder() => this as Order;
+        ///<summary>
+        ///List of localized fields for the resource.
+        ///</summary>
+        public LocalizedFieldConnection? localizedFields { get; }
     }
 
     ///<summary>
@@ -27319,18 +30526,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; }
     }
 
     ///<summary>
@@ -27340,6 +30535,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(Article), typeDiscriminator: "Article")]
     [JsonDerivedType(typeof(Blog), typeDiscriminator: "Blog")]
     [JsonDerivedType(typeof(Collection), typeDiscriminator: "Collection")]
+    [JsonDerivedType(typeof(CookieBanner), typeDiscriminator: "CookieBanner")]
     [JsonDerivedType(typeof(Link), typeDiscriminator: "Link")]
     [JsonDerivedType(typeof(Menu), typeDiscriminator: "Menu")]
     [JsonDerivedType(typeof(OnlineStoreTheme), typeDiscriminator: "OnlineStoreTheme")]
@@ -27357,6 +30553,7 @@ namespace ShopifyNet.AdminTypes
         public Article? AsArticle() => this as Article;
         public Blog? AsBlog() => this as Blog;
         public Collection? AsCollection() => this as Collection;
+        public CookieBanner? AsCookieBanner() => this as CookieBanner;
         public Link? AsLink() => this as Link;
         public Menu? AsMenu() => this as Menu;
         public OnlineStoreTheme? AsOnlineStoreTheme() => this as OnlineStoreTheme;
@@ -27428,18 +30625,6 @@ namespace ShopifyNet.AdminTypes
         public string? originalSrc { get; set; }
 
         ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
-
-        ///<summary>
         ///The location of the image as a URL.
         ///</summary>
         [Obsolete("Use `url` instead.")]
@@ -27507,6 +30692,13 @@ namespace ShopifyNet.AdminTypes
         WEBP,
     }
 
+    public static class ImageContentTypeStringValues
+    {
+        public const string PNG = @"PNG";
+        public const string JPG = @"JPG";
+        public const string WEBP = @"WEBP";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one Image and a cursor during pagination.
     ///</summary>
@@ -27542,6 +30734,53 @@ namespace ShopifyNet.AdminTypes
         ///The parameter value.
         ///</summary>
         public string? value { get; set; }
+    }
+
+    ///<summary>
+    ///Answers the question if prices include duties and / or taxes.
+    ///</summary>
+    public enum InclusiveDutiesPricingStrategy
+    {
+        ///<summary>
+        ///Add duties at checkout when configured to collect.
+        ///</summary>
+        ADD_DUTIES_AT_CHECKOUT,
+        ///<summary>
+        ///Include duties in price when configured to collect.
+        ///</summary>
+        INCLUDE_DUTIES_IN_PRICE,
+    }
+
+    public static class InclusiveDutiesPricingStrategyStringValues
+    {
+        public const string ADD_DUTIES_AT_CHECKOUT = @"ADD_DUTIES_AT_CHECKOUT";
+        public const string INCLUDE_DUTIES_IN_PRICE = @"INCLUDE_DUTIES_IN_PRICE";
+    }
+
+    ///<summary>
+    ///Answers the question if prices include duties and / or taxes.
+    ///</summary>
+    public enum InclusiveTaxPricingStrategy
+    {
+        ///<summary>
+        ///Add taxes at checkout when configured to collect.
+        ///</summary>
+        ADD_TAXES_AT_CHECKOUT,
+        ///<summary>
+        ///Include taxes in price when configured to collect.
+        ///</summary>
+        INCLUDES_TAXES_IN_PRICE,
+        ///<summary>
+        ///Include taxes in price based on country when configured to collect.
+        ///</summary>
+        INCLUDES_TAXES_IN_PRICE_BASED_ON_COUNTRY,
+    }
+
+    public static class InclusiveTaxPricingStrategyStringValues
+    {
+        public const string ADD_TAXES_AT_CHECKOUT = @"ADD_TAXES_AT_CHECKOUT";
+        public const string INCLUDES_TAXES_IN_PRICE = @"INCLUDES_TAXES_IN_PRICE";
+        public const string INCLUDES_TAXES_IN_PRICE_BASED_ON_COUNTRY = @"INCLUDES_TAXES_IN_PRICE_BASED_ON_COUNTRY";
     }
 
     ///<summary>
@@ -27658,6 +30897,25 @@ namespace ShopifyNet.AdminTypes
         ///The specified inventory item is not allowed to be adjusted via API. Example: if the inventory item is a parent bundle.
         ///</summary>
         NON_MUTABLE_INVENTORY_ITEM,
+    }
+
+    public static class InventoryAdjustQuantitiesUserErrorCodeStringValues
+    {
+        public const string INTERNAL_LEDGER_DOCUMENT = @"INTERNAL_LEDGER_DOCUMENT";
+        public const string INVALID_AVAILABLE_DOCUMENT = @"INVALID_AVAILABLE_DOCUMENT";
+        public const string INVALID_INVENTORY_ITEM = @"INVALID_INVENTORY_ITEM";
+        public const string INVALID_LEDGER_DOCUMENT = @"INVALID_LEDGER_DOCUMENT";
+        public const string INVALID_LOCATION = @"INVALID_LOCATION";
+        public const string INVALID_QUANTITY_DOCUMENT = @"INVALID_QUANTITY_DOCUMENT";
+        public const string INVALID_QUANTITY_NAME = @"INVALID_QUANTITY_NAME";
+        public const string INVALID_QUANTITY_TOO_LOW = @"INVALID_QUANTITY_TOO_LOW";
+        public const string INVALID_QUANTITY_TOO_HIGH = @"INVALID_QUANTITY_TOO_HIGH";
+        public const string INVALID_REASON = @"INVALID_REASON";
+        public const string INVALID_REFERENCE_DOCUMENT = @"INVALID_REFERENCE_DOCUMENT";
+        public const string ADJUST_QUANTITIES_FAILED = @"ADJUST_QUANTITIES_FAILED";
+        public const string MAX_ONE_LEDGER_DOCUMENT = @"MAX_ONE_LEDGER_DOCUMENT";
+        public const string ITEM_NOT_STOCKED_AT_LOCATION = @"ITEM_NOT_STOCKED_AT_LOCATION";
+        public const string NON_MUTABLE_INVENTORY_ITEM = @"NON_MUTABLE_INVENTORY_ITEM";
     }
 
     ///<summary>
@@ -27794,6 +31052,24 @@ namespace ShopifyNet.AdminTypes
         ///The inventory item was not found.
         ///</summary>
         INVENTORY_ITEM_NOT_FOUND,
+    }
+
+    public static class InventoryBulkToggleActivationUserErrorCodeStringValues
+    {
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string CANNOT_DEACTIVATE_FROM_ONLY_LOCATION = @"CANNOT_DEACTIVATE_FROM_ONLY_LOCATION";
+        [Obsolete("This error code is deprecated. Both INCOMING_INVENTORY_AT_LOCATION and COMMITTED_INVENTORY_AT_LOCATION codes will be returned as individual errors instead.")]
+        public const string COMMITTED_AND_INCOMING_INVENTORY_AT_LOCATION = @"COMMITTED_AND_INCOMING_INVENTORY_AT_LOCATION";
+        public const string INCOMING_INVENTORY_AT_LOCATION = @"INCOMING_INVENTORY_AT_LOCATION";
+        public const string COMMITTED_INVENTORY_AT_LOCATION = @"COMMITTED_INVENTORY_AT_LOCATION";
+        public const string RESERVED_INVENTORY_AT_LOCATION = @"RESERVED_INVENTORY_AT_LOCATION";
+        public const string FAILED_TO_UNSTOCK_FROM_LOCATION = @"FAILED_TO_UNSTOCK_FROM_LOCATION";
+        public const string INVENTORY_MANAGED_BY_3RD_PARTY = @"INVENTORY_MANAGED_BY_3RD_PARTY";
+        public const string INVENTORY_MANAGED_BY_SHOPIFY = @"INVENTORY_MANAGED_BY_SHOPIFY";
+        public const string FAILED_TO_STOCK_AT_LOCATION = @"FAILED_TO_STOCK_AT_LOCATION";
+        public const string MISSING_SKU = @"MISSING_SKU";
+        public const string LOCATION_NOT_FOUND = @"LOCATION_NOT_FOUND";
+        public const string INVENTORY_ITEM_NOT_FOUND = @"INVENTORY_ITEM_NOT_FOUND";
     }
 
     ///<summary>
@@ -28179,6 +31455,27 @@ namespace ShopifyNet.AdminTypes
         NON_MUTABLE_INVENTORY_ITEM,
     }
 
+    public static class InventoryMoveQuantitiesUserErrorCodeStringValues
+    {
+        public const string INTERNAL_LEDGER_DOCUMENT = @"INTERNAL_LEDGER_DOCUMENT";
+        public const string INVALID_AVAILABLE_DOCUMENT = @"INVALID_AVAILABLE_DOCUMENT";
+        public const string INVALID_INVENTORY_ITEM = @"INVALID_INVENTORY_ITEM";
+        public const string INVALID_LEDGER_DOCUMENT = @"INVALID_LEDGER_DOCUMENT";
+        public const string INVALID_LOCATION = @"INVALID_LOCATION";
+        public const string INVALID_QUANTITY_DOCUMENT = @"INVALID_QUANTITY_DOCUMENT";
+        public const string INVALID_QUANTITY_NAME = @"INVALID_QUANTITY_NAME";
+        public const string INVALID_QUANTITY_NEGATIVE = @"INVALID_QUANTITY_NEGATIVE";
+        public const string INVALID_QUANTITY_TOO_HIGH = @"INVALID_QUANTITY_TOO_HIGH";
+        public const string INVALID_REASON = @"INVALID_REASON";
+        public const string INVALID_REFERENCE_DOCUMENT = @"INVALID_REFERENCE_DOCUMENT";
+        public const string MOVE_QUANTITIES_FAILED = @"MOVE_QUANTITIES_FAILED";
+        public const string DIFFERENT_LOCATIONS = @"DIFFERENT_LOCATIONS";
+        public const string SAME_QUANTITY_NAME = @"SAME_QUANTITY_NAME";
+        public const string MAXIMUM_LEDGER_DOCUMENT_URIS = @"MAXIMUM_LEDGER_DOCUMENT_URIS";
+        public const string ITEM_NOT_STOCKED_AT_LOCATION = @"ITEM_NOT_STOCKED_AT_LOCATION";
+        public const string NON_MUTABLE_INVENTORY_ITEM = @"NON_MUTABLE_INVENTORY_ITEM";
+    }
+
     ///<summary>
     ///General inventory properties for the shop.
     ///</summary>
@@ -28389,6 +31686,19 @@ namespace ShopifyNet.AdminTypes
         INVALID_QUANTITY_TOO_HIGH,
     }
 
+    public static class InventorySetOnHandQuantitiesUserErrorCodeStringValues
+    {
+        public const string INVALID_INVENTORY_ITEM = @"INVALID_INVENTORY_ITEM";
+        public const string INVALID_LOCATION = @"INVALID_LOCATION";
+        public const string INVALID_QUANTITY_NEGATIVE = @"INVALID_QUANTITY_NEGATIVE";
+        public const string INVALID_REASON = @"INVALID_REASON";
+        public const string INVALID_REFERENCE_DOCUMENT = @"INVALID_REFERENCE_DOCUMENT";
+        public const string SET_ON_HAND_QUANTITIES_FAILED = @"SET_ON_HAND_QUANTITIES_FAILED";
+        public const string ITEM_NOT_STOCKED_AT_LOCATION = @"ITEM_NOT_STOCKED_AT_LOCATION";
+        public const string NON_MUTABLE_INVENTORY_ITEM = @"NON_MUTABLE_INVENTORY_ITEM";
+        public const string INVALID_QUANTITY_TOO_HIGH = @"INVALID_QUANTITY_TOO_HIGH";
+    }
+
     ///<summary>
     ///Return type for `inventorySetQuantities` mutation.
     ///</summary>
@@ -28482,6 +31792,23 @@ namespace ShopifyNet.AdminTypes
         NON_MUTABLE_INVENTORY_ITEM,
     }
 
+    public static class InventorySetQuantitiesUserErrorCodeStringValues
+    {
+        public const string INVALID_INVENTORY_ITEM = @"INVALID_INVENTORY_ITEM";
+        public const string INVALID_LOCATION = @"INVALID_LOCATION";
+        public const string INVALID_QUANTITY_NEGATIVE = @"INVALID_QUANTITY_NEGATIVE";
+        public const string INVALID_REASON = @"INVALID_REASON";
+        public const string INVALID_REFERENCE_DOCUMENT = @"INVALID_REFERENCE_DOCUMENT";
+        public const string ITEM_NOT_STOCKED_AT_LOCATION = @"ITEM_NOT_STOCKED_AT_LOCATION";
+        public const string INVALID_QUANTITY_TOO_HIGH = @"INVALID_QUANTITY_TOO_HIGH";
+        public const string INVALID_QUANTITY_TOO_LOW = @"INVALID_QUANTITY_TOO_LOW";
+        public const string COMPARE_QUANTITY_REQUIRED = @"COMPARE_QUANTITY_REQUIRED";
+        public const string COMPARE_QUANTITY_STALE = @"COMPARE_QUANTITY_STALE";
+        public const string INVALID_NAME = @"INVALID_NAME";
+        public const string NO_DUPLICATE_INVENTORY_ITEM_ID_GROUP_ID_PAIR = @"NO_DUPLICATE_INVENTORY_ITEM_ID_GROUP_ID_PAIR";
+        public const string NON_MUTABLE_INVENTORY_ITEM = @"NON_MUTABLE_INVENTORY_ITEM";
+    }
+
     ///<summary>
     ///Return type for `inventorySetScheduledChanges` mutation.
     ///</summary>
@@ -28573,6 +31900,23 @@ namespace ShopifyNet.AdminTypes
         ///The ledger document URI is invalid.
         ///</summary>
         LEDGER_DOCUMENT_INVALID,
+    }
+
+    public static class InventorySetScheduledChangesUserErrorCodeStringValues
+    {
+        public const string ERROR_UPDATING_SCHEDULED = @"ERROR_UPDATING_SCHEDULED";
+        public const string SAME_FROM_TO_NAMES = @"SAME_FROM_TO_NAMES";
+        public const string INVALID_FROM_NAME = @"INVALID_FROM_NAME";
+        public const string INVALID_TO_NAME = @"INVALID_TO_NAME";
+        public const string DUPLICATE_TO_NAME = @"DUPLICATE_TO_NAME";
+        public const string INVALID_REASON = @"INVALID_REASON";
+        public const string DUPLICATE_FROM_NAME = @"DUPLICATE_FROM_NAME";
+        public const string LOCATION_NOT_FOUND = @"LOCATION_NOT_FOUND";
+        public const string INVENTORY_STATE_NOT_FOUND = @"INVENTORY_STATE_NOT_FOUND";
+        public const string ITEMS_EMPTY = @"ITEMS_EMPTY";
+        public const string INVENTORY_ITEM_NOT_FOUND = @"INVENTORY_ITEM_NOT_FOUND";
+        public const string INCLUSION = @"INCLUSION";
+        public const string LEDGER_DOCUMENT_INVALID = @"LEDGER_DOCUMENT_INVALID";
     }
 
     ///<summary>
@@ -29183,6 +32527,151 @@ namespace ShopifyNet.AdminTypes
         VO,
     }
 
+    public static class LanguageCodeStringValues
+    {
+        public const string AF = @"AF";
+        public const string AK = @"AK";
+        public const string AM = @"AM";
+        public const string AR = @"AR";
+        public const string AS = @"AS";
+        public const string AZ = @"AZ";
+        public const string BE = @"BE";
+        public const string BG = @"BG";
+        public const string BM = @"BM";
+        public const string BN = @"BN";
+        public const string BO = @"BO";
+        public const string BR = @"BR";
+        public const string BS = @"BS";
+        public const string CA = @"CA";
+        public const string CE = @"CE";
+        public const string CKB = @"CKB";
+        public const string CS = @"CS";
+        public const string CY = @"CY";
+        public const string DA = @"DA";
+        public const string DE = @"DE";
+        public const string DZ = @"DZ";
+        public const string EE = @"EE";
+        public const string EL = @"EL";
+        public const string EN = @"EN";
+        public const string EO = @"EO";
+        public const string ES = @"ES";
+        public const string ET = @"ET";
+        public const string EU = @"EU";
+        public const string FA = @"FA";
+        public const string FF = @"FF";
+        public const string FI = @"FI";
+        public const string FIL = @"FIL";
+        public const string FO = @"FO";
+        public const string FR = @"FR";
+        public const string FY = @"FY";
+        public const string GA = @"GA";
+        public const string GD = @"GD";
+        public const string GL = @"GL";
+        public const string GU = @"GU";
+        public const string GV = @"GV";
+        public const string HA = @"HA";
+        public const string HE = @"HE";
+        public const string HI = @"HI";
+        public const string HR = @"HR";
+        public const string HU = @"HU";
+        public const string HY = @"HY";
+        public const string IA = @"IA";
+        public const string ID = @"ID";
+        public const string IG = @"IG";
+        public const string II = @"II";
+        public const string IS = @"IS";
+        public const string IT = @"IT";
+        public const string JA = @"JA";
+        public const string JV = @"JV";
+        public const string KA = @"KA";
+        public const string KI = @"KI";
+        public const string KK = @"KK";
+        public const string KL = @"KL";
+        public const string KM = @"KM";
+        public const string KN = @"KN";
+        public const string KO = @"KO";
+        public const string KS = @"KS";
+        public const string KU = @"KU";
+        public const string KW = @"KW";
+        public const string KY = @"KY";
+        public const string LB = @"LB";
+        public const string LG = @"LG";
+        public const string LN = @"LN";
+        public const string LO = @"LO";
+        public const string LT = @"LT";
+        public const string LU = @"LU";
+        public const string LV = @"LV";
+        public const string MG = @"MG";
+        public const string MI = @"MI";
+        public const string MK = @"MK";
+        public const string ML = @"ML";
+        public const string MN = @"MN";
+        public const string MR = @"MR";
+        public const string MS = @"MS";
+        public const string MT = @"MT";
+        public const string MY = @"MY";
+        public const string NB = @"NB";
+        public const string ND = @"ND";
+        public const string NE = @"NE";
+        public const string NL = @"NL";
+        public const string NN = @"NN";
+        public const string NO = @"NO";
+        public const string OM = @"OM";
+        public const string OR = @"OR";
+        public const string OS = @"OS";
+        public const string PA = @"PA";
+        public const string PL = @"PL";
+        public const string PS = @"PS";
+        public const string PT_BR = @"PT_BR";
+        public const string PT_PT = @"PT_PT";
+        public const string QU = @"QU";
+        public const string RM = @"RM";
+        public const string RN = @"RN";
+        public const string RO = @"RO";
+        public const string RU = @"RU";
+        public const string RW = @"RW";
+        public const string SA = @"SA";
+        public const string SC = @"SC";
+        public const string SD = @"SD";
+        public const string SE = @"SE";
+        public const string SG = @"SG";
+        public const string SI = @"SI";
+        public const string SK = @"SK";
+        public const string SL = @"SL";
+        public const string SN = @"SN";
+        public const string SO = @"SO";
+        public const string SQ = @"SQ";
+        public const string SR = @"SR";
+        public const string SU = @"SU";
+        public const string SV = @"SV";
+        public const string SW = @"SW";
+        public const string TA = @"TA";
+        public const string TE = @"TE";
+        public const string TG = @"TG";
+        public const string TH = @"TH";
+        public const string TI = @"TI";
+        public const string TK = @"TK";
+        public const string TO = @"TO";
+        public const string TR = @"TR";
+        public const string TT = @"TT";
+        public const string UG = @"UG";
+        public const string UK = @"UK";
+        public const string UR = @"UR";
+        public const string UZ = @"UZ";
+        public const string VI = @"VI";
+        public const string WO = @"WO";
+        public const string XH = @"XH";
+        public const string YI = @"YI";
+        public const string YO = @"YO";
+        public const string ZH_CN = @"ZH_CN";
+        public const string ZH_TW = @"ZH_TW";
+        public const string ZU = @"ZU";
+        public const string ZH = @"ZH";
+        public const string PT = @"PT";
+        public const string CU = @"CU";
+        public const string VO = @"VO";
+    }
+
     ///<summary>
     ///Interoperability metadata for types that directly correspond to a REST Admin API resource.
     ///For example, on the Product type, LegacyInteroperability returns metadata for the corresponding [Product object](https://shopify.dev/api/admin-graphql/latest/objects/product) in the REST Admin API.
@@ -29195,7 +32684,6 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(Location), typeDiscriminator: "Location")]
     [JsonDerivedType(typeof(MarketingEvent), typeDiscriminator: "MarketingEvent")]
     [JsonDerivedType(typeof(Metafield), typeDiscriminator: "Metafield")]
-    [JsonDerivedType(typeof(MetafieldStorefrontVisibility), typeDiscriminator: "MetafieldStorefrontVisibility")]
     [JsonDerivedType(typeof(Order), typeDiscriminator: "Order")]
     [JsonDerivedType(typeof(PriceRule), typeDiscriminator: "PriceRule")]
     [JsonDerivedType(typeof(Product), typeDiscriminator: "Product")]
@@ -29215,7 +32703,6 @@ namespace ShopifyNet.AdminTypes
         public Location? AsLocation() => this as Location;
         public MarketingEvent? AsMarketingEvent() => this as MarketingEvent;
         public Metafield? AsMetafield() => this as Metafield;
-        public MetafieldStorefrontVisibility? AsMetafieldStorefrontVisibility() => this as MetafieldStorefrontVisibility;
         public Order? AsOrder() => this as Order;
         public PriceRule? AsPriceRule() => this as PriceRule;
         public Product? AsProduct() => this as Product;
@@ -29261,6 +32748,16 @@ namespace ShopifyNet.AdminTypes
         ///1 yard equals 3 feet.
         ///</summary>
         YARDS,
+    }
+
+    public static class LengthUnitStringValues
+    {
+        public const string MILLIMETERS = @"MILLIMETERS";
+        public const string CENTIMETERS = @"CENTIMETERS";
+        public const string METERS = @"METERS";
+        public const string INCHES = @"INCHES";
+        public const string FEET = @"FEET";
+        public const string YARDS = @"YARDS";
     }
 
     ///<summary>
@@ -29442,7 +32939,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public int? quantity { get; set; }
         ///<summary>
-        ///The number of units ordered, excluding refunded units.
+        ///The number of units ordered, excluding refunded units and removed units.
         ///</summary>
         public int? refundableQuantity { get; set; }
         ///<summary>
@@ -29746,6 +33243,27 @@ namespace ShopifyNet.AdminTypes
         INLINE_RICH_TEXT,
     }
 
+    public static class LocalizableContentTypeStringValues
+    {
+        public const string JSON_STRING = @"JSON_STRING";
+        public const string JSON = @"JSON";
+        public const string LIST_MULTI_LINE_TEXT_FIELD = @"LIST_MULTI_LINE_TEXT_FIELD";
+        public const string LIST_SINGLE_LINE_TEXT_FIELD = @"LIST_SINGLE_LINE_TEXT_FIELD";
+        public const string LIST_URL = @"LIST_URL";
+        public const string MULTI_LINE_TEXT_FIELD = @"MULTI_LINE_TEXT_FIELD";
+        public const string RICH_TEXT_FIELD = @"RICH_TEXT_FIELD";
+        public const string SINGLE_LINE_TEXT_FIELD = @"SINGLE_LINE_TEXT_FIELD";
+        public const string STRING = @"STRING";
+        public const string URL = @"URL";
+        public const string LINK = @"LINK";
+        public const string LIST_LINK = @"LIST_LINK";
+        public const string FILE_REFERENCE = @"FILE_REFERENCE";
+        public const string LIST_FILE_REFERENCE = @"LIST_FILE_REFERENCE";
+        public const string HTML = @"HTML";
+        public const string URI = @"URI";
+        public const string INLINE_RICH_TEXT = @"INLINE_RICH_TEXT";
+    }
+
     ///<summary>
     ///Represents the value captured by a localization extension. Localization extensions are additional fields required by certain countries on international orders. For example, some countries require additional fields for customs information or tax identification numbers.
     ///</summary>
@@ -29897,6 +33415,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         SHIPPING_CREDENTIAL_MY,
         ///<summary>
+        ///Extension key 'shipping_credential_mx' for country MX.
+        ///</summary>
+        SHIPPING_CREDENTIAL_MX,
+        ///<summary>
         ///Extension key 'tax_credential_mx' for country MX.
         ///</summary>
         TAX_CREDENTIAL_MX,
@@ -29958,6 +33480,47 @@ namespace ShopifyNet.AdminTypes
         SHIPPING_CREDENTIAL_TR,
     }
 
+    public static class LocalizationExtensionKeyStringValues
+    {
+        public const string TAX_CREDENTIAL_BR = @"TAX_CREDENTIAL_BR";
+        public const string SHIPPING_CREDENTIAL_BR = @"SHIPPING_CREDENTIAL_BR";
+        public const string TAX_CREDENTIAL_CL = @"TAX_CREDENTIAL_CL";
+        public const string SHIPPING_CREDENTIAL_CL = @"SHIPPING_CREDENTIAL_CL";
+        public const string SHIPPING_CREDENTIAL_CN = @"SHIPPING_CREDENTIAL_CN";
+        public const string TAX_CREDENTIAL_CO = @"TAX_CREDENTIAL_CO";
+        public const string TAX_CREDENTIAL_TYPE_CO = @"TAX_CREDENTIAL_TYPE_CO";
+        public const string SHIPPING_CREDENTIAL_CO = @"SHIPPING_CREDENTIAL_CO";
+        public const string SHIPPING_CREDENTIAL_TYPE_CO = @"SHIPPING_CREDENTIAL_TYPE_CO";
+        public const string TAX_CREDENTIAL_CR = @"TAX_CREDENTIAL_CR";
+        public const string SHIPPING_CREDENTIAL_CR = @"SHIPPING_CREDENTIAL_CR";
+        public const string TAX_CREDENTIAL_EC = @"TAX_CREDENTIAL_EC";
+        public const string SHIPPING_CREDENTIAL_EC = @"SHIPPING_CREDENTIAL_EC";
+        public const string TAX_CREDENTIAL_GT = @"TAX_CREDENTIAL_GT";
+        public const string SHIPPING_CREDENTIAL_GT = @"SHIPPING_CREDENTIAL_GT";
+        public const string TAX_CREDENTIAL_ID = @"TAX_CREDENTIAL_ID";
+        public const string SHIPPING_CREDENTIAL_ID = @"SHIPPING_CREDENTIAL_ID";
+        public const string TAX_CREDENTIAL_IT = @"TAX_CREDENTIAL_IT";
+        public const string TAX_EMAIL_IT = @"TAX_EMAIL_IT";
+        public const string TAX_CREDENTIAL_MY = @"TAX_CREDENTIAL_MY";
+        public const string SHIPPING_CREDENTIAL_MY = @"SHIPPING_CREDENTIAL_MY";
+        public const string SHIPPING_CREDENTIAL_MX = @"SHIPPING_CREDENTIAL_MX";
+        public const string TAX_CREDENTIAL_MX = @"TAX_CREDENTIAL_MX";
+        public const string TAX_CREDENTIAL_TYPE_MX = @"TAX_CREDENTIAL_TYPE_MX";
+        public const string TAX_CREDENTIAL_USE_MX = @"TAX_CREDENTIAL_USE_MX";
+        public const string TAX_CREDENTIAL_PY = @"TAX_CREDENTIAL_PY";
+        public const string SHIPPING_CREDENTIAL_PY = @"SHIPPING_CREDENTIAL_PY";
+        public const string TAX_CREDENTIAL_PE = @"TAX_CREDENTIAL_PE";
+        public const string SHIPPING_CREDENTIAL_PE = @"SHIPPING_CREDENTIAL_PE";
+        public const string TAX_CREDENTIAL_PT = @"TAX_CREDENTIAL_PT";
+        public const string SHIPPING_CREDENTIAL_PT = @"SHIPPING_CREDENTIAL_PT";
+        public const string SHIPPING_CREDENTIAL_KR = @"SHIPPING_CREDENTIAL_KR";
+        public const string TAX_CREDENTIAL_ES = @"TAX_CREDENTIAL_ES";
+        public const string SHIPPING_CREDENTIAL_ES = @"SHIPPING_CREDENTIAL_ES";
+        public const string SHIPPING_CREDENTIAL_TW = @"SHIPPING_CREDENTIAL_TW";
+        public const string TAX_CREDENTIAL_TR = @"TAX_CREDENTIAL_TR";
+        public const string SHIPPING_CREDENTIAL_TR = @"SHIPPING_CREDENTIAL_TR";
+    }
+
     ///<summary>
     ///The purpose of a localization extension.
     ///</summary>
@@ -29971,6 +33534,290 @@ namespace ShopifyNet.AdminTypes
         ///Extensions that are used for taxes purposes, for example, invoicing.
         ///</summary>
         TAX,
+    }
+
+    public static class LocalizationExtensionPurposeStringValues
+    {
+        public const string SHIPPING = @"SHIPPING";
+        public const string TAX = @"TAX";
+    }
+
+    ///<summary>
+    ///Represents the value captured by a localized field. Localized fields are additional fields required by certain countries on international orders. For example, some countries require additional fields for customs information or tax identification numbers.
+    ///</summary>
+    public class LocalizedField : GraphQLObject<LocalizedField>
+    {
+        ///<summary>
+        ///Country ISO 3166-1 alpha-2 code.
+        ///</summary>
+        public string? countryCode { get; set; }
+        ///<summary>
+        ///The localized field keys that are allowed.
+        ///</summary>
+        public string? key { get; set; }
+        ///<summary>
+        ///The purpose of this localized field.
+        ///</summary>
+        public string? purpose { get; set; }
+        ///<summary>
+        ///The localized field title.
+        ///</summary>
+        public string? title { get; set; }
+        ///<summary>
+        ///The value of the field.
+        ///</summary>
+        public string? value { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type for paginating through multiple LocalizedFields.
+    ///</summary>
+    public class LocalizedFieldConnection : GraphQLObject<LocalizedFieldConnection>, IConnectionWithNodesAndEdges<LocalizedFieldEdge, LocalizedField>
+    {
+        ///<summary>
+        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
+        ///</summary>
+        public IEnumerable<LocalizedFieldEdge>? edges { get; set; }
+        ///<summary>
+        ///A list of nodes that are contained in LocalizedFieldEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
+        ///</summary>
+        public IEnumerable<LocalizedField>? nodes { get; set; }
+        ///<summary>
+        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
+        ///</summary>
+        public PageInfo? pageInfo { get; set; }
+    }
+
+    ///<summary>
+    ///An auto-generated type which holds one LocalizedField and a cursor during pagination.
+    ///</summary>
+    public class LocalizedFieldEdge : GraphQLObject<LocalizedFieldEdge>, IEdge<LocalizedField>
+    {
+        ///<summary>
+        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
+        ///</summary>
+        public string? cursor { get; set; }
+        ///<summary>
+        ///The item at the end of LocalizedFieldEdge.
+        ///</summary>
+        public LocalizedField? node { get; set; }
+    }
+
+    ///<summary>
+    ///The key of a localized field.
+    ///</summary>
+    public enum LocalizedFieldKey
+    {
+        ///<summary>
+        ///Localized field key 'tax_credential_br' for country Brazil.
+        ///</summary>
+        TAX_CREDENTIAL_BR,
+        ///<summary>
+        ///Localized field key 'shipping_credential_br' for country Brazil.
+        ///</summary>
+        SHIPPING_CREDENTIAL_BR,
+        ///<summary>
+        ///Localized field key 'tax_credential_cl' for country Chile.
+        ///</summary>
+        TAX_CREDENTIAL_CL,
+        ///<summary>
+        ///Localized field key 'shipping_credential_cl' for country Chile.
+        ///</summary>
+        SHIPPING_CREDENTIAL_CL,
+        ///<summary>
+        ///Localized field key 'shipping_credential_cn' for country China.
+        ///</summary>
+        SHIPPING_CREDENTIAL_CN,
+        ///<summary>
+        ///Localized field key 'tax_credential_co' for country Colombia.
+        ///</summary>
+        TAX_CREDENTIAL_CO,
+        ///<summary>
+        ///Localized field key 'tax_credential_type_co' for country Colombia.
+        ///</summary>
+        TAX_CREDENTIAL_TYPE_CO,
+        ///<summary>
+        ///Localized field key 'shipping_credential_co' for country Colombia.
+        ///</summary>
+        SHIPPING_CREDENTIAL_CO,
+        ///<summary>
+        ///Localized field key 'shipping_credential_type_co' for country Colombia.
+        ///</summary>
+        SHIPPING_CREDENTIAL_TYPE_CO,
+        ///<summary>
+        ///Localized field key 'tax_credential_cr' for country Costa Rica.
+        ///</summary>
+        TAX_CREDENTIAL_CR,
+        ///<summary>
+        ///Localized field key 'shipping_credential_cr' for country Costa Rica.
+        ///</summary>
+        SHIPPING_CREDENTIAL_CR,
+        ///<summary>
+        ///Localized field key 'tax_credential_ec' for country Ecuador.
+        ///</summary>
+        TAX_CREDENTIAL_EC,
+        ///<summary>
+        ///Localized field key 'shipping_credential_ec' for country Ecuador.
+        ///</summary>
+        SHIPPING_CREDENTIAL_EC,
+        ///<summary>
+        ///Localized field key 'tax_credential_gt' for country Guatemala.
+        ///</summary>
+        TAX_CREDENTIAL_GT,
+        ///<summary>
+        ///Localized field key 'shipping_credential_gt' for country Guatemala.
+        ///</summary>
+        SHIPPING_CREDENTIAL_GT,
+        ///<summary>
+        ///Localized field key 'tax_credential_id' for country Indonesia.
+        ///</summary>
+        TAX_CREDENTIAL_ID,
+        ///<summary>
+        ///Localized field key 'shipping_credential_id' for country Indonesia.
+        ///</summary>
+        SHIPPING_CREDENTIAL_ID,
+        ///<summary>
+        ///Localized field key 'tax_credential_it' for country Italy.
+        ///</summary>
+        TAX_CREDENTIAL_IT,
+        ///<summary>
+        ///Localized field key 'tax_email_it' for country Italy.
+        ///</summary>
+        TAX_EMAIL_IT,
+        ///<summary>
+        ///Localized field key 'tax_credential_my' for country Malaysia.
+        ///</summary>
+        TAX_CREDENTIAL_MY,
+        ///<summary>
+        ///Localized field key 'shipping_credential_my' for country Malaysia.
+        ///</summary>
+        SHIPPING_CREDENTIAL_MY,
+        ///<summary>
+        ///Localized field key 'shipping_credential_mx' for country Mexico.
+        ///</summary>
+        SHIPPING_CREDENTIAL_MX,
+        ///<summary>
+        ///Localized field key 'tax_credential_mx' for country Mexico.
+        ///</summary>
+        TAX_CREDENTIAL_MX,
+        ///<summary>
+        ///Localized field key 'tax_credential_type_mx' for country Mexico.
+        ///</summary>
+        TAX_CREDENTIAL_TYPE_MX,
+        ///<summary>
+        ///Localized field key 'tax_credential_use_mx' for country Mexico.
+        ///</summary>
+        TAX_CREDENTIAL_USE_MX,
+        ///<summary>
+        ///Localized field key 'tax_credential_py' for country Paraguay.
+        ///</summary>
+        TAX_CREDENTIAL_PY,
+        ///<summary>
+        ///Localized field key 'shipping_credential_py' for country Paraguay.
+        ///</summary>
+        SHIPPING_CREDENTIAL_PY,
+        ///<summary>
+        ///Localized field key 'tax_credential_pe' for country Peru.
+        ///</summary>
+        TAX_CREDENTIAL_PE,
+        ///<summary>
+        ///Localized field key 'shipping_credential_pe' for country Peru.
+        ///</summary>
+        SHIPPING_CREDENTIAL_PE,
+        ///<summary>
+        ///Localized field key 'tax_credential_pt' for country Portugal.
+        ///</summary>
+        TAX_CREDENTIAL_PT,
+        ///<summary>
+        ///Localized field key 'shipping_credential_pt' for country Portugal.
+        ///</summary>
+        SHIPPING_CREDENTIAL_PT,
+        ///<summary>
+        ///Localized field key 'shipping_credential_kr' for country South Korea.
+        ///</summary>
+        SHIPPING_CREDENTIAL_KR,
+        ///<summary>
+        ///Localized field key 'tax_credential_es' for country Spain.
+        ///</summary>
+        TAX_CREDENTIAL_ES,
+        ///<summary>
+        ///Localized field key 'shipping_credential_es' for country Spain.
+        ///</summary>
+        SHIPPING_CREDENTIAL_ES,
+        ///<summary>
+        ///Localized field key 'shipping_credential_tw' for country Taiwan.
+        ///</summary>
+        SHIPPING_CREDENTIAL_TW,
+        ///<summary>
+        ///Localized field key 'tax_credential_tr' for country Turkey.
+        ///</summary>
+        TAX_CREDENTIAL_TR,
+        ///<summary>
+        ///Localized field key 'shipping_credential_tr' for country Turkey.
+        ///</summary>
+        SHIPPING_CREDENTIAL_TR,
+    }
+
+    public static class LocalizedFieldKeyStringValues
+    {
+        public const string TAX_CREDENTIAL_BR = @"TAX_CREDENTIAL_BR";
+        public const string SHIPPING_CREDENTIAL_BR = @"SHIPPING_CREDENTIAL_BR";
+        public const string TAX_CREDENTIAL_CL = @"TAX_CREDENTIAL_CL";
+        public const string SHIPPING_CREDENTIAL_CL = @"SHIPPING_CREDENTIAL_CL";
+        public const string SHIPPING_CREDENTIAL_CN = @"SHIPPING_CREDENTIAL_CN";
+        public const string TAX_CREDENTIAL_CO = @"TAX_CREDENTIAL_CO";
+        public const string TAX_CREDENTIAL_TYPE_CO = @"TAX_CREDENTIAL_TYPE_CO";
+        public const string SHIPPING_CREDENTIAL_CO = @"SHIPPING_CREDENTIAL_CO";
+        public const string SHIPPING_CREDENTIAL_TYPE_CO = @"SHIPPING_CREDENTIAL_TYPE_CO";
+        public const string TAX_CREDENTIAL_CR = @"TAX_CREDENTIAL_CR";
+        public const string SHIPPING_CREDENTIAL_CR = @"SHIPPING_CREDENTIAL_CR";
+        public const string TAX_CREDENTIAL_EC = @"TAX_CREDENTIAL_EC";
+        public const string SHIPPING_CREDENTIAL_EC = @"SHIPPING_CREDENTIAL_EC";
+        public const string TAX_CREDENTIAL_GT = @"TAX_CREDENTIAL_GT";
+        public const string SHIPPING_CREDENTIAL_GT = @"SHIPPING_CREDENTIAL_GT";
+        public const string TAX_CREDENTIAL_ID = @"TAX_CREDENTIAL_ID";
+        public const string SHIPPING_CREDENTIAL_ID = @"SHIPPING_CREDENTIAL_ID";
+        public const string TAX_CREDENTIAL_IT = @"TAX_CREDENTIAL_IT";
+        public const string TAX_EMAIL_IT = @"TAX_EMAIL_IT";
+        public const string TAX_CREDENTIAL_MY = @"TAX_CREDENTIAL_MY";
+        public const string SHIPPING_CREDENTIAL_MY = @"SHIPPING_CREDENTIAL_MY";
+        public const string SHIPPING_CREDENTIAL_MX = @"SHIPPING_CREDENTIAL_MX";
+        public const string TAX_CREDENTIAL_MX = @"TAX_CREDENTIAL_MX";
+        public const string TAX_CREDENTIAL_TYPE_MX = @"TAX_CREDENTIAL_TYPE_MX";
+        public const string TAX_CREDENTIAL_USE_MX = @"TAX_CREDENTIAL_USE_MX";
+        public const string TAX_CREDENTIAL_PY = @"TAX_CREDENTIAL_PY";
+        public const string SHIPPING_CREDENTIAL_PY = @"SHIPPING_CREDENTIAL_PY";
+        public const string TAX_CREDENTIAL_PE = @"TAX_CREDENTIAL_PE";
+        public const string SHIPPING_CREDENTIAL_PE = @"SHIPPING_CREDENTIAL_PE";
+        public const string TAX_CREDENTIAL_PT = @"TAX_CREDENTIAL_PT";
+        public const string SHIPPING_CREDENTIAL_PT = @"SHIPPING_CREDENTIAL_PT";
+        public const string SHIPPING_CREDENTIAL_KR = @"SHIPPING_CREDENTIAL_KR";
+        public const string TAX_CREDENTIAL_ES = @"TAX_CREDENTIAL_ES";
+        public const string SHIPPING_CREDENTIAL_ES = @"SHIPPING_CREDENTIAL_ES";
+        public const string SHIPPING_CREDENTIAL_TW = @"SHIPPING_CREDENTIAL_TW";
+        public const string TAX_CREDENTIAL_TR = @"TAX_CREDENTIAL_TR";
+        public const string SHIPPING_CREDENTIAL_TR = @"SHIPPING_CREDENTIAL_TR";
+    }
+
+    ///<summary>
+    ///The purpose of a localized field.
+    ///</summary>
+    public enum LocalizedFieldPurpose
+    {
+        ///<summary>
+        ///Fields that are used for shipping purposes, for example, customs clearance.
+        ///</summary>
+        SHIPPING,
+        ///<summary>
+        ///Fields that are used for taxes purposes, for example, invoicing.
+        ///</summary>
+        TAX,
+    }
+
+    public static class LocalizedFieldPurposeStringValues
+    {
+        public const string SHIPPING = @"SHIPPING";
+        public const string TAX = @"TAX";
     }
 
     ///<summary>
@@ -30087,18 +33934,6 @@ namespace ShopifyNet.AdminTypes
         ///The name of the location.
         ///</summary>
         public string? name { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///Whether this location is used for calculating shipping rates. In multi-origin shipping mode, this flag is ignored.
         ///</summary>
@@ -30172,6 +34007,15 @@ namespace ShopifyNet.AdminTypes
         ///There is already an active location with this name.
         ///</summary>
         HAS_NON_UNIQUE_NAME,
+    }
+
+    public static class LocationActivateUserErrorCodeStringValues
+    {
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string LOCATION_LIMIT = @"LOCATION_LIMIT";
+        public const string HAS_ONGOING_RELOCATION = @"HAS_ONGOING_RELOCATION";
+        public const string LOCATION_NOT_FOUND = @"LOCATION_NOT_FOUND";
+        public const string HAS_NON_UNIQUE_NAME = @"HAS_NON_UNIQUE_NAME";
     }
 
     ///<summary>
@@ -30277,6 +34121,26 @@ namespace ShopifyNet.AdminTypes
         ///An internal error occurred.
         ///</summary>
         INTERNAL_ERROR,
+    }
+
+    public static class LocationAddUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TAKEN = @"TAKEN";
+        public const string BLANK = @"BLANK";
+        public const string INVALID_US_ZIPCODE = @"INVALID_US_ZIPCODE";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string APP_NOT_AUTHORIZED = @"APP_NOT_AUTHORIZED";
+        public const string UNSTRUCTURED_RESERVED_NAMESPACE = @"UNSTRUCTURED_RESERVED_NAMESPACE";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
+        public const string INCLUSION = @"INCLUSION";
+        public const string PRESENT = @"PRESENT";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string CAPABILITY_VIOLATION = @"CAPABILITY_VIOLATION";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
     }
 
     ///<summary>
@@ -30450,6 +34314,24 @@ namespace ShopifyNet.AdminTypes
         CANNOT_DISABLE_ONLINE_ORDER_FULFILLMENT,
     }
 
+    public static class LocationDeactivateUserErrorCodeStringValues
+    {
+        public const string LOCATION_NOT_FOUND = @"LOCATION_NOT_FOUND";
+        public const string PERMANENTLY_BLOCKED_FROM_DEACTIVATION_ERROR = @"PERMANENTLY_BLOCKED_FROM_DEACTIVATION_ERROR";
+        public const string TEMPORARILY_BLOCKED_FROM_DEACTIVATION_ERROR = @"TEMPORARILY_BLOCKED_FROM_DEACTIVATION_ERROR";
+        public const string HAS_ACTIVE_RETAIL_SUBSCRIPTIONS = @"HAS_ACTIVE_RETAIL_SUBSCRIPTIONS";
+        public const string DESTINATION_LOCATION_IS_THE_SAME_LOCATION = @"DESTINATION_LOCATION_IS_THE_SAME_LOCATION";
+        public const string DESTINATION_LOCATION_NOT_FOUND_OR_INACTIVE = @"DESTINATION_LOCATION_NOT_FOUND_OR_INACTIVE";
+        public const string HAS_ACTIVE_INVENTORY_ERROR = @"HAS_ACTIVE_INVENTORY_ERROR";
+        public const string HAS_FULFILLMENT_ORDERS_ERROR = @"HAS_FULFILLMENT_ORDERS_ERROR";
+        public const string HAS_INCOMING_MOVEMENTS_ERROR = @"HAS_INCOMING_MOVEMENTS_ERROR";
+        public const string HAS_OPEN_PURCHASE_ORDERS_ERROR = @"HAS_OPEN_PURCHASE_ORDERS_ERROR";
+        public const string FAILED_TO_RELOCATE_ACTIVE_INVENTORIES = @"FAILED_TO_RELOCATE_ACTIVE_INVENTORIES";
+        public const string FAILED_TO_RELOCATE_OPEN_PURCHASE_ORDERS = @"FAILED_TO_RELOCATE_OPEN_PURCHASE_ORDERS";
+        public const string FAILED_TO_RELOCATE_INCOMING_MOVEMENTS = @"FAILED_TO_RELOCATE_INCOMING_MOVEMENTS";
+        public const string CANNOT_DISABLE_ONLINE_ORDER_FULFILLMENT = @"CANNOT_DISABLE_ONLINE_ORDER_FULFILLMENT";
+    }
+
     ///<summary>
     ///Return type for `locationDelete` mutation.
     ///</summary>
@@ -30513,6 +34395,16 @@ namespace ShopifyNet.AdminTypes
         ///The location cannot be deleted while it has any active Retail subscriptions in the Point of Sale channel.
         ///</summary>
         LOCATION_HAS_ACTIVE_RETAIL_SUBSCRIPTION,
+    }
+
+    public static class LocationDeleteUserErrorCodeStringValues
+    {
+        public const string LOCATION_NOT_FOUND = @"LOCATION_NOT_FOUND";
+        public const string LOCATION_IS_ACTIVE = @"LOCATION_IS_ACTIVE";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string LOCATION_HAS_INVENTORY = @"LOCATION_HAS_INVENTORY";
+        public const string LOCATION_HAS_PENDING_ORDERS = @"LOCATION_HAS_PENDING_ORDERS";
+        public const string LOCATION_HAS_ACTIVE_RETAIL_SUBSCRIPTION = @"LOCATION_HAS_ACTIVE_RETAIL_SUBSCRIPTION";
     }
 
     ///<summary>
@@ -30647,6 +34539,29 @@ namespace ShopifyNet.AdminTypes
         INTERNAL_ERROR,
     }
 
+    public static class LocationEditUserErrorCodeStringValues
+    {
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string BLANK = @"BLANK";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string INVALID_US_ZIPCODE = @"INVALID_US_ZIPCODE";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string CANNOT_DISABLE_ONLINE_ORDER_FULFILLMENT = @"CANNOT_DISABLE_ONLINE_ORDER_FULFILLMENT";
+        public const string CANNOT_MODIFY_ONLINE_ORDER_FULFILLMENT_FOR_FS_LOCATION = @"CANNOT_MODIFY_ONLINE_ORDER_FULFILLMENT_FOR_FS_LOCATION";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string APP_NOT_AUTHORIZED = @"APP_NOT_AUTHORIZED";
+        public const string UNSTRUCTURED_RESERVED_NAMESPACE = @"UNSTRUCTURED_RESERVED_NAMESPACE";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
+        public const string INCLUSION = @"INCLUSION";
+        public const string PRESENT = @"PRESENT";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string CAPABILITY_VIOLATION = @"CAPABILITY_VIOLATION";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+    }
+
     ///<summary>
     ///Return type for `locationLocalPickupDisable` mutation.
     ///</summary>
@@ -30697,6 +34612,13 @@ namespace ShopifyNet.AdminTypes
         RELEVANCE,
     }
 
+    public static class LocationSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string RELEVANCE = @"RELEVANCE";
+    }
+
     ///<summary>
     ///Represents a suggested address for a location.
     ///</summary>
@@ -30738,6 +34660,21 @@ namespace ShopifyNet.AdminTypes
         ///The ZIP code of the suggested address.
         ///</summary>
         public string? zip { get; set; }
+    }
+
+    ///<summary>
+    ///A condition checking the location that the visitor is shopping from.
+    ///</summary>
+    public class LocationsCondition : GraphQLObject<LocationsCondition>
+    {
+        ///<summary>
+        ///The application level for the condition.
+        ///</summary>
+        public string? applicationLevel { get; set; }
+        ///<summary>
+        ///The locations that comprise the market.
+        ///</summary>
+        public LocationConnection? locations { get; set; }
     }
 
     ///<summary>
@@ -30899,6 +34836,13 @@ namespace ShopifyNet.AdminTypes
         WARNING,
     }
 
+    public static class MailingAddressValidationResultStringValues
+    {
+        public const string NO_ISSUES = @"NO_ISSUES";
+        public const string ERROR = @"ERROR";
+        public const string WARNING = @"WARNING";
+    }
+
     ///<summary>
     ///Manual discount applications capture the intentions of a discount that was manually created for an order.
     ///
@@ -30948,6 +34892,10 @@ namespace ShopifyNet.AdminTypes
     public class Market : GraphQLObject<Market>, IHasMetafieldDefinitions, IHasMetafields, INode, IMetafieldReferencer
     {
         ///<summary>
+        ///Whether the market has a customization with the given ID.
+        ///</summary>
+        public bool? assignedCustomization { get; set; }
+        ///<summary>
         ///The catalogs that belong to the market.
         ///</summary>
         public MarketCatalogConnection? catalogs { get; set; }
@@ -30955,6 +34903,10 @@ namespace ShopifyNet.AdminTypes
         ///The number of catalogs that belong to the market.
         ///</summary>
         public Count? catalogsCount { get; set; }
+        ///<summary>
+        ///The conditions under which a visitor is in the market.
+        ///</summary>
+        public MarketConditions? conditions { get; set; }
         ///<summary>
         ///The market’s currency settings.
         ///</summary>
@@ -30995,6 +34947,10 @@ namespace ShopifyNet.AdminTypes
         ///The name of the market. Not shown to customers.
         ///</summary>
         public string? name { get; set; }
+        ///<summary>
+        ///The inclusive pricing strategy for a market. This determines if prices include duties and / or taxes.
+        ///</summary>
+        public MarketPriceInclusions? priceInclusions { get; set; }
 
         ///<summary>
         ///The market’s price list, which specifies a percentage-based price adjustment as well as
@@ -31013,22 +34969,18 @@ namespace ShopifyNet.AdminTypes
         public bool? primary { get; set; }
 
         ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
-
-        ///<summary>
         ///The regions that comprise the market.
         ///</summary>
         [Obsolete("This field is deprecated and will be removed in the future. Use `conditions.regionConditions` instead.")]
         public MarketRegionConnection? regions { get; set; }
+        ///<summary>
+        ///Status of the market. Replaces the enabled field.
+        ///</summary>
+        public string? status { get; set; }
+        ///<summary>
+        ///The type of the market.
+        ///</summary>
+        public string? type { get; set; }
 
         ///<summary>
         ///The market’s web presence, which defines its SEO strategy. This can be a different domain,
@@ -31063,6 +35015,10 @@ namespace ShopifyNet.AdminTypes
         ///The markets associated with the catalog.
         ///</summary>
         public MarketConnection? markets { get; set; }
+        ///<summary>
+        ///The number of markets associated with the catalog.
+        ///</summary>
+        public Count? marketsCount { get; set; }
         ///<summary>
         ///Most recent catalog operations.
         ///</summary>
@@ -31120,6 +35076,76 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///The application level for a market condition.
+    ///</summary>
+    public enum MarketConditionApplicationType
+    {
+        ///<summary>
+        ///The condition matches specified records of a given type.
+        ///</summary>
+        SPECIFIED,
+        ///<summary>
+        ///The condition matches all records of a given type.
+        ///</summary>
+        ALL,
+    }
+
+    public static class MarketConditionApplicationTypeStringValues
+    {
+        public const string SPECIFIED = @"SPECIFIED";
+        public const string ALL = @"ALL";
+    }
+
+    ///<summary>
+    ///The condition types for the condition set.
+    ///</summary>
+    public enum MarketConditionType
+    {
+        ///<summary>
+        ///The condition checks the visitor's region.
+        ///</summary>
+        REGION,
+        ///<summary>
+        ///The condition checks the location that the visitor is shopping from.
+        ///</summary>
+        LOCATION,
+        ///<summary>
+        ///The condition checks the company location that the visitor is purchasing for.
+        ///</summary>
+        COMPANY_LOCATION,
+    }
+
+    public static class MarketConditionTypeStringValues
+    {
+        public const string REGION = @"REGION";
+        public const string LOCATION = @"LOCATION";
+        public const string COMPANY_LOCATION = @"COMPANY_LOCATION";
+    }
+
+    ///<summary>
+    ///The conditions that determine whether a visitor is in a market.
+    ///</summary>
+    public class MarketConditions : GraphQLObject<MarketConditions>
+    {
+        ///<summary>
+        ///The company location conditions that determine whether a visitor is in the market.
+        ///</summary>
+        public CompanyLocationsCondition? companyLocationsCondition { get; set; }
+        ///<summary>
+        ///The set of condition types that are defined for the market.
+        ///</summary>
+        public IEnumerable<string>? conditionTypes { get; set; }
+        ///<summary>
+        ///The retail location conditions that determine whether a visitor is in the market.
+        ///</summary>
+        public LocationsCondition? locationsCondition { get; set; }
+        ///<summary>
+        ///The region conditions that determine whether a visitor is in the market.
+        ///</summary>
+        public RegionsCondition? regionsCondition { get; set; }
+    }
+
+    ///<summary>
     ///An auto-generated type for paginating through multiple Markets.
     ///</summary>
     public class MarketConnection : GraphQLObject<MarketConnection>, IConnectionWithNodesAndEdges<MarketEdge, Market>
@@ -31159,16 +35185,14 @@ namespace ShopifyNet.AdminTypes
     public class MarketCurrencySettings : GraphQLObject<MarketCurrencySettings>
     {
         ///<summary>
-        ///The currency which this market's prices are defined in, and the
-        ///currency which its customers must use if local currencies are disabled.
+        ///The currency which this market's customers must use if local currencies are disabled.
         ///</summary>
         public CurrencySetting? baseCurrency { get; set; }
         ///<summary>
         ///Whether or not local currencies are enabled. If enabled, then prices will
         ///be converted to give each customer the best experience based on their
         ///region. If disabled, then all customers in this market will see prices
-        ///in the market's base currency. For single country markets this will be true when
-        ///the market's base currency is the same as the default currency for the region.
+        ///in the market's base currency.
         ///</summary>
         public bool? localCurrencies { get; set; }
     }
@@ -31181,6 +35205,7 @@ namespace ShopifyNet.AdminTypes
         ///<summary>
         ///The market object.
         ///</summary>
+        [Obsolete("Use `marketCreate` and `marketUpdate` mutations instead.")]
         public Market? market { get; set; }
         ///<summary>
         ///The list of errors that occurred from executing the mutation.
@@ -31221,6 +35246,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         MANAGED_MARKET,
         ///<summary>
+        ///This action is restricted if unified markets is enabled.
+        ///</summary>
+        UNIFIED_MARKETS_ENABLED,
+        ///<summary>
         ///The shop's payment gateway does not support enabling more than one currency.
         ///</summary>
         MULTIPLE_CURRENCIES_NOT_SUPPORTED,
@@ -31236,6 +35265,17 @@ namespace ShopifyNet.AdminTypes
         ///The primary market must use the shop currency.
         ///</summary>
         PRIMARY_MARKET_USES_SHOP_CURRENCY,
+    }
+
+    public static class MarketCurrencySettingsUserErrorCodeStringValues
+    {
+        public const string MARKET_NOT_FOUND = @"MARKET_NOT_FOUND";
+        public const string MANAGED_MARKET = @"MANAGED_MARKET";
+        public const string UNIFIED_MARKETS_ENABLED = @"UNIFIED_MARKETS_ENABLED";
+        public const string MULTIPLE_CURRENCIES_NOT_SUPPORTED = @"MULTIPLE_CURRENCIES_NOT_SUPPORTED";
+        public const string NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET = @"NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET";
+        public const string UNSUPPORTED_CURRENCY = @"UNSUPPORTED_CURRENCY";
+        public const string PRIMARY_MARKET_USES_SHOP_CURRENCY = @"PRIMARY_MARKET_USES_SHOP_CURRENCY";
     }
 
     ///<summary>
@@ -31355,6 +35395,12 @@ namespace ShopifyNet.AdminTypes
         METAOBJECT,
     }
 
+    public static class MarketLocalizableResourceTypeStringValues
+    {
+        public const string METAFIELD = @"METAFIELD";
+        public const string METAOBJECT = @"METAOBJECT";
+    }
+
     ///<summary>
     ///The market localization of a field within a resource, which is determined by the market ID.
     ///</summary>
@@ -31410,6 +35456,21 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<TranslationUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///The inclusive pricing strategy for a market.
+    ///</summary>
+    public class MarketPriceInclusions : GraphQLObject<MarketPriceInclusions>
+    {
+        ///<summary>
+        ///The inclusive duties pricing strategy of the market. This determines if prices include duties.
+        ///</summary>
+        public string? inclusiveDutiesPricingStrategy { get; set; }
+        ///<summary>
+        ///The inclusive tax pricing strategy of the market. This determines if prices include taxes.
+        ///</summary>
+        public string? inclusiveTaxPricingStrategy { get; set; }
     }
 
     ///<summary>
@@ -31534,6 +35595,58 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<MarketUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///The possible market statuses.
+    ///</summary>
+    public enum MarketStatus
+    {
+        ///<summary>
+        ///The market is active.
+        ///</summary>
+        ACTIVE,
+        ///<summary>
+        ///The market is in draft.
+        ///</summary>
+        DRAFT,
+    }
+
+    public static class MarketStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string DRAFT = @"DRAFT";
+    }
+
+    ///<summary>
+    ///The market types.
+    ///</summary>
+    public enum MarketType
+    {
+        ///<summary>
+        ///The market does not apply to any visitor.
+        ///</summary>
+        NONE,
+        ///<summary>
+        ///The market applies to the visitor based on region.
+        ///</summary>
+        REGION,
+        ///<summary>
+        ///The market applies to the visitor based on the location.
+        ///</summary>
+        LOCATION,
+        ///<summary>
+        ///The market applies to the visitor based on the company location.
+        ///</summary>
+        COMPANY_LOCATION,
+    }
+
+    public static class MarketTypeStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string REGION = @"REGION";
+        public const string LOCATION = @"LOCATION";
+        public const string COMPANY_LOCATION = @"COMPANY_LOCATION";
     }
 
     ///<summary>
@@ -31855,6 +35968,85 @@ namespace ShopifyNet.AdminTypes
         ///A location's country does not match the region's country.
         ///</summary>
         LOCATION_REGION_COUNTRY_MISMATCH,
+        ///<summary>
+        ///Managing this catalog is not supported by your plan.
+        ///</summary>
+        UNPERMITTED_ENTITLEMENTS_MARKET_CATALOGS,
+    }
+
+    public static class MarketUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string BLANK = @"BLANK";
+        public const string INCLUSION = @"INCLUSION";
+        public const string MARKET_NOT_FOUND = @"MARKET_NOT_FOUND";
+        public const string REGION_NOT_FOUND = @"REGION_NOT_FOUND";
+        public const string WEB_PRESENCE_NOT_FOUND = @"WEB_PRESENCE_NOT_FOUND";
+        public const string CANNOT_ADD_REGIONS_TO_PRIMARY_MARKET = @"CANNOT_ADD_REGIONS_TO_PRIMARY_MARKET";
+        public const string CANNOT_DELETE_ONLY_REGION = @"CANNOT_DELETE_ONLY_REGION";
+        public const string REQUIRES_EXACTLY_ONE_OPTION = @"REQUIRES_EXACTLY_ONE_OPTION";
+        public const string CANNOT_DELETE_PRIMARY_MARKET = @"CANNOT_DELETE_PRIMARY_MARKET";
+        public const string EXCEEDS_MAX_MULTI_CONTEXT_MARKETS = @"EXCEEDS_MAX_MULTI_CONTEXT_MARKETS";
+        public const string DOMAIN_NOT_FOUND = @"DOMAIN_NOT_FOUND";
+        public const string SUBFOLDER_SUFFIX_MUST_CONTAIN_ONLY_LETTERS = @"SUBFOLDER_SUFFIX_MUST_CONTAIN_ONLY_LETTERS";
+        public const string SUBFOLDER_SUFFIX_CANNOT_BE_SCRIPT_CODE = @"SUBFOLDER_SUFFIX_CANNOT_BE_SCRIPT_CODE";
+        public const string NO_LANGUAGES = @"NO_LANGUAGES";
+        public const string NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET = @"NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET";
+        public const string NO_ROUNDING_ON_LEGACY_MARKET = @"NO_ROUNDING_ON_LEGACY_MARKET";
+        public const string DUPLICATE_LANGUAGES = @"DUPLICATE_LANGUAGES";
+        public const string DUPLICATE_REGION_MARKET = @"DUPLICATE_REGION_MARKET";
+        public const string DUPLICATE_UNIQUE_MARKET = @"DUPLICATE_UNIQUE_MARKET";
+        public const string REGION_SPECIFIC_LANGUAGE = @"REGION_SPECIFIC_LANGUAGE";
+        public const string CANNOT_HAVE_SUBFOLDER_AND_DOMAIN = @"CANNOT_HAVE_SUBFOLDER_AND_DOMAIN";
+        public const string CANNOT_ADD_WEB_PRESENCE_TO_PRIMARY_MARKET = @"CANNOT_ADD_WEB_PRESENCE_TO_PRIMARY_MARKET";
+        public const string MARKET_REACHED_WEB_PRESENCE_LIMIT = @"MARKET_REACHED_WEB_PRESENCE_LIMIT";
+        public const string CANNOT_HAVE_MULTIPLE_SUBFOLDERS_PER_MARKET = @"CANNOT_HAVE_MULTIPLE_SUBFOLDERS_PER_MARKET";
+        public const string CANNOT_HAVE_BOTH_SUBFOLDER_AND_DOMAIN_WEB_PRESENCES = @"CANNOT_HAVE_BOTH_SUBFOLDER_AND_DOMAIN_WEB_PRESENCES";
+        public const string REQUIRES_DOMAIN_OR_SUBFOLDER = @"REQUIRES_DOMAIN_OR_SUBFOLDER";
+        public const string PRIMARY_MARKET_MUST_USE_PRIMARY_DOMAIN = @"PRIMARY_MARKET_MUST_USE_PRIMARY_DOMAIN";
+        public const string CANNOT_DELETE_PRIMARY_MARKET_WEB_PRESENCE = @"CANNOT_DELETE_PRIMARY_MARKET_WEB_PRESENCE";
+        public const string SHOP_REACHED_MARKETS_LIMIT = @"SHOP_REACHED_MARKETS_LIMIT";
+        public const string CANNOT_DISABLE_PRIMARY_MARKET = @"CANNOT_DISABLE_PRIMARY_MARKET";
+        public const string UNPUBLISHED_LANGUAGE = @"UNPUBLISHED_LANGUAGE";
+        public const string DISABLED_LANGUAGE = @"DISABLED_LANGUAGE";
+        public const string CANNOT_SET_DEFAULT_LOCALE_TO_NULL = @"CANNOT_SET_DEFAULT_LOCALE_TO_NULL";
+        public const string UNSUPPORTED_COUNTRY_REGION = @"UNSUPPORTED_COUNTRY_REGION";
+        public const string CANNOT_ADD_CUSTOMER_DOMAIN = @"CANNOT_ADD_CUSTOMER_DOMAIN";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string INVALID_STATUS_AND_ENABLED_COMBINATION = @"INVALID_STATUS_AND_ENABLED_COMBINATION";
+        public const string CONDITIONS_NOT_FOUND = @"CONDITIONS_NOT_FOUND";
+        public const string SPECIFIED_CONDITIONS_CANNOT_BE_EMPTY = @"SPECIFIED_CONDITIONS_CANNOT_BE_EMPTY";
+        public const string CUSTOMIZATIONS_NOT_FOUND = @"CUSTOMIZATIONS_NOT_FOUND";
+        public const string WILDCARD_NOT_SUPPORTED = @"WILDCARD_NOT_SUPPORTED";
+        public const string SPECIFIED_NOT_VALID_FOR_INPUT = @"SPECIFIED_NOT_VALID_FOR_INPUT";
+        public const string WEB_PRESENCE_NOT_COMPATIBLE_WITH_CONDITION_TYPES = @"WEB_PRESENCE_NOT_COMPATIBLE_WITH_CONDITION_TYPES";
+        public const string CATALOG_NOT_COMPATIBLE_WITH_CONDITION_TYPES = @"CATALOG_NOT_COMPATIBLE_WITH_CONDITION_TYPES";
+        public const string CATALOG_TYPE_NOT_SUPPORTED = @"CATALOG_TYPE_NOT_SUPPORTED";
+        public const string INCLUSIVE_PRICING_NOT_COMPATIBLE_WITH_CONDITION_TYPES = @"INCLUSIVE_PRICING_NOT_COMPATIBLE_WITH_CONDITION_TYPES";
+        public const string INCOMPATIBLE_CONDITIONS = @"INCOMPATIBLE_CONDITIONS";
+        public const string MANAGED_MARKET = @"MANAGED_MARKET";
+        public const string MULTIPLE_CURRENCIES_NOT_SUPPORTED = @"MULTIPLE_CURRENCIES_NOT_SUPPORTED";
+        public const string UNSUPPORTED_CURRENCY = @"UNSUPPORTED_CURRENCY";
+        public const string SHOP_MUST_HAVE_PRIMARY_DOMAIN_WEB_PRESENCE = @"SHOP_MUST_HAVE_PRIMARY_DOMAIN_WEB_PRESENCE";
+        public const string MUST_HAVE_AT_LEAST_ONE_ACTIVE_REGION_MARKET = @"MUST_HAVE_AT_LEAST_ONE_ACTIVE_REGION_MARKET";
+        public const string USER_LACKS_PERMISSION = @"USER_LACKS_PERMISSION";
+        public const string CONTAINS_REGIONS_THAT_CANNOT_BE_MANAGED = @"CONTAINS_REGIONS_THAT_CANNOT_BE_MANAGED";
+        public const string UNIFIED_MARKETS_NOT_ENABLED = @"UNIFIED_MARKETS_NOT_ENABLED";
+        public const string WEB_PRESENCE_REACHED_MARKETS_LIMIT = @"WEB_PRESENCE_REACHED_MARKETS_LIMIT";
+        public const string CATALOG_CONDITION_TYPES_MUST_BE_THE_SAME = @"CATALOG_CONDITION_TYPES_MUST_BE_THE_SAME";
+        public const string MARKET_CANT_HAVE_DIRECT_CONNECTION_CATALOG = @"MARKET_CANT_HAVE_DIRECT_CONNECTION_CATALOG";
+        public const string B2B_MARKET_MUST_BE_MERCHANT_MANAGED = @"B2B_MARKET_MUST_BE_MERCHANT_MANAGED";
+        public const string POS_LOCATION_MARKET_MUST_BE_MERCHANT_MANAGED = @"POS_LOCATION_MARKET_MUST_BE_MERCHANT_MANAGED";
+        public const string MANAGED_MARKETS_CATALOG_NOT_ALLOWED = @"MANAGED_MARKETS_CATALOG_NOT_ALLOWED";
+        public const string RETAIL_LOCATION_CURRENCY_MUST_BE_LOCAL = @"RETAIL_LOCATION_CURRENCY_MUST_BE_LOCAL";
+        public const string CATALOGS_WITH_VOLUME_PRICING_OR_QUANTITY_RULES_NOT_SUPPORTED = @"CATALOGS_WITH_VOLUME_PRICING_OR_QUANTITY_RULES_NOT_SUPPORTED";
+        public const string MIXED_COUNTRY_LOCATIONS_NOT_ALLOWED = @"MIXED_COUNTRY_LOCATIONS_NOT_ALLOWED";
+        public const string LOCATION_MATCH_ALL_REQUIRES_ONE_SPECIFIC_REGION = @"LOCATION_MATCH_ALL_REQUIRES_ONE_SPECIFIC_REGION";
+        public const string LOCATION_REGION_COUNTRY_MISMATCH = @"LOCATION_REGION_COUNTRY_MISMATCH";
+        public const string UNPERMITTED_ENTITLEMENTS_MARKET_CATALOGS = @"UNPERMITTED_ENTITLEMENTS_MARKET_CATALOGS";
     }
 
     ///<summary>
@@ -31895,10 +36087,16 @@ namespace ShopifyNet.AdminTypes
         ///A globally-unique ID.
         ///</summary>
         public string? id { get; set; }
+
         ///<summary>
-        ///The associated market.
+        ///The associated market. This can be null for a web presence that isn't associated with a market.
         ///</summary>
+        [Obsolete("Use `markets` instead.")]
         public Market? market { get; set; }
+        ///<summary>
+        ///The associated markets for this web presence.
+        ///</summary>
+        public MarketConnection? markets { get; set; }
         ///<summary>
         ///The list of root URLs for each of the web presence’s locales. As of version `2024-04` this value will no longer have a trailing slash.
         ///</summary>
@@ -32261,6 +36459,15 @@ namespace ShopifyNet.AdminTypes
         INSTALL_REQUIRED_ERROR,
     }
 
+    public static class MarketingActivityExtensionAppErrorCodeStringValues
+    {
+        public const string NOT_ONBOARDED_ERROR = @"NOT_ONBOARDED_ERROR";
+        public const string VALIDATION_ERROR = @"VALIDATION_ERROR";
+        public const string API_ERROR = @"API_ERROR";
+        public const string PLATFORM_ERROR = @"PLATFORM_ERROR";
+        public const string INSTALL_REQUIRED_ERROR = @"INSTALL_REQUIRED_ERROR";
+    }
+
     ///<summary>
     ///Represents errors returned from apps when using the marketing activity extension.
     ///</summary>
@@ -32307,6 +36514,16 @@ namespace ShopifyNet.AdminTypes
         UNDEFINED,
     }
 
+    public static class MarketingActivityExternalStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string INACTIVE = @"INACTIVE";
+        public const string PAUSED = @"PAUSED";
+        public const string SCHEDULED = @"SCHEDULED";
+        public const string DELETED_EXTERNALLY = @"DELETED_EXTERNALLY";
+        public const string UNDEFINED = @"UNDEFINED";
+    }
+
     ///<summary>
     ///Hierarchy levels for external marketing activities.
     ///</summary>
@@ -32326,6 +36543,13 @@ namespace ShopifyNet.AdminTypes
         CAMPAIGN,
     }
 
+    public static class MarketingActivityHierarchyLevelStringValues
+    {
+        public const string AD = @"AD";
+        public const string AD_GROUP = @"AD_GROUP";
+        public const string CAMPAIGN = @"CAMPAIGN";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the MarketingActivity query.
     ///</summary>
@@ -32340,14 +36564,16 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `title` value.
         ///</summary>
         TITLE,
+    }
+
+    public static class MarketingActivitySortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string TITLE = @"TITLE";
     }
 
     ///<summary>
@@ -32401,6 +36627,21 @@ namespace ShopifyNet.AdminTypes
         UNDEFINED,
     }
 
+    public static class MarketingActivityStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string DELETED = @"DELETED";
+        public const string DELETED_EXTERNALLY = @"DELETED_EXTERNALLY";
+        public const string DISCONNECTED = @"DISCONNECTED";
+        public const string DRAFT = @"DRAFT";
+        public const string FAILED = @"FAILED";
+        public const string INACTIVE = @"INACTIVE";
+        public const string PAUSED = @"PAUSED";
+        public const string PENDING = @"PENDING";
+        public const string SCHEDULED = @"SCHEDULED";
+        public const string UNDEFINED = @"UNDEFINED";
+    }
+
     ///<summary>
     ///StatusBadgeType helps to identify the color of the status badge.
     ///</summary>
@@ -32430,6 +36671,16 @@ namespace ShopifyNet.AdminTypes
         ///This status badge has type critical.
         ///</summary>
         CRITICAL,
+    }
+
+    public static class MarketingActivityStatusBadgeTypeStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string SUCCESS = @"SUCCESS";
+        public const string ATTENTION = @"ATTENTION";
+        public const string WARNING = @"WARNING";
+        public const string INFO = @"INFO";
+        public const string CRITICAL = @"CRITICAL";
     }
 
     ///<summary>
@@ -32619,6 +36870,38 @@ namespace ShopifyNet.AdminTypes
         CANNOT_UPDATE_TACTIC_IF_ORIGINALLY_STOREFRONT_APP,
     }
 
+    public static class MarketingActivityUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string MARKETING_ACTIVITY_DOES_NOT_EXIST = @"MARKETING_ACTIVITY_DOES_NOT_EXIST";
+        public const string MARKETING_ACTIVITY_WITH_REMOTE_ID_ALREADY_EXISTS = @"MARKETING_ACTIVITY_WITH_REMOTE_ID_ALREADY_EXISTS";
+        public const string MARKETING_ACTIVITY_WITH_UTM_CAMPAIGN_ALREADY_EXISTS = @"MARKETING_ACTIVITY_WITH_UTM_CAMPAIGN_ALREADY_EXISTS";
+        public const string MARKETING_ACTIVITY_WITH_URL_PARAMETER_VALUE_ALREADY_EXISTS = @"MARKETING_ACTIVITY_WITH_URL_PARAMETER_VALUE_ALREADY_EXISTS";
+        public const string MARKETING_EVENT_DOES_NOT_EXIST = @"MARKETING_EVENT_DOES_NOT_EXIST";
+        public const string CURRENCY_CODE_MISMATCH_INPUT = @"CURRENCY_CODE_MISMATCH_INPUT";
+        public const string MARKETING_ACTIVITY_CURRENCY_CODE_MISMATCH = @"MARKETING_ACTIVITY_CURRENCY_CODE_MISMATCH";
+        public const string DELETE_JOB_FAILED_TO_ENQUEUE = @"DELETE_JOB_FAILED_TO_ENQUEUE";
+        public const string NON_HIERARCHIAL_REQUIRES_UTM_URL_PARAMETER = @"NON_HIERARCHIAL_REQUIRES_UTM_URL_PARAMETER";
+        public const string DELETE_JOB_ENQUEUED = @"DELETE_JOB_ENQUEUED";
+        public const string ACTIVITY_NOT_EXTERNAL = @"ACTIVITY_NOT_EXTERNAL";
+        public const string IMMUTABLE_CHANNEL_HANDLE = @"IMMUTABLE_CHANNEL_HANDLE";
+        public const string IMMUTABLE_URL_PARAMETER = @"IMMUTABLE_URL_PARAMETER";
+        public const string IMMUTABLE_UTM_PARAMETERS = @"IMMUTABLE_UTM_PARAMETERS";
+        public const string IMMUTABLE_PARENT_ID = @"IMMUTABLE_PARENT_ID";
+        public const string IMMUTABLE_HIERARCHY_LEVEL = @"IMMUTABLE_HIERARCHY_LEVEL";
+        public const string INVALID_REMOTE_ID = @"INVALID_REMOTE_ID";
+        public const string INVALID_CHANNEL_HANDLE = @"INVALID_CHANNEL_HANDLE";
+        public const string INVALID_DELETE_ACTIVITY_EXTERNAL_ARGUMENTS = @"INVALID_DELETE_ACTIVITY_EXTERNAL_ARGUMENTS";
+        public const string INVALID_DELETE_ENGAGEMENTS_ARGUMENTS = @"INVALID_DELETE_ENGAGEMENTS_ARGUMENTS";
+        public const string INVALID_MARKETING_ACTIVITY_EXTERNAL_ARGUMENTS = @"INVALID_MARKETING_ACTIVITY_EXTERNAL_ARGUMENTS";
+        public const string INVALID_MARKETING_ENGAGEMENT_ARGUMENTS = @"INVALID_MARKETING_ENGAGEMENT_ARGUMENTS";
+        public const string INVALID_MARKETING_ENGAGEMENT_ARGUMENT_MISSING = @"INVALID_MARKETING_ENGAGEMENT_ARGUMENT_MISSING";
+        public const string CANNOT_DELETE_ACTIVITY_WITH_CHILD_EVENTS = @"CANNOT_DELETE_ACTIVITY_WITH_CHILD_EVENTS";
+        public const string CANNOT_UPDATE_TACTIC_TO_STOREFRONT_APP = @"CANNOT_UPDATE_TACTIC_TO_STOREFRONT_APP";
+        public const string CANNOT_UPDATE_TACTIC_IF_ORIGINALLY_STOREFRONT_APP = @"CANNOT_UPDATE_TACTIC_IF_ORIGINALLY_STOREFRONT_APP";
+    }
+
     ///<summary>
     ///This type combines budget amount and its marketing budget type.
     ///</summary>
@@ -32649,6 +36932,12 @@ namespace ShopifyNet.AdminTypes
         LIFETIME,
     }
 
+    public static class MarketingBudgetBudgetTypeStringValues
+    {
+        public const string DAILY = @"DAILY";
+        public const string LIFETIME = @"LIFETIME";
+    }
+
     ///<summary>
     ///The medium through which the marketing activity and event reached consumers. This is used for reporting aggregation.
     ///</summary>
@@ -32674,6 +36963,15 @@ namespace ShopifyNet.AdminTypes
         ///Referral links.
         ///</summary>
         REFERRAL,
+    }
+
+    public static class MarketingChannelStringValues
+    {
+        public const string SEARCH = @"SEARCH";
+        public const string DISPLAY = @"DISPLAY";
+        public const string SOCIAL = @"SOCIAL";
+        public const string EMAIL = @"EMAIL";
+        public const string REFERRAL = @"REFERRAL";
     }
 
     ///<summary>
@@ -32940,14 +37238,15 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `started_at` value.
         ///</summary>
         STARTED_AT,
+    }
+
+    public static class MarketingEventSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string STARTED_AT = @"STARTED_AT";
     }
 
     ///<summary>
@@ -33007,6 +37306,154 @@ namespace ShopifyNet.AdminTypes
         ///Search engine optimization.
         ///</summary>
         SEO,
+    }
+
+    public static class MarketingTacticStringValues
+    {
+        public const string ABANDONED_CART = @"ABANDONED_CART";
+        public const string AD = @"AD";
+        public const string AFFILIATE = @"AFFILIATE";
+        public const string LINK = @"LINK";
+        public const string LOYALTY = @"LOYALTY";
+        public const string MESSAGE = @"MESSAGE";
+        public const string NEWSLETTER = @"NEWSLETTER";
+        public const string NOTIFICATION = @"NOTIFICATION";
+        public const string POST = @"POST";
+        public const string RETARGETING = @"RETARGETING";
+        public const string TRANSACTIONAL = @"TRANSACTIONAL";
+        public const string STOREFRONT_APP = @"STOREFRONT_APP";
+        public const string SEO = @"SEO";
+    }
+
+    ///<summary>
+    ///The entitlements for B2B markets.
+    ///</summary>
+    public class MarketsB2BEntitlement : GraphQLObject<MarketsB2BEntitlement>
+    {
+        ///<summary>
+        ///The entitlements for B2B market catalogs.
+        ///</summary>
+        public MarketsCatalogsEntitlement? catalogs { get; set; }
+        ///<summary>
+        ///Whether B2B markets are enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///The entitlements for catalogs.
+    ///</summary>
+    public class MarketsCatalogsEntitlement : GraphQLObject<MarketsCatalogsEntitlement>
+    {
+        ///<summary>
+        ///Whether catalogs are enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///The entitlements for region markets.
+    ///</summary>
+    public class MarketsRegionsEntitlement : GraphQLObject<MarketsRegionsEntitlement>
+    {
+        ///<summary>
+        ///The entitlements for region market catalogs.
+        ///</summary>
+        public MarketsCatalogsEntitlement? catalogs { get; set; }
+        ///<summary>
+        ///Whether region markets are enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///The entitlements for retail markets.
+    ///</summary>
+    public class MarketsRetailEntitlement : GraphQLObject<MarketsRetailEntitlement>
+    {
+        ///<summary>
+        ///The entitlements for retail market catalogs.
+        ///</summary>
+        public MarketsCatalogsEntitlement? catalogs { get; set; }
+        ///<summary>
+        ///Whether retail markets are enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///The set of valid sort keys for the Markets query.
+    ///</summary>
+    public enum MarketsSortKeys
+    {
+        ///<summary>
+        ///Sort by the `created_at` value.
+        ///</summary>
+        CREATED_AT,
+        ///<summary>
+        ///Sort by the `id` value.
+        ///</summary>
+        ID,
+        ///<summary>
+        ///Sort by the `market_condition_types` value.
+        ///</summary>
+        MARKET_CONDITION_TYPES,
+        ///<summary>
+        ///Sort by the `market_type` value.
+        ///</summary>
+        MARKET_TYPE,
+        ///<summary>
+        ///Sort by the `name` value.
+        ///</summary>
+        NAME,
+        ///<summary>
+        ///Sort by the `updated_at` value.
+        ///</summary>
+        UPDATED_AT,
+    }
+
+    public static class MarketsSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string MARKET_CONDITION_TYPES = @"MARKET_CONDITION_TYPES";
+        public const string MARKET_TYPE = @"MARKET_TYPE";
+        public const string NAME = @"NAME";
+        public const string UPDATED_AT = @"UPDATED_AT";
+    }
+
+    ///<summary>
+    ///The entitlements for themes.
+    ///</summary>
+    public class MarketsThemesEntitlement : GraphQLObject<MarketsThemesEntitlement>
+    {
+        ///<summary>
+        ///Whether themes are enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///Markets entitlement information.
+    ///</summary>
+    public class MarketsType : GraphQLObject<MarketsType>
+    {
+        ///<summary>
+        ///The entitlements for B2B markets.
+        ///</summary>
+        public MarketsB2BEntitlement? b2b { get; set; }
+        ///<summary>
+        ///The entitlements for region markets.
+        ///</summary>
+        public MarketsRegionsEntitlement? regions { get; set; }
+        ///<summary>
+        ///The entitlements for retail markets.
+        ///</summary>
+        public MarketsRetailEntitlement? retail { get; set; }
+        ///<summary>
+        ///The entitlements for themes.
+        ///</summary>
+        public MarketsThemesEntitlement? themes { get; set; }
     }
 
     ///<summary>
@@ -33093,6 +37540,14 @@ namespace ShopifyNet.AdminTypes
         ///A Shopify-hosted image.
         ///</summary>
         IMAGE,
+    }
+
+    public static class MediaContentTypeStringValues
+    {
+        public const string VIDEO = @"VIDEO";
+        public const string EXTERNAL_VIDEO = @"EXTERNAL_VIDEO";
+        public const string MODEL_3D = @"MODEL_3D";
+        public const string IMAGE = @"IMAGE";
     }
 
     ///<summary>
@@ -33269,6 +37724,43 @@ namespace ShopifyNet.AdminTypes
         DUPLICATE_FILENAME_ERROR,
     }
 
+    public static class MediaErrorCodeStringValues
+    {
+        public const string UNKNOWN = @"UNKNOWN";
+        public const string INVALID_SIGNED_URL = @"INVALID_SIGNED_URL";
+        public const string IMAGE_DOWNLOAD_FAILURE = @"IMAGE_DOWNLOAD_FAILURE";
+        public const string IMAGE_PROCESSING_FAILURE = @"IMAGE_PROCESSING_FAILURE";
+        public const string MEDIA_TIMEOUT_ERROR = @"MEDIA_TIMEOUT_ERROR";
+        public const string EXTERNAL_VIDEO_NOT_FOUND = @"EXTERNAL_VIDEO_NOT_FOUND";
+        public const string EXTERNAL_VIDEO_UNLISTED = @"EXTERNAL_VIDEO_UNLISTED";
+        public const string EXTERNAL_VIDEO_INVALID_ASPECT_RATIO = @"EXTERNAL_VIDEO_INVALID_ASPECT_RATIO";
+        public const string EXTERNAL_VIDEO_EMBED_DISABLED = @"EXTERNAL_VIDEO_EMBED_DISABLED";
+        public const string EXTERNAL_VIDEO_EMBED_NOT_FOUND_OR_TRANSCODING = @"EXTERNAL_VIDEO_EMBED_NOT_FOUND_OR_TRANSCODING";
+        public const string GENERIC_FILE_DOWNLOAD_FAILURE = @"GENERIC_FILE_DOWNLOAD_FAILURE";
+        public const string GENERIC_FILE_INVALID_SIZE = @"GENERIC_FILE_INVALID_SIZE";
+        public const string VIDEO_METADATA_READ_ERROR = @"VIDEO_METADATA_READ_ERROR";
+        public const string VIDEO_INVALID_FILETYPE_ERROR = @"VIDEO_INVALID_FILETYPE_ERROR";
+        public const string VIDEO_MIN_WIDTH_ERROR = @"VIDEO_MIN_WIDTH_ERROR";
+        public const string VIDEO_MAX_WIDTH_ERROR = @"VIDEO_MAX_WIDTH_ERROR";
+        public const string VIDEO_MIN_HEIGHT_ERROR = @"VIDEO_MIN_HEIGHT_ERROR";
+        public const string VIDEO_MAX_HEIGHT_ERROR = @"VIDEO_MAX_HEIGHT_ERROR";
+        public const string VIDEO_MIN_DURATION_ERROR = @"VIDEO_MIN_DURATION_ERROR";
+        public const string VIDEO_MAX_DURATION_ERROR = @"VIDEO_MAX_DURATION_ERROR";
+        public const string VIDEO_VALIDATION_ERROR = @"VIDEO_VALIDATION_ERROR";
+        public const string MODEL3D_VALIDATION_ERROR = @"MODEL3D_VALIDATION_ERROR";
+        public const string MODEL3D_THUMBNAIL_GENERATION_ERROR = @"MODEL3D_THUMBNAIL_GENERATION_ERROR";
+        public const string MODEL3D_THUMBNAIL_REGENERATION_ERROR = @"MODEL3D_THUMBNAIL_REGENERATION_ERROR";
+        public const string MODEL3D_GLB_TO_USDZ_CONVERSION_ERROR = @"MODEL3D_GLB_TO_USDZ_CONVERSION_ERROR";
+        public const string MODEL3D_GLB_OUTPUT_CREATION_ERROR = @"MODEL3D_GLB_OUTPUT_CREATION_ERROR";
+        public const string MODEL3D_PROCESSING_FAILURE = @"MODEL3D_PROCESSING_FAILURE";
+        public const string UNSUPPORTED_IMAGE_FILE_TYPE = @"UNSUPPORTED_IMAGE_FILE_TYPE";
+        public const string INVALID_IMAGE_FILE_SIZE = @"INVALID_IMAGE_FILE_SIZE";
+        public const string INVALID_IMAGE_ASPECT_RATIO = @"INVALID_IMAGE_ASPECT_RATIO";
+        public const string INVALID_IMAGE_RESOLUTION = @"INVALID_IMAGE_RESOLUTION";
+        public const string FILE_STORAGE_LIMIT_EXCEEDED = @"FILE_STORAGE_LIMIT_EXCEEDED";
+        public const string DUPLICATE_FILENAME_ERROR = @"DUPLICATE_FILENAME_ERROR";
+    }
+
     ///<summary>
     ///Host for a Media Resource.
     ///</summary>
@@ -33282,6 +37774,12 @@ namespace ShopifyNet.AdminTypes
         ///Host for Vimeo embedded videos.
         ///</summary>
         VIMEO,
+    }
+
+    public static class MediaHostStringValues
+    {
+        public const string YOUTUBE = @"YOUTUBE";
+        public const string VIMEO = @"VIMEO";
     }
 
     ///<summary>
@@ -33352,18 +37850,6 @@ namespace ShopifyNet.AdminTypes
         ///The preview image for the media.
         ///</summary>
         public MediaPreviewImage? preview { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///Current status of the media.
         ///</summary>
@@ -33427,6 +37913,14 @@ namespace ShopifyNet.AdminTypes
         FAILED,
     }
 
+    public static class MediaPreviewImageStatusStringValues
+    {
+        public const string UPLOADED = @"UPLOADED";
+        public const string PROCESSING = @"PROCESSING";
+        public const string READY = @"READY";
+        public const string FAILED = @"FAILED";
+    }
+
     ///<summary>
     ///The possible statuses for a media object.
     ///</summary>
@@ -33448,6 +37942,14 @@ namespace ShopifyNet.AdminTypes
         ///Media processing has failed.
         ///</summary>
         FAILED,
+    }
+
+    public static class MediaStatusStringValues
+    {
+        public const string UPLOADED = @"UPLOADED";
+        public const string PROCESSING = @"PROCESSING";
+        public const string READY = @"READY";
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
@@ -33564,6 +38066,32 @@ namespace ShopifyNet.AdminTypes
         MISSING_ARGUMENTS,
     }
 
+    public static class MediaUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string VIDEO_VALIDATION_ERROR = @"VIDEO_VALIDATION_ERROR";
+        public const string MODEL3D_VALIDATION_ERROR = @"MODEL3D_VALIDATION_ERROR";
+        public const string VIDEO_THROTTLE_EXCEEDED = @"VIDEO_THROTTLE_EXCEEDED";
+        public const string MODEL3D_THROTTLE_EXCEEDED = @"MODEL3D_THROTTLE_EXCEEDED";
+        public const string PRODUCT_MEDIA_LIMIT_EXCEEDED = @"PRODUCT_MEDIA_LIMIT_EXCEEDED";
+        public const string SHOP_MEDIA_LIMIT_EXCEEDED = @"SHOP_MEDIA_LIMIT_EXCEEDED";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string MEDIA_DOES_NOT_EXIST = @"MEDIA_DOES_NOT_EXIST";
+        public const string MEDIA_DOES_NOT_EXIST_ON_PRODUCT = @"MEDIA_DOES_NOT_EXIST_ON_PRODUCT";
+        public const string TOO_MANY_MEDIA_PER_INPUT_PAIR = @"TOO_MANY_MEDIA_PER_INPUT_PAIR";
+        public const string MAXIMUM_VARIANT_MEDIA_PAIRS_EXCEEDED = @"MAXIMUM_VARIANT_MEDIA_PAIRS_EXCEEDED";
+        public const string INVALID_MEDIA_TYPE = @"INVALID_MEDIA_TYPE";
+        public const string PRODUCT_VARIANT_SPECIFIED_MULTIPLE_TIMES = @"PRODUCT_VARIANT_SPECIFIED_MULTIPLE_TIMES";
+        public const string PRODUCT_VARIANT_DOES_NOT_EXIST_ON_PRODUCT = @"PRODUCT_VARIANT_DOES_NOT_EXIST_ON_PRODUCT";
+        public const string NON_READY_MEDIA = @"NON_READY_MEDIA";
+        public const string PRODUCT_VARIANT_ALREADY_HAS_MEDIA = @"PRODUCT_VARIANT_ALREADY_HAS_MEDIA";
+        public const string MEDIA_IS_NOT_ATTACHED_TO_VARIANT = @"MEDIA_IS_NOT_ATTACHED_TO_VARIANT";
+        public const string MEDIA_CANNOT_BE_MODIFIED = @"MEDIA_CANNOT_BE_MODIFIED";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string MISSING_ARGUMENTS = @"MISSING_ARGUMENTS";
+    }
+
     ///<summary>
     ///Represents a media warning. This occurs when there is a non-blocking concern regarding your media.
     ///Consider reviewing your media to ensure it is correct and its parameters are as expected.
@@ -33597,6 +38125,13 @@ namespace ShopifyNet.AdminTypes
         ///The thumbnail failed to regenerate.Try applying the changes again to regenerate the thumbnail.
         ///</summary>
         MODEL_PREVIEW_IMAGE_FAIL,
+    }
+
+    public static class MediaWarningCodeStringValues
+    {
+        public const string MODEL_SMALL_PHYSICAL_SIZE = @"MODEL_SMALL_PHYSICAL_SIZE";
+        public const string MODEL_LARGE_PHYSICAL_SIZE = @"MODEL_LARGE_PHYSICAL_SIZE";
+        public const string MODEL_PREVIEW_IMAGE_FAIL = @"MODEL_PREVIEW_IMAGE_FAIL";
     }
 
     ///<summary>
@@ -33698,6 +38233,12 @@ namespace ShopifyNet.AdminTypes
         NESTING_TOO_DEEP,
     }
 
+    public static class MenuCreateUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string NESTING_TOO_DEEP = @"NESTING_TOO_DEEP";
+    }
+
     ///<summary>
     ///Return type for `menuDelete` mutation.
     ///</summary>
@@ -33745,6 +38286,12 @@ namespace ShopifyNet.AdminTypes
         ///Default menu cannot be deleted.
         ///</summary>
         UNABLE_TO_DELETE_DEFAULT_MENU,
+    }
+
+    public static class MenuDeleteUserErrorCodeStringValues
+    {
+        public const string MENU_DOES_NOT_EXIST = @"MENU_DOES_NOT_EXIST";
+        public const string UNABLE_TO_DELETE_DEFAULT_MENU = @"UNABLE_TO_DELETE_DEFAULT_MENU";
     }
 
     ///<summary>
@@ -33856,6 +38403,23 @@ namespace ShopifyNet.AdminTypes
         CUSTOMER_ACCOUNT_PAGE,
     }
 
+    public static class MenuItemTypeStringValues
+    {
+        public const string FRONTPAGE = @"FRONTPAGE";
+        public const string COLLECTION = @"COLLECTION";
+        public const string COLLECTIONS = @"COLLECTIONS";
+        public const string PRODUCT = @"PRODUCT";
+        public const string CATALOG = @"CATALOG";
+        public const string PAGE = @"PAGE";
+        public const string BLOG = @"BLOG";
+        public const string ARTICLE = @"ARTICLE";
+        public const string SEARCH = @"SEARCH";
+        public const string SHOP_POLICY = @"SHOP_POLICY";
+        public const string HTTP = @"HTTP";
+        public const string METAOBJECT = @"METAOBJECT";
+        public const string CUSTOMER_ACCOUNT_PAGE = @"CUSTOMER_ACCOUNT_PAGE";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the Menu query.
     ///</summary>
@@ -33866,11 +38430,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ID,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `title` value.
         ///</summary>
         TITLE,
@@ -33878,6 +38437,13 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class MenuSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -33929,6 +38495,12 @@ namespace ShopifyNet.AdminTypes
         NESTING_TOO_DEEP,
     }
 
+    public static class MenuUpdateUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string NESTING_TOO_DEEP = @"NESTING_TOO_DEEP";
+    }
+
     ///<summary>
     ///The [discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
     ///that's used to control how discounts can be combined.
@@ -33947,6 +38519,12 @@ namespace ShopifyNet.AdminTypes
         ///class.
         ///</summary>
         ORDER,
+    }
+
+    public static class MerchandiseDiscountClassStringValues
+    {
+        public const string PRODUCT = @"PRODUCT";
+        public const string ORDER = @"ORDER";
     }
 
     ///<summary>
@@ -34115,23 +38693,20 @@ namespace ShopifyNet.AdminTypes
         MERCHANT_READ_WRITE,
     }
 
+    public static class MetafieldAdminAccessStringValues
+    {
+        public const string PRIVATE = @"PRIVATE";
+        public const string PUBLIC_READ = @"PUBLIC_READ";
+        public const string PUBLIC_READ_WRITE = @"PUBLIC_READ_WRITE";
+        public const string MERCHANT_READ = @"MERCHANT_READ";
+        public const string MERCHANT_READ_WRITE = @"MERCHANT_READ_WRITE";
+    }
+
     ///<summary>
     ///Metafield access permissions for the Admin API.
     ///</summary>
     public enum MetafieldAdminAccessInput
     {
-        ///<summary>
-        ///The merchant and other apps have no access.
-        ///</summary>
-        PRIVATE,
-        ///<summary>
-        ///The merchant and other apps have read-only access.
-        ///</summary>
-        PUBLIC_READ,
-        ///<summary>
-        ///The merchant and other apps have read and write access.
-        ///</summary>
-        PUBLIC_READ_WRITE,
         ///<summary>
         ///The merchant has read-only access. No other apps have access.
         ///</summary>
@@ -34140,6 +38715,12 @@ namespace ShopifyNet.AdminTypes
         ///The merchant has read and write access. No other apps have access.
         ///</summary>
         MERCHANT_READ_WRITE,
+    }
+
+    public static class MetafieldAdminAccessInputStringValues
+    {
+        public const string MERCHANT_READ = @"MERCHANT_READ";
+        public const string MERCHANT_READ_WRITE = @"MERCHANT_READ_WRITE";
     }
 
     ///<summary>
@@ -34155,6 +38736,10 @@ namespace ShopifyNet.AdminTypes
         ///Indicate whether a metafield definition can be used as a smart collection condition.
         ///</summary>
         public MetafieldCapabilitySmartCollectionCondition? smartCollectionCondition { get; set; }
+        ///<summary>
+        ///Indicate whether the metafield values for a metafield definition are required to be unique.
+        ///</summary>
+        public MetafieldCapabilityUniqueValues? uniqueValues { get; set; }
     }
 
     ///<summary>
@@ -34180,6 +38765,21 @@ namespace ShopifyNet.AdminTypes
     ///Information about the smart collection condition capability on a metafield definition.
     ///</summary>
     public class MetafieldCapabilitySmartCollectionCondition : GraphQLObject<MetafieldCapabilitySmartCollectionCondition>
+    {
+        ///<summary>
+        ///Indicates if the definition is eligible to have the capability.
+        ///</summary>
+        public bool? eligible { get; set; }
+        ///<summary>
+        ///Indicates if the capability is enabled.
+        ///</summary>
+        public bool? enabled { get; set; }
+    }
+
+    ///<summary>
+    ///Information about the unique values capability on a metafield definition.
+    ///</summary>
+    public class MetafieldCapabilityUniqueValues : GraphQLObject<MetafieldCapabilityUniqueValues>
     {
         ///<summary>
         ///Indicates if the definition is eligible to have the capability.
@@ -34229,6 +38829,13 @@ namespace ShopifyNet.AdminTypes
         NONE,
     }
 
+    public static class MetafieldCustomerAccountAccessStringValues
+    {
+        public const string READ_WRITE = @"READ_WRITE";
+        public const string READ = @"READ";
+        public const string NONE = @"NONE";
+    }
+
     ///<summary>
     ///Metafield access permissions for the Customer Account API.
     ///</summary>
@@ -34246,6 +38853,13 @@ namespace ShopifyNet.AdminTypes
         ///No access.
         ///</summary>
         NONE,
+    }
+
+    public static class MetafieldCustomerAccountAccessInputStringValues
+    {
+        public const string READ_WRITE = @"READ_WRITE";
+        public const string READ = @"READ";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -34327,12 +38941,6 @@ namespace ShopifyNet.AdminTypes
         ///store dates after the specified minimum.
         ///</summary>
         public IEnumerable<MetafieldDefinitionValidation>? validations { get; set; }
-
-        ///<summary>
-        ///Whether each of the metafields that belong to the metafield definition are visible from the Storefront API.
-        ///</summary>
-        [Obsolete("Use `access.storefront` instead.")]
-        public bool? visibleToStorefrontApi { get; set; }
     }
 
     ///<summary>
@@ -34356,6 +38964,14 @@ namespace ShopifyNet.AdminTypes
         ///The metafield definition has failed to be enabled for admin filtering.
         ///</summary>
         FAILED,
+    }
+
+    public static class MetafieldDefinitionAdminFilterStatusStringValues
+    {
+        public const string NOT_FILTERABLE = @"NOT_FILTERABLE";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string FILTERABLE = @"FILTERABLE";
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
@@ -34394,6 +39010,13 @@ namespace ShopifyNet.AdminTypes
         ///Only returns metafield definitions that are not constrained to a resource subtype.
         ///</summary>
         UNCONSTRAINED_ONLY,
+    }
+
+    public static class MetafieldDefinitionConstraintStatusStringValues
+    {
+        public const string CONSTRAINED_AND_UNCONSTRAINED = @"CONSTRAINED_AND_UNCONSTRAINED";
+        public const string CONSTRAINED_ONLY = @"CONSTRAINED_ONLY";
+        public const string UNCONSTRAINED_ONLY = @"UNCONSTRAINED_ONLY";
     }
 
     ///<summary>
@@ -34529,6 +39152,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         BLANK,
         ///<summary>
+        ///A capability is required for the definition type but is disabled.
+        ///</summary>
+        CAPABILITY_REQUIRED_BUT_DISABLED,
+        ///<summary>
         ///The definition limit per owner type has exceeded.
         ///</summary>
         RESOURCE_TYPE_LIMIT_EXCEEDED,
@@ -34557,6 +39184,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         UNSTRUCTURED_ALREADY_EXISTS,
         ///<summary>
+        ///The metafield definition does not support pinning.
+        ///</summary>
+        UNSUPPORTED_PINNING,
+        ///<summary>
         ///A field contains an invalid character.
         ///</summary>
         INVALID_CHARACTER,
@@ -34569,6 +39200,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         OWNER_TYPE_LIMIT_EXCEEDED_FOR_AUTOMATED_COLLECTIONS,
         ///<summary>
+        ///The metafield definition constraints are invalid.
+        ///</summary>
+        INVALID_CONSTRAINTS,
+        ///<summary>
         ///The maximum limit of grants per definition type has been exceeded.
         ///</summary>
         GRANT_LIMIT_EXCEEDED,
@@ -34580,6 +39215,38 @@ namespace ShopifyNet.AdminTypes
         ///The metafield definition capability is invalid.
         ///</summary>
         INVALID_CAPABILITY,
+        ///<summary>
+        ///Admin access can only be specified for app-owned metafield definitions.
+        ///</summary>
+        ADMIN_ACCESS_INPUT_NOT_ALLOWED,
+    }
+
+    public static class MetafieldDefinitionCreateUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INCLUSION = @"INCLUSION";
+        public const string PRESENT = @"PRESENT";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string BLANK = @"BLANK";
+        public const string CAPABILITY_REQUIRED_BUT_DISABLED = @"CAPABILITY_REQUIRED_BUT_DISABLED";
+        public const string RESOURCE_TYPE_LIMIT_EXCEEDED = @"RESOURCE_TYPE_LIMIT_EXCEEDED";
+        public const string LIMIT_EXCEEDED = @"LIMIT_EXCEEDED";
+        public const string INVALID_OPTION = @"INVALID_OPTION";
+        public const string DUPLICATE_OPTION = @"DUPLICATE_OPTION";
+        public const string RESERVED_NAMESPACE_KEY = @"RESERVED_NAMESPACE_KEY";
+        public const string PINNED_LIMIT_REACHED = @"PINNED_LIMIT_REACHED";
+        public const string UNSTRUCTURED_ALREADY_EXISTS = @"UNSTRUCTURED_ALREADY_EXISTS";
+        public const string UNSUPPORTED_PINNING = @"UNSUPPORTED_PINNING";
+        public const string INVALID_CHARACTER = @"INVALID_CHARACTER";
+        public const string TYPE_NOT_ALLOWED_FOR_CONDITIONS = @"TYPE_NOT_ALLOWED_FOR_CONDITIONS";
+        public const string OWNER_TYPE_LIMIT_EXCEEDED_FOR_AUTOMATED_COLLECTIONS = @"OWNER_TYPE_LIMIT_EXCEEDED_FOR_AUTOMATED_COLLECTIONS";
+        public const string INVALID_CONSTRAINTS = @"INVALID_CONSTRAINTS";
+        public const string GRANT_LIMIT_EXCEEDED = @"GRANT_LIMIT_EXCEEDED";
+        public const string INVALID_INPUT_COMBINATION = @"INVALID_INPUT_COMBINATION";
+        public const string INVALID_CAPABILITY = @"INVALID_CAPABILITY";
+        public const string ADMIN_ACCESS_INPUT_NOT_ALLOWED = @"ADMIN_ACCESS_INPUT_NOT_ALLOWED";
     }
 
     ///<summary>
@@ -34587,6 +39254,10 @@ namespace ShopifyNet.AdminTypes
     ///</summary>
     public class MetafieldDefinitionDeletePayload : GraphQLObject<MetafieldDefinitionDeletePayload>
     {
+        ///<summary>
+        ///The metafield definition that was deleted.
+        ///</summary>
+        public MetafieldDefinitionIdentifier? deletedDefinition { get; set; }
         ///<summary>
         ///The ID of the deleted metafield definition.
         ///</summary>
@@ -34659,6 +39330,19 @@ namespace ShopifyNet.AdminTypes
         DISALLOWED_OWNER_TYPE,
     }
 
+    public static class MetafieldDefinitionDeleteUserErrorCodeStringValues
+    {
+        public const string PRESENT = @"PRESENT";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string ID_TYPE_DELETION_ERROR = @"ID_TYPE_DELETION_ERROR";
+        public const string REFERENCE_TYPE_DELETION_ERROR = @"REFERENCE_TYPE_DELETION_ERROR";
+        public const string RESERVED_NAMESPACE_ORPHANED_METAFIELDS = @"RESERVED_NAMESPACE_ORPHANED_METAFIELDS";
+        public const string METAFIELD_DEFINITION_IN_USE = @"METAFIELD_DEFINITION_IN_USE";
+        public const string APP_CONFIG_MANAGED = @"APP_CONFIG_MANAGED";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one MetafieldDefinition and a cursor during pagination.
     ///</summary>
@@ -34672,6 +39356,25 @@ namespace ShopifyNet.AdminTypes
         ///The item at the end of MetafieldDefinitionEdge.
         ///</summary>
         public MetafieldDefinition? node { get; set; }
+    }
+
+    ///<summary>
+    ///Identifies a metafield definition by its owner type, namespace, and key.
+    ///</summary>
+    public class MetafieldDefinitionIdentifier : GraphQLObject<MetafieldDefinitionIdentifier>
+    {
+        ///<summary>
+        ///The unique identifier for the metafield definition within its namespace.
+        ///</summary>
+        public string? key { get; set; }
+        ///<summary>
+        ///The container for a group of metafields that the metafield definition is associated with.
+        ///</summary>
+        public string? @namespace { get; set; }
+        ///<summary>
+        ///The resource type that the metafield definition is attached to.
+        ///</summary>
+        public string? ownerType { get; set; }
     }
 
     ///<summary>
@@ -34730,9 +39433,23 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         INTERNAL_ERROR,
         ///<summary>
+        ///The metafield definition does not support pinning.
+        ///</summary>
+        UNSUPPORTED_PINNING,
+        ///<summary>
         ///Owner type can't be used in this mutation.
         ///</summary>
         DISALLOWED_OWNER_TYPE,
+    }
+
+    public static class MetafieldDefinitionPinUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string PINNED_LIMIT_REACHED = @"PINNED_LIMIT_REACHED";
+        public const string ALREADY_PINNED = @"ALREADY_PINNED";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string UNSUPPORTED_PINNING = @"UNSUPPORTED_PINNING";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
     }
 
     ///<summary>
@@ -34752,6 +39469,13 @@ namespace ShopifyNet.AdminTypes
         ///Only metafield definitions that are not pinned.
         ///</summary>
         UNPINNED,
+    }
+
+    public static class MetafieldDefinitionPinnedStatusStringValues
+    {
+        public const string ANY = @"ANY";
+        public const string PINNED = @"PINNED";
+        public const string UNPINNED = @"UNPINNED";
     }
 
     ///<summary>
@@ -34776,6 +39500,14 @@ namespace ShopifyNet.AdminTypes
         ///Don't use this sort key when no search query is specified.
         ///</summary>
         RELEVANCE,
+    }
+
+    public static class MetafieldDefinitionSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string PINNED_POSITION = @"PINNED_POSITION";
+        public const string RELEVANCE = @"RELEVANCE";
     }
 
     ///<summary>
@@ -34885,6 +39617,15 @@ namespace ShopifyNet.AdminTypes
         ///Owner type can't be used in this mutation.
         ///</summary>
         DISALLOWED_OWNER_TYPE,
+    }
+
+    public static class MetafieldDefinitionUnpinUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string NOT_PINNED = @"NOT_PINNED";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string APP_CONFIG_MANAGED = @"APP_CONFIG_MANAGED";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
     }
 
     ///<summary>
@@ -35028,6 +39769,33 @@ namespace ShopifyNet.AdminTypes
         APP_CONFIG_MANAGED,
     }
 
+    public static class MetafieldDefinitionUpdateUserErrorCodeStringValues
+    {
+        public const string PRESENT = @"PRESENT";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string BLANK = @"BLANK";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string CAPABILITY_REQUIRED_BUT_DISABLED = @"CAPABILITY_REQUIRED_BUT_DISABLED";
+        public const string PINNED_LIMIT_REACHED = @"PINNED_LIMIT_REACHED";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string UNSUPPORTED_PINNING = @"UNSUPPORTED_PINNING";
+        public const string INVALID_OPTION = @"INVALID_OPTION";
+        public const string DUPLICATE_OPTION = @"DUPLICATE_OPTION";
+        public const string TYPE_NOT_ALLOWED_FOR_CONDITIONS = @"TYPE_NOT_ALLOWED_FOR_CONDITIONS";
+        public const string METAFIELD_DEFINITION_IN_USE = @"METAFIELD_DEFINITION_IN_USE";
+        public const string OWNER_TYPE_LIMIT_EXCEEDED_FOR_AUTOMATED_COLLECTIONS = @"OWNER_TYPE_LIMIT_EXCEEDED_FOR_AUTOMATED_COLLECTIONS";
+        public const string METAOBJECT_DEFINITION_CHANGED = @"METAOBJECT_DEFINITION_CHANGED";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
+        public const string GRANT_LIMIT_EXCEEDED = @"GRANT_LIMIT_EXCEEDED";
+        public const string INVALID_INPUT_COMBINATION = @"INVALID_INPUT_COMBINATION";
+        public const string INVALID_CONSTRAINTS = @"INVALID_CONSTRAINTS";
+        public const string INVALID_CAPABILITY = @"INVALID_CAPABILITY";
+        public const string CAPABILITY_CANNOT_BE_DISABLED = @"CAPABILITY_CANNOT_BE_DISABLED";
+        public const string ADMIN_ACCESS_INPUT_NOT_ALLOWED = @"ADMIN_ACCESS_INPUT_NOT_ALLOWED";
+        public const string APP_CONFIG_MANAGED = @"APP_CONFIG_MANAGED";
+    }
+
     ///<summary>
     ///A configured metafield definition validation.
     ///
@@ -35071,19 +39839,11 @@ namespace ShopifyNet.AdminTypes
         SOME_INVALID,
     }
 
-    ///<summary>
-    ///Return type for `metafieldDelete` mutation.
-    ///</summary>
-    public class MetafieldDeletePayload : GraphQLObject<MetafieldDeletePayload>
+    public static class MetafieldDefinitionValidationStatusStringValues
     {
-        ///<summary>
-        ///The ID of the deleted metafield.
-        ///</summary>
-        public string? deletedId { get; set; }
-        ///<summary>
-        ///The list of errors that occurred from executing the mutation.
-        ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
+        public const string ALL_VALID = @"ALL_VALID";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string SOME_INVALID = @"SOME_INVALID";
     }
 
     ///<summary>
@@ -35114,6 +39874,12 @@ namespace ShopifyNet.AdminTypes
         ///Read and write metafield access.
         ///</summary>
         READ_WRITE,
+    }
+
+    public static class MetafieldGrantAccessLevelStringValues
+    {
+        public const string READ = @"READ";
+        public const string READ_WRITE = @"READ_WRITE";
     }
 
     ///<summary>
@@ -35241,6 +40007,36 @@ namespace ShopifyNet.AdminTypes
         ///The Shop metafield owner type.
         ///</summary>
         SHOP,
+    }
+
+    public static class MetafieldOwnerTypeStringValues
+    {
+        public const string API_PERMISSION = @"API_PERMISSION";
+        public const string COMPANY = @"COMPANY";
+        public const string COMPANY_LOCATION = @"COMPANY_LOCATION";
+        public const string PAYMENT_CUSTOMIZATION = @"PAYMENT_CUSTOMIZATION";
+        public const string VALIDATION = @"VALIDATION";
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string DELIVERY_CUSTOMIZATION = @"DELIVERY_CUSTOMIZATION";
+        public const string DRAFTORDER = @"DRAFTORDER";
+        public const string GIFT_CARD_TRANSACTION = @"GIFT_CARD_TRANSACTION";
+        public const string MARKET = @"MARKET";
+        public const string CARTTRANSFORM = @"CARTTRANSFORM";
+        public const string COLLECTION = @"COLLECTION";
+        [Obsolete("`MEDIA_IMAGE` is deprecated.")]
+        public const string MEDIA_IMAGE = @"MEDIA_IMAGE";
+        public const string PRODUCT = @"PRODUCT";
+        public const string PRODUCTVARIANT = @"PRODUCTVARIANT";
+        public const string SELLING_PLAN = @"SELLING_PLAN";
+        public const string ARTICLE = @"ARTICLE";
+        public const string BLOG = @"BLOG";
+        public const string PAGE = @"PAGE";
+        public const string FULFILLMENT_CONSTRAINT_RULE = @"FULFILLMENT_CONSTRAINT_RULE";
+        public const string ORDER_ROUTING_LOCATION_RULE = @"ORDER_ROUTING_LOCATION_RULE";
+        public const string DISCOUNT = @"DISCOUNT";
+        public const string ORDER = @"ORDER";
+        public const string LOCATION = @"LOCATION";
+        public const string SHOP = @"SHOP";
     }
 
     ///<summary>
@@ -35449,10 +40245,12 @@ namespace ShopifyNet.AdminTypes
         ///No access.
         ///</summary>
         NONE,
-        ///<summary>
-        ///Liquid-only access. This access permission is deprecated and can not be set.
-        ///</summary>
-        LEGACY_LIQUID_ONLY,
+    }
+
+    public static class MetafieldStorefrontAccessStringValues
+    {
+        public const string PUBLIC_READ = @"PUBLIC_READ";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -35470,109 +40268,10 @@ namespace ShopifyNet.AdminTypes
         NONE,
     }
 
-    ///<summary>
-    ///By default, the Storefront API can't read metafields. To make specific metafields visible in the Storefront API,
-    ///you need to create a `MetafieldStorefrontVisibility` record. A `MetafieldStorefrontVisibility` record is a list
-    ///of the metafields, defined by the `owner_type`, `namespace`, and `key`, to make visible in the Storefront API.
-    ///
-    ///Learn about [exposing metafields in the Storefront API]
-    ///(https://shopify.dev/custom-storefronts/products-collections/metafields)
-    ///for more details.
-    ///</summary>
-    public class MetafieldStorefrontVisibility : GraphQLObject<MetafieldStorefrontVisibility>, ILegacyInteroperability, INode
+    public static class MetafieldStorefrontAccessInputStringValues
     {
-        ///<summary>
-        ///The date and time when the metafield was set to visible in the Storefront API.
-        ///</summary>
-        public DateTime? createdAt { get; set; }
-        ///<summary>
-        ///A globally-unique ID.
-        ///</summary>
-        public string? id { get; set; }
-        ///<summary>
-        ///The key of a metafield to make visible in the Storefront API.
-        ///</summary>
-        public string? key { get; set; }
-        ///<summary>
-        ///The ID of the corresponding resource in the REST Admin API.
-        ///</summary>
-        public ulong? legacyResourceId { get; set; }
-        ///<summary>
-        ///The namespace of a metafield to make visible in the Storefront API.
-        ///</summary>
-        public string? @namespace { get; set; }
-        ///<summary>
-        ///The owner type of a metafield to make visible in the Storefront API.
-        ///</summary>
-        public string? ownerType { get; set; }
-        ///<summary>
-        ///The date and time when the `MetafieldStorefrontVisilibty` record was updated.
-        ///</summary>
-        public DateTime? updatedAt { get; set; }
-    }
-
-    ///<summary>
-    ///An auto-generated type for paginating through multiple MetafieldStorefrontVisibilities.
-    ///</summary>
-    public class MetafieldStorefrontVisibilityConnection : GraphQLObject<MetafieldStorefrontVisibilityConnection>, IConnectionWithNodesAndEdges<MetafieldStorefrontVisibilityEdge, MetafieldStorefrontVisibility>
-    {
-        ///<summary>
-        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
-        ///</summary>
-        public IEnumerable<MetafieldStorefrontVisibilityEdge>? edges { get; set; }
-        ///<summary>
-        ///A list of nodes that are contained in MetafieldStorefrontVisibilityEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
-        ///</summary>
-        public IEnumerable<MetafieldStorefrontVisibility>? nodes { get; set; }
-        ///<summary>
-        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
-        ///</summary>
-        public PageInfo? pageInfo { get; set; }
-    }
-
-    ///<summary>
-    ///Return type for `metafieldStorefrontVisibilityCreate` mutation.
-    ///</summary>
-    public class MetafieldStorefrontVisibilityCreatePayload : GraphQLObject<MetafieldStorefrontVisibilityCreatePayload>
-    {
-        ///<summary>
-        ///The `MetafieldStorefrontVisibility` that was created.
-        ///</summary>
-        public MetafieldStorefrontVisibility? metafieldStorefrontVisibility { get; set; }
-        ///<summary>
-        ///The list of errors that occurred from executing the mutation.
-        ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
-    }
-
-    ///<summary>
-    ///Return type for `metafieldStorefrontVisibilityDelete` mutation.
-    ///</summary>
-    public class MetafieldStorefrontVisibilityDeletePayload : GraphQLObject<MetafieldStorefrontVisibilityDeletePayload>
-    {
-        ///<summary>
-        ///The ID of the deleted `MetafieldStorefrontVisibility` record.
-        ///</summary>
-        public string? deletedMetafieldStorefrontVisibilityId { get; set; }
-        ///<summary>
-        ///The list of errors that occurred from executing the mutation.
-        ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
-    }
-
-    ///<summary>
-    ///An auto-generated type which holds one MetafieldStorefrontVisibility and a cursor during pagination.
-    ///</summary>
-    public class MetafieldStorefrontVisibilityEdge : GraphQLObject<MetafieldStorefrontVisibilityEdge>, IEdge<MetafieldStorefrontVisibility>
-    {
-        ///<summary>
-        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
-        ///</summary>
-        public string? cursor { get; set; }
-        ///<summary>
-        ///The item at the end of MetafieldStorefrontVisibilityEdge.
-        ///</summary>
-        public MetafieldStorefrontVisibility? node { get; set; }
+        public const string PUBLIC_READ = @"PUBLIC_READ";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -35592,6 +40291,13 @@ namespace ShopifyNet.AdminTypes
         ///Invalid (according to definition).
         ///</summary>
         INVALID,
+    }
+
+    public static class MetafieldValidationStatusStringValues
+    {
+        public const string ANY = @"ANY";
+        public const string VALID = @"VALID";
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -35616,6 +40322,14 @@ namespace ShopifyNet.AdminTypes
         ///A `true` or `false` value.
         ///</summary>
         BOOLEAN,
+    }
+
+    public static class MetafieldValueTypeStringValues
+    {
+        public const string STRING = @"STRING";
+        public const string INTEGER = @"INTEGER";
+        public const string JSON_STRING = @"JSON_STRING";
+        public const string BOOLEAN = @"BOOLEAN";
     }
 
     ///<summary>
@@ -35734,6 +40448,24 @@ namespace ShopifyNet.AdminTypes
         INTERNAL_ERROR,
     }
 
+    public static class MetafieldsSetUserErrorCodeStringValues
+    {
+        public const string CAPABILITY_VIOLATION = @"CAPABILITY_VIOLATION";
+        public const string STALE_OBJECT = @"STALE_OBJECT";
+        public const string INVALID_COMPARE_DIGEST = @"INVALID_COMPARE_DIGEST";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string APP_NOT_AUTHORIZED = @"APP_NOT_AUTHORIZED";
+        public const string INCLUSION = @"INCLUSION";
+        public const string TAKEN = @"TAKEN";
+        public const string PRESENT = @"PRESENT";
+        public const string BLANK = @"BLANK";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+    }
+
     ///<summary>
     ///Provides an object instance represented by a MetaobjectDefinition.
     ///</summary>
@@ -35844,6 +40576,37 @@ namespace ShopifyNet.AdminTypes
         ///The merchant and other apps have read and write access.
         ///</summary>
         PUBLIC_READ_WRITE,
+    }
+
+    public static class MetaobjectAdminAccessStringValues
+    {
+        public const string PRIVATE = @"PRIVATE";
+        public const string MERCHANT_READ = @"MERCHANT_READ";
+        public const string MERCHANT_READ_WRITE = @"MERCHANT_READ_WRITE";
+        public const string PUBLIC_READ = @"PUBLIC_READ";
+        public const string PUBLIC_READ_WRITE = @"PUBLIC_READ_WRITE";
+    }
+
+    ///<summary>
+    ///Metaobject access permissions for the Admin API. When the metaobject is app-owned, the owning app always has
+    ///full access.
+    ///</summary>
+    public enum MetaobjectAdminAccessInput
+    {
+        ///<summary>
+        ///The merchant has read-only access. No other apps have access.
+        ///</summary>
+        MERCHANT_READ,
+        ///<summary>
+        ///The merchant has read and write access. No other apps have access.
+        ///</summary>
+        MERCHANT_READ_WRITE,
+    }
+
+    public static class MetaobjectAdminAccessInputStringValues
+    {
+        public const string MERCHANT_READ = @"MERCHANT_READ";
+        public const string MERCHANT_READ_WRITE = @"MERCHANT_READ_WRITE";
     }
 
     ///<summary>
@@ -36004,6 +40767,37 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///Metaobject Capabilities types which can be enabled.
+    ///</summary>
+    public enum MetaobjectCapabilityType
+    {
+        ///<summary>
+        ///Allows for a Metaobject to be conditionally publishable.
+        ///</summary>
+        PUBLISHABLE,
+        ///<summary>
+        ///Allows for a Metaobject to be translated using the translation api.
+        ///</summary>
+        TRANSLATABLE,
+        ///<summary>
+        ///Allows for a Metaobject to have attributes of a renderable page such as SEO.
+        ///</summary>
+        RENDERABLE,
+        ///<summary>
+        ///Allows for a Metaobject to be rendered as an Online Store page.
+        ///</summary>
+        ONLINE_STORE,
+    }
+
+    public static class MetaobjectCapabilityTypeStringValues
+    {
+        public const string PUBLISHABLE = @"PUBLISHABLE";
+        public const string TRANSLATABLE = @"TRANSLATABLE";
+        public const string RENDERABLE = @"RENDERABLE";
+        public const string ONLINE_STORE = @"ONLINE_STORE";
+    }
+
+    ///<summary>
     ///An auto-generated type for paginating through multiple Metaobjects.
     ///</summary>
     public class MetaobjectConnection : GraphQLObject<MetaobjectConnection>, IConnectionWithNodesAndEdges<MetaobjectEdge, Metaobject>
@@ -36090,6 +40884,10 @@ namespace ShopifyNet.AdminTypes
         ///The human-readable name.
         ///</summary>
         public string? name { get; set; }
+        ///<summary>
+        ///The standard metaobject template associated with the definition.
+        ///</summary>
+        public StandardMetaobjectDefinitionTemplate? standardTemplate { get; set; }
         ///<summary>
         ///The type of the object definition. Defines the namespace of associated metafields.
         ///</summary>
@@ -36292,6 +41090,12 @@ namespace ShopifyNet.AdminTypes
         ACTIVE,
     }
 
+    public static class MetaobjectStatusStringValues
+    {
+        public const string DRAFT = @"DRAFT";
+        public const string ACTIVE = @"ACTIVE";
+    }
+
     ///<summary>
     ///Metaobject access permissions for the Storefront API.
     ///</summary>
@@ -36305,6 +41109,12 @@ namespace ShopifyNet.AdminTypes
         ///Read-only access.
         ///</summary>
         PUBLIC_READ,
+    }
+
+    public static class MetaobjectStorefrontAccessStringValues
+    {
+        public const string NONE = @"NONE";
+        public const string PUBLIC_READ = @"PUBLIC_READ";
     }
 
     ///<summary>
@@ -36518,6 +41328,43 @@ namespace ShopifyNet.AdminTypes
         REFERENCE_EXISTS_ERROR,
     }
 
+    public static class MetaobjectUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string INCLUSION = @"INCLUSION";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string PRESENT = @"PRESENT";
+        public const string BLANK = @"BLANK";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string INVALID_OPTION = @"INVALID_OPTION";
+        public const string DUPLICATE_FIELD_INPUT = @"DUPLICATE_FIELD_INPUT";
+        public const string UNDEFINED_OBJECT_TYPE = @"UNDEFINED_OBJECT_TYPE";
+        public const string UNDEFINED_OBJECT_FIELD = @"UNDEFINED_OBJECT_FIELD";
+        public const string OBJECT_FIELD_TAKEN = @"OBJECT_FIELD_TAKEN";
+        public const string OBJECT_FIELD_REQUIRED = @"OBJECT_FIELD_REQUIRED";
+        public const string RECORD_NOT_FOUND = @"RECORD_NOT_FOUND";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string MAX_DEFINITIONS_EXCEEDED = @"MAX_DEFINITIONS_EXCEEDED";
+        public const string MAX_OBJECTS_EXCEEDED = @"MAX_OBJECTS_EXCEEDED";
+        public const string INPUT_LIMIT_EXCEEDED = @"INPUT_LIMIT_EXCEEDED";
+        public const string IMMUTABLE = @"IMMUTABLE";
+        public const string NOT_AUTHORIZED = @"NOT_AUTHORIZED";
+        public const string RESERVED_NAME = @"RESERVED_NAME";
+        public const string DISPLAY_NAME_CONFLICT = @"DISPLAY_NAME_CONFLICT";
+        public const string ADMIN_ACCESS_INPUT_NOT_ALLOWED = @"ADMIN_ACCESS_INPUT_NOT_ALLOWED";
+        public const string APP_CONFIG_MANAGED = @"APP_CONFIG_MANAGED";
+        public const string CAPABILITY_NOT_ENABLED = @"CAPABILITY_NOT_ENABLED";
+        public const string URL_HANDLE_TAKEN = @"URL_HANDLE_TAKEN";
+        public const string URL_HANDLE_INVALID = @"URL_HANDLE_INVALID";
+        public const string URL_HANDLE_BLANK = @"URL_HANDLE_BLANK";
+        public const string FIELD_TYPE_INVALID = @"FIELD_TYPE_INVALID";
+        public const string MISSING_REQUIRED_KEYS = @"MISSING_REQUIRED_KEYS";
+        public const string REFERENCE_EXISTS_ERROR = @"REFERENCE_EXISTS_ERROR";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the MethodDefinition query.
     ///</summary>
@@ -36531,11 +41378,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `rate_provider_type` value.
         ///</summary>
         RATE_PROVIDER_TYPE,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class MethodDefinitionSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string RATE_PROVIDER_TYPE = @"RATE_PROVIDER_TYPE";
     }
 
     ///<summary>
@@ -36684,6 +41532,13 @@ namespace ShopifyNet.AdminTypes
         ///The input value is too long.
         ///</summary>
         TOO_LONG,
+    }
+
+    public static class MobilePlatformApplicationUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string TOO_LONG = @"TOO_LONG";
     }
 
     ///<summary>
@@ -36885,6 +41740,10 @@ namespace ShopifyNet.AdminTypes
         ///Updates an article.
         ///</summary>
         public ArticleUpdatePayload? articleUpdate { get; set; }
+        ///<summary>
+        ///Update the backup region that is used when we have no better signal of what region a buyer is in.
+        ///</summary>
+        public BackupRegionUpdatePayload? backupRegionUpdate { get; set; }
         ///<summary>
         ///Creates a blog.
         ///</summary>
@@ -37158,6 +42017,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `companyLocationTaxSettingsUpdate` instead.")]
         public CompanyLocationRevokeTaxRegistrationPayload? companyLocationRevokeTaxRegistration { get; set; }
         ///<summary>
+        ///Sets the tax settings for a company location.
+        ///</summary>
+        public CompanyLocationTaxSettingsUpdatePayload? companyLocationTaxSettingsUpdate { get; set; }
+        ///<summary>
         ///Updates a company location.
         ///</summary>
         public CompanyLocationUpdatePayload? companyLocationUpdate { get; set; }
@@ -37174,9 +42037,25 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CompanyUpdatePayload? companyUpdate { get; set; }
         ///<summary>
+        ///Update or create consent policies in bulk.
+        ///</summary>
+        public ConsentPolicyUpdatePayload? consentPolicyUpdate { get; set; }
+        ///<summary>
         ///Add tax exemptions for the customer.
         ///</summary>
         public CustomerAddTaxExemptionsPayload? customerAddTaxExemptions { get; set; }
+        ///<summary>
+        ///Create a new customer address.
+        ///</summary>
+        public CustomerAddressCreatePayload? customerAddressCreate { get; set; }
+        ///<summary>
+        ///Deletes a customer's address.
+        ///</summary>
+        public CustomerAddressDeletePayload? customerAddressDelete { get; set; }
+        ///<summary>
+        ///Update a customer's address information.
+        ///</summary>
+        public CustomerAddressUpdatePayload? customerAddressUpdate { get; set; }
         ///<summary>
         ///Cancels a pending erasure of a customer's data.
         ///
@@ -37245,12 +42124,6 @@ namespace ShopifyNet.AdminTypes
         ///Create a payment method from remote gateway identifiers. NOTE: This operation processes payment methods asynchronously. The returned payment method will initially have incomplete details. Developers must poll this payment method using customerPaymentMethod query until all payment method details are available, or the payment method is revoked (usually within seconds).
         ///</summary>
         public CustomerPaymentMethodRemoteCreatePayload? customerPaymentMethodRemoteCreate { get; set; }
-
-        ///<summary>
-        ///Create a payment method from a credit card stored by Stripe.
-        ///</summary>
-        [Obsolete("Use `customerPaymentMethodRemoteCreate` instead.")]
-        public CustomerPaymentMethodRemoteCreditCardCreatePayload? customerPaymentMethodRemoteCreditCardCreate { get; set; }
         ///<summary>
         ///Revokes a customer's payment method.
         ///</summary>
@@ -37281,6 +42154,33 @@ namespace ShopifyNet.AdminTypes
         ///Sends the customer an account invite email.
         ///</summary>
         public CustomerSendAccountInviteEmailPayload? customerSendAccountInviteEmail { get; set; }
+        ///<summary>
+        ///Creates or updates a customer in a single mutation.
+        ///
+        ///Use this mutation when syncing information from an external data source into Shopify.
+        ///
+        ///This mutation can be used to create a new customer, update an existing customer by id, or
+        ///upsert a customer by a unique key (email or phone).
+        ///
+        ///To create a new customer omit the `identifier` argument.
+        ///To update an existing customer, include the `identifier` with the id of the customer to update.
+        ///
+        ///To perform an 'upsert' by unique key (email or phone)
+        ///use the `identifier` argument to upsert a customer by a unique key (email or phone). If a customer
+        ///with the specified unique key exists, it will be updated. If not, a new customer will be created with
+        ///that unique key.
+        ///
+        ///As of API version 2022-10, apps using protected customer data must meet the
+        ///protected customer data [requirements](https://shopify.dev/apps/store/data-protection/protected-customer-data)
+        ///
+        ///Any list field (e.g.
+        ///[addresses](https://shopify.dev/api/admin-graphql/unstable/input-objects/MailingAddressInput),
+        ///will be updated so that all included entries are either created or updated, and all existing entries not
+        ///included will be deleted.
+        ///
+        ///All other fields will be updated to the value passed. Omitted fields will not be updated.
+        ///</summary>
+        public CustomerSetPayload? customerSet { get; set; }
         ///<summary>
         ///Update a customer's SMS marketing consent information.
         ///</summary>
@@ -37336,6 +42236,10 @@ namespace ShopifyNet.AdminTypes
         ///Update a delivery profile.
         ///</summary>
         public DeliveryProfileUpdatePayload? deliveryProfileUpdate { get; set; }
+        ///<summary>
+        ///Updates the delivery promise participants by adding or removing owners based on a branded promise handle.
+        ///</summary>
+        public DeliveryPromiseParticipantsUpdatePayload? deliveryPromiseParticipantsUpdate { get; set; }
         ///<summary>
         ///Creates or updates a delivery promise provider. Currently restricted to select approved delivery promise partners.
         ///</summary>
@@ -37610,11 +42514,51 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public DraftOrderCalculatePayload? draftOrderCalculate { get; set; }
         ///<summary>
-        ///Completes a draft order and creates an order.
+        ///Completes a [draft order](https://shopify.dev/docs/api/admin-graphql/latest/objects/DraftOrder) and
+        ///converts it into a [regular order](https://shopify.dev/docs/api/admin-graphql/latest/objects/Order).
+        ///The order appears in the merchant's orders list, and the customer can be notified about their order.
+        ///
+        ///Use the `draftOrderComplete` mutation when a merchant is ready to finalize a draft order and create a real
+        ///order in their store. The `draftOrderComplete` mutation also supports sales channel attribution for tracking
+        ///order sources using the [`sourceName`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderComplete#arguments-sourceName)
+        ///argument, [cart validation](https://shopify.dev/docs/apps/build/checkout/cart-checkout-validation)
+        ///controls for app integrations, and detailed error reporting for failed completions.
+        ///
+        ///You can complete a draft order with different [payment scenarios](https://help.shopify.com/manual/fulfillment/managing-orders/payments):
+        ///
+        ///- Mark the order as paid immediately.
+        ///- Set the order as payment pending using [payment terms](https://shopify.dev/docs/api/admin-graphql/latest/objects/PaymentTerms).
+        ///- Specify a custom payment amount.
+        ///- Select a specific payment gateway.
+        ///
+        ///> Note:
+        ///> When completing a draft order, inventory is [reserved](https://shopify.dev/docs/apps/build/orders-fulfillment/inventory-management-apps#inventory-states)
+        ///for the items in the order. This means the items will no longer be available for other customers to purchase.
+        ///Make sure to verify inventory availability before completing the draft order.
         ///</summary>
         public DraftOrderCompletePayload? draftOrderComplete { get; set; }
         ///<summary>
-        ///Creates a draft order.
+        ///Creates a [draft order](https://shopify.dev/docs/api/admin-graphql/latest/objects/DraftOrder)
+        ///with attributes such as customer information, line items, shipping and billing addresses, and payment terms.
+        ///Draft orders are useful for merchants that need to:
+        ///
+        ///- Create new orders for sales made by phone, in person, by chat, or elsewhere. When a merchant accepts payment for a draft order, an order is created.
+        ///- Send invoices to customers with a secure checkout link.
+        ///- Use custom items to represent additional costs or products not in inventory.
+        ///- Re-create orders manually from active sales channels.
+        ///- Sell products at discount or wholesale rates.
+        ///- Take pre-orders.
+        ///
+        ///After creating a draft order, you can:
+        ///- Send an invoice to the customer using the [`draftOrderInvoiceSend`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderInvoiceSend) mutation.
+        ///- Complete the draft order using the [`draftOrderComplete`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderComplete) mutation.
+        ///- Update the draft order using the [`draftOrderUpdate`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderUpdate) mutation.
+        ///- Duplicate a draft order using the [`draftOrderDuplicate`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderDuplicate) mutation.
+        ///- Delete the draft order using the [`draftOrderDelete`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderDelete) mutation.
+        ///
+        ///> Note:
+        ///> When you create a draft order, you can't [reserve or hold inventory](https://shopify.dev/docs/apps/build/orders-fulfillment/inventory-management-apps#inventory-states) for the items in the order by default.
+        ///> However, you can reserve inventory using the [`reserveInventoryUntil`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/draftOrderCreate#arguments-input.fields.reserveInventoryUntil) input.
         ///</summary>
         public DraftOrderCreatePayload? draftOrderCreate { get; set; }
         ///<summary>
@@ -38162,26 +43106,6 @@ namespace ShopifyNet.AdminTypes
         ///Updates a metafield definition.
         ///</summary>
         public MetafieldDefinitionUpdatePayload? metafieldDefinitionUpdate { get; set; }
-
-        ///<summary>
-        ///Deletes a metafield.
-        ///</summary>
-        [Obsolete("This mutation will be removed in a future version. Use `metafieldsDelete` instead.")]
-        public MetafieldDeletePayload? metafieldDelete { get; set; }
-
-        ///<summary>
-        ///Creates a `MetafieldStorefrontVisibility` record to make all metafields that belong to the specified resource
-        ///and have the established `namespace` and `key` combination visible in the Storefront API.
-        ///</summary>
-        [Obsolete("This mutation will be removed in a future version. Use the `metafieldDefinitionCreate` or `metafieldDefinitionUpdate` mutations with `access.storefront` set instead.")]
-        public MetafieldStorefrontVisibilityCreatePayload? metafieldStorefrontVisibilityCreate { get; set; }
-
-        ///<summary>
-        ///Deletes a `MetafieldStorefrontVisibility` record. All metafields that belongs to the specified record will no
-        ///longer be visible in the Storefront API.
-        ///</summary>
-        [Obsolete("This mutation will be removed in a future version. Use the `metafieldDefinitionUpdate` mutation with `access.storefront` set instead.")]
-        public MetafieldStorefrontVisibilityDeletePayload? metafieldStorefrontVisibilityDelete { get; set; }
         ///<summary>
         ///Deletes multiple metafields in bulk.
         ///</summary>
@@ -38252,7 +43176,29 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public OrderCancelPayload? orderCancel { get; set; }
         ///<summary>
-        ///Captures payment for an authorized transaction on an order. An order can only be captured if it has a successful authorization transaction. Capturing an order will claim the money reserved by the authorization. orderCapture can be used to capture multiple times as long as the OrderTransaction is multi-capturable. To capture a partial payment, the included `amount` value should be less than the total order amount. Multi-capture is available only to stores on a Shopify Plus plan.
+        ///Captures payment for an authorized transaction on an order. Use this mutation to claim the money that was previously
+        ///reserved by an authorization transaction.
+        ///
+        ///The `orderCapture` mutation can be used in the following scenarios:
+        ///
+        ///- To capture the full amount of an authorized transaction
+        ///- To capture a partial payment by specifying an amount less than the total order amount
+        ///- To perform multiple captures on the same order, as long as the order transaction is
+        ///[multi-capturable](https://shopify.dev/docs/api/admin-graphql/latest/objects/ordertransaction#field-OrderTransaction.fields.multiCapturable)
+        ///
+        ///> Note:
+        ///> Multi-capture functionality is only available to stores on a
+        ///[Shopify Plus plan](https://help.shopify.com/manual/intro-to-shopify/pricing-plans/plans-features/shopify-plus-plan).
+        ///For multi-currency orders, the [`currency`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/orderCapture#arguments-input.fields.currency)
+        ///field is required and should match the presentment currency from the order.
+        ///
+        ///After capturing a payment, you can:
+        ///
+        ///- View the transaction details including status, amount, and processing information.
+        ///- Track the captured amount in both shop and presentment currencies.
+        ///- Monitor the transaction's settlement status.
+        ///
+        ///Learn more about [order transactions](https://shopify.dev/docs/api/admin-graphql/latest/objects/OrderTransaction).
         ///</summary>
         public OrderCapturePayload? orderCapture { get; set; }
         ///<summary>
@@ -38294,6 +43240,11 @@ namespace ShopifyNet.AdminTypes
         ///Creates a payment for an order by mandate.
         ///</summary>
         public OrderCreateMandatePaymentPayload? orderCreateMandatePayment { get; set; }
+        ///<summary>
+        ///Create a manual payment for an order. You can only create a manual payment for an order if it isn't already
+        ///fully paid.
+        ///</summary>
+        public OrderCreateManualPaymentPayload? orderCreateManualPayment { get; set; }
         ///<summary>
         ///Deletes an order. For more information on which orders can be deleted, refer to [Delete an order](https://help.shopify.com/manual/orders/cancel-delete-order#delete-an-order).
         ///</summary>
@@ -38454,22 +43405,10 @@ namespace ShopifyNet.AdminTypes
         ///If you modify the currency, then any fixed prices set on the price list will be deleted.
         ///</summary>
         public PriceListUpdatePayload? priceListUpdate { get; set; }
-
         ///<summary>
-        ///Deletes a private metafield.
-        ///Private metafields are automatically deleted when the app that created them is uninstalled.
+        ///Disable a shop's privacy features.
         ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldDeletePayload? privateMetafieldDelete { get; set; }
-
-        ///<summary>
-        ///Creates or updates a private metafield. Use private metafields when you don't want the metafield data to be accessible by merchants or other apps.
-        ///Private metafields are accessible only by the application that created them and only from the GraphQL Admin API.
-        ///
-        ///An application can create a maximum of 10 private metafields per shop resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldUpsertPayload? privateMetafieldUpsert { get; set; }
+        public PrivacyFeaturesDisablePayload? privacyFeaturesDisable { get; set; }
         ///<summary>
         ///Creates a new componentized product.
         ///</summary>
@@ -38781,7 +43720,39 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public QuantityRulesDeletePayload? quantityRulesDelete { get; set; }
         ///<summary>
-        ///Creates a refund.
+        ///Creates a refund for an order, allowing you to process returns and issue payments back to customers.
+        ///
+        ///Use the `refundCreate` mutation to programmatically process refunds in scenarios where you need to
+        ///return money to customers, such as when handling returns, processing chargebacks, or correcting
+        ///order errors.
+        ///
+        ///The `refundCreate` mutation supports various refund scenarios:
+        ///
+        ///- Refunding line items with optional restocking
+        ///- Refunding shipping costs
+        ///- Refunding duties and import taxes
+        ///- Refunding additional fees
+        ///- Processing refunds through different payment methods
+        ///- Issuing store credit refunds (when enabled)
+        ///
+        ///You can create both full and partial refunds, and optionally allow over-refunding in specific
+        ///cases. The mutation also supports [idempotent requests](https://shopify.dev/docs/api/usage/idempotent-requests)
+        ///to safely retry failed refund attempts.
+        ///
+        ///After creating a refund, you can track its status and details through the order's
+        ///[`refunds`](https://shopify.dev/docs/api/admin-graphql/latest/objects/Order#field-Order.fields.refunds)
+        ///field. The refund is associated with the order and can be used for reporting and reconciliation purposes.
+        ///
+        ///Learn more about
+        ///[managing returns](https://shopify.dev/docs/apps/build/orders-fulfillment/returns-apps/build-return-management)
+        ///and [refunding duties](https://shopify.dev/docs/apps/build/orders-fulfillment/returns-apps/view-and-refund-duties).
+        ///
+        ///> Note:
+        ///> The refunding behavior of the `refundCreate` mutation is similar to the
+        ///[`refundReturn`](https://shopify.dev/docs/api/admin-graphql/latest/mutations/returnRefund)
+        ///mutation. The key difference is that the `refundCreate` mutation lets you to specify restocking behavior
+        ///for line items, whereas the `returnRefund` mutation focuses solely on handling the financial refund without
+        ///any restocking input.
         ///</summary>
         public RefundCreatePayload? refundCreate { get; set; }
         ///<summary>
@@ -39336,6 +44307,18 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public WebPixelUpdatePayload? webPixelUpdate { get; set; }
         ///<summary>
+        ///Creates a web presence.
+        ///</summary>
+        public WebPresenceCreatePayload? webPresenceCreate { get; set; }
+        ///<summary>
+        ///Deletes a web presence.
+        ///</summary>
+        public WebPresenceDeletePayload? webPresenceDelete { get; set; }
+        ///<summary>
+        ///Updates a web presence.
+        ///</summary>
+        public WebPresenceUpdatePayload? webPresenceUpdate { get; set; }
+        ///<summary>
         ///Creates a new webhook subscription.
         ///
         ///Building an app? If you only use app-specific webhooks, you won't need this. App-specific webhook subscriptions specified in your `shopify.app.toml` may be easier. They are automatically kept up to date by Shopify & require less maintenance. Please read [About managing webhook subscriptions](https://shopify.dev/docs/apps/build/webhooks/subscribe).
@@ -39478,6 +44461,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(CompanyLocation), typeDiscriminator: "CompanyLocation")]
     [JsonDerivedType(typeof(CompanyLocationCatalog), typeDiscriminator: "CompanyLocationCatalog")]
     [JsonDerivedType(typeof(CompanyLocationStaffMemberAssignment), typeDiscriminator: "CompanyLocationStaffMemberAssignment")]
+    [JsonDerivedType(typeof(ConsentPolicy), typeDiscriminator: "ConsentPolicy")]
     [JsonDerivedType(typeof(Customer), typeDiscriminator: "Customer")]
     [JsonDerivedType(typeof(CustomerAccountAppExtensionPage), typeDiscriminator: "CustomerAccountAppExtensionPage")]
     [JsonDerivedType(typeof(CustomerAccountNativePage), typeDiscriminator: "CustomerAccountNativePage")]
@@ -39494,6 +44478,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(DeliveryParticipant), typeDiscriminator: "DeliveryParticipant")]
     [JsonDerivedType(typeof(DeliveryProfile), typeDiscriminator: "DeliveryProfile")]
     [JsonDerivedType(typeof(DeliveryProfileItem), typeDiscriminator: "DeliveryProfileItem")]
+    [JsonDerivedType(typeof(DeliveryPromiseParticipant), typeDiscriminator: "DeliveryPromiseParticipant")]
     [JsonDerivedType(typeof(DeliveryPromiseProvider), typeDiscriminator: "DeliveryPromiseProvider")]
     [JsonDerivedType(typeof(DeliveryProvince), typeDiscriminator: "DeliveryProvince")]
     [JsonDerivedType(typeof(DeliveryRateDefinition), typeDiscriminator: "DeliveryRateDefinition")]
@@ -39543,7 +44528,6 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(Menu), typeDiscriminator: "Menu")]
     [JsonDerivedType(typeof(Metafield), typeDiscriminator: "Metafield")]
     [JsonDerivedType(typeof(MetafieldDefinition), typeDiscriminator: "MetafieldDefinition")]
-    [JsonDerivedType(typeof(MetafieldStorefrontVisibility), typeDiscriminator: "MetafieldStorefrontVisibility")]
     [JsonDerivedType(typeof(Metaobject), typeDiscriminator: "Metaobject")]
     [JsonDerivedType(typeof(MetaobjectDefinition), typeDiscriminator: "MetaobjectDefinition")]
     [JsonDerivedType(typeof(Model3d), typeDiscriminator: "Model3d")]
@@ -39561,7 +44545,6 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(PriceList), typeDiscriminator: "PriceList")]
     [JsonDerivedType(typeof(PriceRule), typeDiscriminator: "PriceRule")]
     [JsonDerivedType(typeof(PriceRuleDiscountCode), typeDiscriminator: "PriceRuleDiscountCode")]
-    [JsonDerivedType(typeof(PrivateMetafield), typeDiscriminator: "PrivateMetafield")]
     [JsonDerivedType(typeof(Product), typeDiscriminator: "Product")]
     [JsonDerivedType(typeof(ProductBundleOperation), typeDiscriminator: "ProductBundleOperation")]
     [JsonDerivedType(typeof(ProductDeleteOperation), typeDiscriminator: "ProductDeleteOperation")]
@@ -39628,6 +44611,7 @@ namespace ShopifyNet.AdminTypes
     [JsonDerivedType(typeof(Validation), typeDiscriminator: "Validation")]
     [JsonDerivedType(typeof(Video), typeDiscriminator: "Video")]
     [JsonDerivedType(typeof(WebPixel), typeDiscriminator: "WebPixel")]
+    [JsonDerivedType(typeof(WebPresence), typeDiscriminator: "WebPresence")]
     [JsonDerivedType(typeof(WebhookSubscription), typeDiscriminator: "WebhookSubscription")]
     public interface INode : IGraphQLObject
     {
@@ -39669,6 +44653,7 @@ namespace ShopifyNet.AdminTypes
         public CompanyLocation? AsCompanyLocation() => this as CompanyLocation;
         public CompanyLocationCatalog? AsCompanyLocationCatalog() => this as CompanyLocationCatalog;
         public CompanyLocationStaffMemberAssignment? AsCompanyLocationStaffMemberAssignment() => this as CompanyLocationStaffMemberAssignment;
+        public ConsentPolicy? AsConsentPolicy() => this as ConsentPolicy;
         public Customer? AsCustomer() => this as Customer;
         public CustomerAccountAppExtensionPage? AsCustomerAccountAppExtensionPage() => this as CustomerAccountAppExtensionPage;
         public CustomerAccountNativePage? AsCustomerAccountNativePage() => this as CustomerAccountNativePage;
@@ -39685,6 +44670,7 @@ namespace ShopifyNet.AdminTypes
         public DeliveryParticipant? AsDeliveryParticipant() => this as DeliveryParticipant;
         public DeliveryProfile? AsDeliveryProfile() => this as DeliveryProfile;
         public DeliveryProfileItem? AsDeliveryProfileItem() => this as DeliveryProfileItem;
+        public DeliveryPromiseParticipant? AsDeliveryPromiseParticipant() => this as DeliveryPromiseParticipant;
         public DeliveryPromiseProvider? AsDeliveryPromiseProvider() => this as DeliveryPromiseProvider;
         public DeliveryProvince? AsDeliveryProvince() => this as DeliveryProvince;
         public DeliveryRateDefinition? AsDeliveryRateDefinition() => this as DeliveryRateDefinition;
@@ -39734,7 +44720,6 @@ namespace ShopifyNet.AdminTypes
         public Menu? AsMenu() => this as Menu;
         public Metafield? AsMetafield() => this as Metafield;
         public MetafieldDefinition? AsMetafieldDefinition() => this as MetafieldDefinition;
-        public MetafieldStorefrontVisibility? AsMetafieldStorefrontVisibility() => this as MetafieldStorefrontVisibility;
         public Metaobject? AsMetaobject() => this as Metaobject;
         public MetaobjectDefinition? AsMetaobjectDefinition() => this as MetaobjectDefinition;
         public Model3d? AsModel3d() => this as Model3d;
@@ -39752,7 +44737,6 @@ namespace ShopifyNet.AdminTypes
         public PriceList? AsPriceList() => this as PriceList;
         public PriceRule? AsPriceRule() => this as PriceRule;
         public PriceRuleDiscountCode? AsPriceRuleDiscountCode() => this as PriceRuleDiscountCode;
-        public PrivateMetafield? AsPrivateMetafield() => this as PrivateMetafield;
         public Product? AsProduct() => this as Product;
         public ProductBundleOperation? AsProductBundleOperation() => this as ProductBundleOperation;
         public ProductDeleteOperation? AsProductDeleteOperation() => this as ProductDeleteOperation;
@@ -39819,6 +44803,7 @@ namespace ShopifyNet.AdminTypes
         public Validation? AsValidation() => this as Validation;
         public Video? AsVideo() => this as Video;
         public WebPixel? AsWebPixel() => this as WebPixel;
+        public WebPresence? AsWebPresence() => this as WebPresence;
         public WebhookSubscription? AsWebhookSubscription() => this as WebhookSubscription;
         ///<summary>
         ///A globally-unique ID.
@@ -40026,6 +45011,13 @@ namespace ShopifyNet.AdminTypes
         URL,
     }
 
+    public static class OnlineStoreThemeFileBodyInputTypeStringValues
+    {
+        public const string TEXT = @"TEXT";
+        public const string BASE64 = @"BASE64";
+        public const string URL = @"URL";
+    }
+
     ///<summary>
     ///Represents the body of a theme file.
     ///</summary>
@@ -40092,9 +45084,25 @@ namespace ShopifyNet.AdminTypes
     public class OnlineStoreThemeFileOperationResult : GraphQLObject<OnlineStoreThemeFileOperationResult>
     {
         ///<summary>
+        ///The md5 digest of the theme file for data integrity.
+        ///</summary>
+        public string? checksumMd5 { get; set; }
+        ///<summary>
+        ///The date and time when the theme file was created.
+        ///</summary>
+        public DateTime? createdAt { get; set; }
+        ///<summary>
         ///Unique identifier of the theme file.
         ///</summary>
         public string? filename { get; set; }
+        ///<summary>
+        ///The size of the theme file in bytes.
+        ///</summary>
+        public ulong? size { get; set; }
+        ///<summary>
+        ///The date and time when the theme file was last updated.
+        ///</summary>
+        public DateTime? updatedAt { get; set; }
     }
 
     ///<summary>
@@ -40145,6 +45153,17 @@ namespace ShopifyNet.AdminTypes
         ///Operation file could not be found.
         ///</summary>
         NOT_FOUND,
+    }
+
+    public static class OnlineStoreThemeFileResultTypeStringValues
+    {
+        public const string SUCCESS = @"SUCCESS";
+        public const string ERROR = @"ERROR";
+        public const string CONFLICT = @"CONFLICT";
+        public const string UNPROCESSABLE_ENTITY = @"UNPROCESSABLE_ENTITY";
+        public const string BAD_REQUEST = @"BAD_REQUEST";
+        public const string TIMEOUT = @"TIMEOUT";
+        public const string NOT_FOUND = @"NOT_FOUND";
     }
 
     ///<summary>
@@ -40213,6 +45232,19 @@ namespace ShopifyNet.AdminTypes
         THROTTLED,
     }
 
+    public static class OnlineStoreThemeFilesUserErrorsCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string THEME_FILES_CONFLICT = @"THEME_FILES_CONFLICT";
+        public const string DUPLICATE_FILE_INPUT = @"DUPLICATE_FILE_INPUT";
+        public const string ACCESS_DENIED = @"ACCESS_DENIED";
+        public const string THEME_LIMITED_PLAN = @"THEME_LIMITED_PLAN";
+        public const string FILE_VALIDATION_ERROR = @"FILE_VALIDATION_ERROR";
+        public const string ERROR = @"ERROR";
+        public const string THROTTLED = @"THROTTLED";
+    }
+
     ///<summary>
     ///An order is a customer's request to purchase one or more products from a shop. You can retrieve and update orders using the `Order` object.
     ///Learn more about
@@ -40225,7 +45257,7 @@ namespace ShopifyNet.AdminTypes
     ///
     ///**Caution:** Only use this data if it's required for your app's functionality. Shopify will restrict [access to scopes](https://shopify.dev/api/usage/access-scopes) for apps that don't have a legitimate use for the associated data.
     ///</summary>
-    public class Order : GraphQLObject<Order>, ICommentEventSubject, IHasEvents, IHasLocalizationExtensions, IHasMetafieldDefinitions, IHasMetafields, ILegacyInteroperability, INode, ICommentEventEmbed, IMetafieldReference, IMetafieldReferencer
+    public class Order : GraphQLObject<Order>, ICommentEventSubject, IHasEvents, IHasLocalizationExtensions, IHasLocalizedFields, IHasMetafieldDefinitions, IHasMetafields, ILegacyInteroperability, INode, ICommentEventEmbed, IMetafieldReference, IMetafieldReferencer
     {
         ///<summary>
         ///A list of additional fees applied to the order.
@@ -40527,6 +45559,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("This connection will be removed in a future version. Use `localizedFields` instead.")]
         public LocalizationExtensionConnection? localizationExtensions { get; set; }
         ///<summary>
+        ///List of localized fields for the resource.
+        ///</summary>
+        public LocalizedFieldConnection? localizedFields { get; set; }
+        ///<summary>
         ///The merchant's business entity associated with the order.
         ///</summary>
         public BusinessEntity? merchantBusinessEntity { get; set; }
@@ -40633,18 +45669,6 @@ namespace ShopifyNet.AdminTypes
         ///The payment `CurrencyCode` of the customer for the order.
         ///</summary>
         public string? presentmentCurrencyCode { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time when the order was processed.
         ///This date and time might not match the date and time when the order was created.
@@ -40958,6 +45982,15 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class OrderActionTypeStringValues
+    {
+        public const string ORDER = @"ORDER";
+        public const string ORDER_EDIT = @"ORDER_EDIT";
+        public const string REFUND = @"REFUND";
+        public const string RETURN = @"RETURN";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///An order adjustment accounts for the difference between a calculated and actual refund amount.
     ///</summary>
@@ -41031,6 +46064,16 @@ namespace ShopifyNet.AdminTypes
         PENDING_REFUND_DISCREPANCY,
     }
 
+    public static class OrderAdjustmentDiscrepancyReasonStringValues
+    {
+        public const string RESTOCK = @"RESTOCK";
+        public const string DAMAGE = @"DAMAGE";
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string REFUND_DISCREPANCY = @"REFUND_DISCREPANCY";
+        public const string FULL_RETURN_BALANCING_ADJUSTMENT = @"FULL_RETURN_BALANCING_ADJUSTMENT";
+        public const string PENDING_REFUND_DISCREPANCY = @"PENDING_REFUND_DISCREPANCY";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one OrderAdjustment and a cursor during pagination.
     ///</summary>
@@ -41067,6 +46110,14 @@ namespace ShopifyNet.AdminTypes
         ///The discrepancy reason is not one of the predefined reasons.
         ///</summary>
         OTHER,
+    }
+
+    public static class OrderAdjustmentInputDiscrepancyReasonStringValues
+    {
+        public const string RESTOCK = @"RESTOCK";
+        public const string DAMAGE = @"DAMAGE";
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string OTHER = @"OTHER";
     }
 
     ///<summary>
@@ -41175,6 +46226,16 @@ namespace ShopifyNet.AdminTypes
         OTHER,
     }
 
+    public static class OrderCancelReasonStringValues
+    {
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string DECLINED = @"DECLINED";
+        public const string FRAUD = @"FRAUD";
+        public const string INVENTORY = @"INVENTORY";
+        public const string STAFF = @"STAFF";
+        public const string OTHER = @"OTHER";
+    }
+
     ///<summary>
     ///Errors related to order cancellation.
     ///</summary>
@@ -41211,6 +46272,13 @@ namespace ShopifyNet.AdminTypes
         ///The input value is invalid.
         ///</summary>
         INVALID,
+    }
+
+    public static class OrderCancelUserErrorCodeStringValues
+    {
+        public const string NO_REFUND_PERMISSION = @"NO_REFUND_PERMISSION";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -41312,6 +46380,18 @@ namespace ShopifyNet.AdminTypes
         EXPIRED,
     }
 
+    public static class OrderCreateFinancialStatusStringValues
+    {
+        public const string PENDING = @"PENDING";
+        public const string AUTHORIZED = @"AUTHORIZED";
+        public const string PARTIALLY_PAID = @"PARTIALLY_PAID";
+        public const string PAID = @"PAID";
+        public const string PARTIALLY_REFUNDED = @"PARTIALLY_REFUNDED";
+        public const string REFUNDED = @"REFUNDED";
+        public const string VOIDED = @"VOIDED";
+        public const string EXPIRED = @"EXPIRED";
+    }
+
     ///<summary>
     ///The order's status in terms of fulfilled line items.
     ///</summary>
@@ -41331,6 +46411,13 @@ namespace ShopifyNet.AdminTypes
         RESTOCKED,
     }
 
+    public static class OrderCreateFulfillmentStatusStringValues
+    {
+        public const string FULFILLED = @"FULFILLED";
+        public const string PARTIAL = @"PARTIAL";
+        public const string RESTOCKED = @"RESTOCKED";
+    }
+
     ///<summary>
     ///The types of behavior to use when updating inventory.
     ///</summary>
@@ -41348,6 +46435,13 @@ namespace ShopifyNet.AdminTypes
         ///Follow the product's inventory policy and claim inventory, if possible.
         ///</summary>
         DECREMENT_OBEYING_POLICY,
+    }
+
+    public static class OrderCreateInputsInventoryBehaviorStringValues
+    {
+        public const string BYPASS = @"BYPASS";
+        public const string DECREMENT_IGNORING_POLICY = @"DECREMENT_IGNORING_POLICY";
+        public const string DECREMENT_OBEYING_POLICY = @"DECREMENT_OBEYING_POLICY";
     }
 
     ///<summary>
@@ -41397,6 +46491,81 @@ namespace ShopifyNet.AdminTypes
         ///Errors for mandate payment on order.
         ///</summary>
         ORDER_MANDATE_PAYMENT_ERROR_CODE,
+    }
+
+    public static class OrderCreateMandatePaymentUserErrorCodeStringValues
+    {
+        public const string ORDER_MANDATE_PAYMENT_ERROR_CODE = @"ORDER_MANDATE_PAYMENT_ERROR_CODE";
+    }
+
+    ///<summary>
+    ///An error that occurs during the execution of a order create manual payment mutation.
+    ///</summary>
+    public class OrderCreateManualPaymentOrderCreateManualPaymentError : GraphQLObject<OrderCreateManualPaymentOrderCreateManualPaymentError>, IDisplayableError
+    {
+        ///<summary>
+        ///The error code.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///The path to the input field that caused the error.
+        ///</summary>
+        public IEnumerable<string>? field { get; set; }
+        ///<summary>
+        ///The error message.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///Possible error codes that can be returned by `OrderCreateManualPaymentOrderCreateManualPaymentError`.
+    ///</summary>
+    public enum OrderCreateManualPaymentOrderCreateManualPaymentErrorCode
+    {
+        ///<summary>
+        ///Order is not found.
+        ///</summary>
+        ORDER_NOT_FOUND,
+        ///<summary>
+        ///Amount must be positive.
+        ///</summary>
+        AMOUNT_NOT_POSITIVE,
+        ///<summary>
+        ///Payment gateway is not found.
+        ///</summary>
+        GATEWAY_NOT_FOUND,
+        ///<summary>
+        ///Amount exceeds the remaining balance.
+        ///</summary>
+        AMOUNT_EXCEEDS_BALANCE,
+        ///<summary>
+        ///Order is temporarily unavailable.
+        ///</summary>
+        ORDER_IS_TEMPORARILY_UNAVAILABLE,
+    }
+
+    public static class OrderCreateManualPaymentOrderCreateManualPaymentErrorCodeStringValues
+    {
+        public const string ORDER_NOT_FOUND = @"ORDER_NOT_FOUND";
+        public const string AMOUNT_NOT_POSITIVE = @"AMOUNT_NOT_POSITIVE";
+        public const string GATEWAY_NOT_FOUND = @"GATEWAY_NOT_FOUND";
+        public const string AMOUNT_EXCEEDS_BALANCE = @"AMOUNT_EXCEEDS_BALANCE";
+        public const string ORDER_IS_TEMPORARILY_UNAVAILABLE = @"ORDER_IS_TEMPORARILY_UNAVAILABLE";
+    }
+
+    ///<summary>
+    ///Return type for `orderCreateManualPayment` mutation.
+    ///</summary>
+    public class OrderCreateManualPaymentPayload : GraphQLObject<OrderCreateManualPaymentPayload>
+    {
+        ///<summary>
+        ///The order recorded a manual payment.
+        ///</summary>
+        public Order? order { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<OrderCreateManualPaymentOrderCreateManualPaymentError>? userErrors { get; set; }
     }
 
     ///<summary>
@@ -41468,6 +46637,17 @@ namespace ShopifyNet.AdminTypes
         SHOP_DORMANT,
     }
 
+    public static class OrderCreateUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string FULFILLMENT_SERVICE_INVALID = @"FULFILLMENT_SERVICE_INVALID";
+        public const string INVENTORY_CLAIM_FAILED = @"INVENTORY_CLAIM_FAILED";
+        public const string PROCESSED_AT_INVALID = @"PROCESSED_AT_INVALID";
+        public const string TAX_LINE_RATE_MISSING = @"TAX_LINE_RATE_MISSING";
+        public const string REDUNDANT_CUSTOMER_FIELDS = @"REDUNDANT_CUSTOMER_FIELDS";
+        public const string SHOP_DORMANT = @"SHOP_DORMANT";
+    }
+
     ///<summary>
     ///Return type for `orderDelete` mutation.
     ///</summary>
@@ -41517,6 +46697,12 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class OrderDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Represents the order's current financial status.
     ///</summary>
@@ -41555,6 +46741,18 @@ namespace ShopifyNet.AdminTypes
         ///Displayed as **Expired**. Payment wasn't captured before the payment provider's deadline on an authorized order. Some payment providers use this status to indicate failed payment processing.
         ///</summary>
         EXPIRED,
+    }
+
+    public static class OrderDisplayFinancialStatusStringValues
+    {
+        public const string PENDING = @"PENDING";
+        public const string AUTHORIZED = @"AUTHORIZED";
+        public const string PARTIALLY_PAID = @"PARTIALLY_PAID";
+        public const string PARTIALLY_REFUNDED = @"PARTIALLY_REFUNDED";
+        public const string VOIDED = @"VOIDED";
+        public const string PAID = @"PAID";
+        public const string REFUNDED = @"REFUNDED";
+        public const string EXPIRED = @"EXPIRED";
     }
 
     ///<summary>
@@ -41602,6 +46800,20 @@ namespace ShopifyNet.AdminTypes
         ///Displayed as **Request declined**. Some of the items in the order have been rejected for fulfillment by the fulfillment service.
         ///</summary>
         REQUEST_DECLINED,
+    }
+
+    public static class OrderDisplayFulfillmentStatusStringValues
+    {
+        public const string UNFULFILLED = @"UNFULFILLED";
+        public const string PARTIALLY_FULFILLED = @"PARTIALLY_FULFILLED";
+        public const string FULFILLED = @"FULFILLED";
+        public const string RESTOCKED = @"RESTOCKED";
+        public const string PENDING_FULFILLMENT = @"PENDING_FULFILLMENT";
+        public const string OPEN = @"OPEN";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string ON_HOLD = @"ON_HOLD";
+        public const string SCHEDULED = @"SCHEDULED";
+        public const string REQUEST_DECLINED = @"REQUEST_DECLINED";
     }
 
     ///<summary>
@@ -41731,6 +46943,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class OrderEditAddShippingLineUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `orderEditAddVariant` mutation.
     ///</summary>
@@ -41858,6 +47075,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class OrderEditRemoveDiscountUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `orderEditRemoveLineItemDiscount` mutation.
     ///</summary>
@@ -41921,6 +47143,11 @@ namespace ShopifyNet.AdminTypes
         ///The input value is invalid.
         ///</summary>
         INVALID,
+    }
+
+    public static class OrderEditRemoveShippingLineUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -41987,6 +47214,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class OrderEditUpdateDiscountUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `orderEditUpdateShippingLine` mutation.
     ///</summary>
@@ -42032,6 +47264,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class OrderEditUpdateShippingLineUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `orderInvoiceSend` mutation.
     ///</summary>
@@ -42075,6 +47312,11 @@ namespace ShopifyNet.AdminTypes
         ///An error occurred while sending the invoice.
         ///</summary>
         ORDER_INVOICE_SEND_UNSUCCESSFUL,
+    }
+
+    public static class OrderInvoiceSendUserErrorCodeStringValues
+    {
+        public const string ORDER_INVOICE_SEND_UNSUCCESSFUL = @"ORDER_INVOICE_SEND_UNSUCCESSFUL";
     }
 
     ///<summary>
@@ -42208,6 +47450,23 @@ namespace ShopifyNet.AdminTypes
         PENDING,
     }
 
+    public static class OrderPaymentStatusResultStringValues
+    {
+        public const string SUCCESS = @"SUCCESS";
+        public const string AUTHORIZED = @"AUTHORIZED";
+        public const string VOIDED = @"VOIDED";
+        public const string REFUNDED = @"REFUNDED";
+        public const string CAPTURED = @"CAPTURED";
+        public const string PURCHASED = @"PURCHASED";
+        public const string ERROR = @"ERROR";
+        public const string PROCESSING = @"PROCESSING";
+        public const string REDIRECT_REQUIRED = @"REDIRECT_REQUIRED";
+        public const string RETRYABLE = @"RETRYABLE";
+        public const string UNKNOWN = @"UNKNOWN";
+        public const string INITIATED = @"INITIATED";
+        public const string PENDING = @"PENDING";
+    }
+
     ///<summary>
     ///The order's aggregated return status that's used for display purposes.
     ///An order might have multiple returns, so this field communicates the prioritized return status.
@@ -42239,6 +47498,16 @@ namespace ShopifyNet.AdminTypes
         ///A return was requested for some items in the order.
         ///</summary>
         RETURN_REQUESTED,
+    }
+
+    public static class OrderReturnStatusStringValues
+    {
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+        public const string INSPECTION_COMPLETE = @"INSPECTION_COMPLETE";
+        public const string NO_RETURN = @"NO_RETURN";
+        public const string RETURNED = @"RETURNED";
+        public const string RETURN_FAILED = @"RETURN_FAILED";
+        public const string RETURN_REQUESTED = @"RETURN_REQUESTED";
     }
 
     ///<summary>
@@ -42344,6 +47613,14 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class OrderRiskAssessmentCreateUserErrorCodeStringValues
+    {
+        public const string TOO_MANY_FACTS = @"TOO_MANY_FACTS";
+        public const string ORDER_ALREADY_FULFILLED = @"ORDER_ALREADY_FULFILLED";
+        public const string INVALID = @"INVALID";
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///The likelihood that an order is fraudulent.
     ///This enum is deprecated in favor of
@@ -42364,6 +47641,13 @@ namespace ShopifyNet.AdminTypes
         ///There is a high level of risk that this order is fraudulent.
         ///</summary>
         HIGH,
+    }
+
+    public static class OrderRiskLevelStringValues
+    {
+        public const string LOW = @"LOW";
+        public const string MEDIUM = @"MEDIUM";
+        public const string HIGH = @"HIGH";
     }
 
     ///<summary>
@@ -42387,6 +47671,14 @@ namespace ShopifyNet.AdminTypes
         ///There is no recommended action for the order.
         ///</summary>
         NONE,
+    }
+
+    public static class OrderRiskRecommendationResultStringValues
+    {
+        public const string CANCEL = @"CANCEL";
+        public const string INVESTIGATE = @"INVESTIGATE";
+        public const string ACCEPT = @"ACCEPT";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -42464,6 +47756,23 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class OrderSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string CUSTOMER_NAME = @"CUSTOMER_NAME";
+        public const string DESTINATION = @"DESTINATION";
+        public const string FINANCIAL_STATUS = @"FINANCIAL_STATUS";
+        public const string FULFILLMENT_STATUS = @"FULFILLMENT_STATUS";
+        public const string ID = @"ID";
+        public const string ORDER_NUMBER = @"ORDER_NUMBER";
+        public const string PO_NUMBER = @"PO_NUMBER";
+        public const string PROCESSED_AT = @"PROCESSED_AT";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TOTAL_ITEMS_QUANTITY = @"TOTAL_ITEMS_QUANTITY";
+        public const string TOTAL_PRICE = @"TOTAL_PRICE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -42647,9 +47956,30 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
-    ///A payment transaction in the context of an order.
+    ///The `OrderTransaction` object represents a payment transaction that's associated with an order. An order
+    ///transaction is a specific action or event that happens within the context of an order, such as a customer paying
+    ///for a purchase or receiving a refund, or other payment-related activity.
+    ///
+    ///Use the `OrderTransaction` object to capture the complete lifecycle of a payment, from initial
+    ///authorization to final settlement, including refunds and currency exchanges. Common use cases for using the
+    ///`OrderTransaction` object include:
+    ///
+    ///- Processing new payments for orders
+    ///- Managing payment authorizations and captures
+    ///- Processing refunds for returned items
+    ///- Tracking payment status and errors
+    ///- Managing multi-currency transactions
+    ///- Handling payment gateway integrations
+    ///
+    ///Each `OrderTransaction` object has a [`kind`](https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderTransactionKind)
+    ///that defines the type of transaction and a [`status`](https://shopify.dev/docs/api/admin-graphql/latest/enums/OrderTransactionStatus)
+    ///that indicates the current state of the transaction. The object stores detailed information about payment
+    ///methods, gateway processing, and settlement details.
+    ///
+    ///Learn more about [payment processing](https://help.shopify.com/manual/payments)
+    ///and [payment gateway integrations](https://www.shopify.com/ca/payment-gateways).
     ///</summary>
-    public class OrderTransaction : GraphQLObject<OrderTransaction>, INode
+    public class OrderTransaction : GraphQLObject<OrderTransaction>, INode, IStoreCreditAccountTransactionOrigin
     {
         ///<summary>
         ///The masked account number associated with the payment method.
@@ -42711,6 +48041,10 @@ namespace ShopifyNet.AdminTypes
         ///The kind of transaction.
         ///</summary>
         public string? kind { get; set; }
+        ///<summary>
+        ///Whether the transaction is processed by manual payment gateway.
+        ///</summary>
+        public bool? manualPaymentGateway { get; set; }
         ///<summary>
         ///Whether the transaction can be manually captured.
         ///</summary>
@@ -42960,6 +48294,37 @@ namespace ShopifyNet.AdminTypes
         AMAZON_PAYMENTS_STALE,
     }
 
+    public static class OrderTransactionErrorCodeStringValues
+    {
+        public const string INCORRECT_NUMBER = @"INCORRECT_NUMBER";
+        public const string INVALID_NUMBER = @"INVALID_NUMBER";
+        public const string INVALID_EXPIRY_DATE = @"INVALID_EXPIRY_DATE";
+        public const string INVALID_CVC = @"INVALID_CVC";
+        public const string EXPIRED_CARD = @"EXPIRED_CARD";
+        public const string INCORRECT_CVC = @"INCORRECT_CVC";
+        public const string INCORRECT_ZIP = @"INCORRECT_ZIP";
+        public const string INCORRECT_ADDRESS = @"INCORRECT_ADDRESS";
+        public const string INCORRECT_PIN = @"INCORRECT_PIN";
+        public const string CARD_DECLINED = @"CARD_DECLINED";
+        public const string PROCESSING_ERROR = @"PROCESSING_ERROR";
+        public const string CALL_ISSUER = @"CALL_ISSUER";
+        public const string PICK_UP_CARD = @"PICK_UP_CARD";
+        public const string CONFIG_ERROR = @"CONFIG_ERROR";
+        public const string TEST_MODE_LIVE_CARD = @"TEST_MODE_LIVE_CARD";
+        public const string UNSUPPORTED_FEATURE = @"UNSUPPORTED_FEATURE";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string INVALID_COUNTRY = @"INVALID_COUNTRY";
+        public const string INVALID_AMOUNT = @"INVALID_AMOUNT";
+        public const string PAYMENT_METHOD_UNAVAILABLE = @"PAYMENT_METHOD_UNAVAILABLE";
+        public const string AMAZON_PAYMENTS_INVALID_PAYMENT_METHOD = @"AMAZON_PAYMENTS_INVALID_PAYMENT_METHOD";
+        public const string AMAZON_PAYMENTS_MAX_AMOUNT_CHARGED = @"AMAZON_PAYMENTS_MAX_AMOUNT_CHARGED";
+        public const string AMAZON_PAYMENTS_MAX_AMOUNT_REFUNDED = @"AMAZON_PAYMENTS_MAX_AMOUNT_REFUNDED";
+        public const string AMAZON_PAYMENTS_MAX_AUTHORIZATIONS_CAPTURED = @"AMAZON_PAYMENTS_MAX_AUTHORIZATIONS_CAPTURED";
+        public const string AMAZON_PAYMENTS_MAX_REFUNDS_PROCESSED = @"AMAZON_PAYMENTS_MAX_REFUNDS_PROCESSED";
+        public const string AMAZON_PAYMENTS_ORDER_REFERENCE_CANCELED = @"AMAZON_PAYMENTS_ORDER_REFERENCE_CANCELED";
+        public const string AMAZON_PAYMENTS_STALE = @"AMAZON_PAYMENTS_STALE";
+    }
+
     ///<summary>
     ///The different kinds of order transactions.
     ///</summary>
@@ -43001,6 +48366,18 @@ namespace ShopifyNet.AdminTypes
         SUGGESTED_REFUND,
     }
 
+    public static class OrderTransactionKindStringValues
+    {
+        public const string SALE = @"SALE";
+        public const string CAPTURE = @"CAPTURE";
+        public const string AUTHORIZATION = @"AUTHORIZATION";
+        public const string VOID = @"VOID";
+        public const string REFUND = @"REFUND";
+        public const string CHANGE = @"CHANGE";
+        public const string EMV_AUTHORIZATION = @"EMV_AUTHORIZATION";
+        public const string SUGGESTED_REFUND = @"SUGGESTED_REFUND";
+    }
+
     ///<summary>
     ///The different states that an `OrderTransaction` can have.
     ///</summary>
@@ -43030,6 +48407,16 @@ namespace ShopifyNet.AdminTypes
         ///The transaction status is unknown.
         ///</summary>
         UNKNOWN,
+    }
+
+    public static class OrderTransactionStatusStringValues
+    {
+        public const string SUCCESS = @"SUCCESS";
+        public const string FAILURE = @"FAILURE";
+        public const string PENDING = @"PENDING";
+        public const string ERROR = @"ERROR";
+        public const string AWAITING_RESPONSE = @"AWAITING_RESPONSE";
+        public const string UNKNOWN = @"UNKNOWN";
     }
 
     ///<summary>
@@ -43102,18 +48489,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The date and time (ISO 8601 format) when the page became or will become visible.
         ///Returns null when the page isn't visible.
@@ -43221,6 +48596,16 @@ namespace ShopifyNet.AdminTypes
         INVALID_TYPE,
     }
 
+    public static class PageCreateUserErrorCodeStringValues
+    {
+        public const string INVALID_PUBLISH_DATE = @"INVALID_PUBLISH_DATE";
+        public const string BLANK = @"BLANK";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TAKEN = @"TAKEN";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+    }
+
     ///<summary>
     ///Return type for `pageDelete` mutation.
     ///</summary>
@@ -43266,6 +48651,11 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class PageDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one Page and a cursor during pagination.
     ///</summary>
@@ -43282,28 +48672,34 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
-    ///Returns information about pagination in a connection, in accordance with the
-    ///[Relay specification](https://relay.dev/graphql/connections.htm#sec-undefined.PageInfo).
-    ///For more information, please read our [GraphQL Pagination Usage Guide](https://shopify.dev/api/usage/pagination-graphql).
+    ///The set of valid sort keys for the Page query.
     ///</summary>
-    public class PageInfo : GraphQLObject<PageInfo>
+    public enum PageSortKeys
     {
         ///<summary>
-        ///The cursor corresponding to the last node in edges.
+        ///Sort by the `id` value.
         ///</summary>
-        public string? endCursor { get; set; }
+        ID,
         ///<summary>
-        ///Whether there are more pages to fetch following the current page.
+        ///Sort by the `published_at` value.
         ///</summary>
-        public bool? hasNextPage { get; set; }
+        PUBLISHED_AT,
         ///<summary>
-        ///Whether there are any pages prior to the current page.
+        ///Sort by the `title` value.
         ///</summary>
-        public bool? hasPreviousPage { get; set; }
+        TITLE,
         ///<summary>
-        ///The cursor corresponding to the first node in edges.
+        ///Sort by the `updated_at` value.
         ///</summary>
-        public string? startCursor { get; set; }
+        UPDATED_AT,
+    }
+
+    public static class PageSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string PUBLISHED_AT = @"PUBLISHED_AT";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -43367,6 +48763,15 @@ namespace ShopifyNet.AdminTypes
         TAKEN,
     }
 
+    public static class PageUpdateUserErrorCodeStringValues
+    {
+        public const string INVALID_PUBLISH_DATE = @"INVALID_PUBLISH_DATE";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string BLANK = @"BLANK";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TAKEN = @"TAKEN";
+    }
+
     ///<summary>
     ///A payment customization.
     ///</summary>
@@ -43405,18 +48810,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The Shopify Function implementing the payment customization.
         ///</summary>
@@ -43576,6 +48969,21 @@ namespace ShopifyNet.AdminTypes
         FUNCTION_ID_CANNOT_BE_CHANGED,
     }
 
+    public static class PaymentCustomizationErrorCodeStringValues
+    {
+        public const string CUSTOM_APP_FUNCTION_NOT_ELIGIBLE = @"CUSTOM_APP_FUNCTION_NOT_ELIGIBLE";
+        public const string FUNCTION_DOES_NOT_IMPLEMENT = @"FUNCTION_DOES_NOT_IMPLEMENT";
+        public const string FUNCTION_NOT_FOUND = @"FUNCTION_NOT_FOUND";
+        public const string FUNCTION_PENDING_DELETION = @"FUNCTION_PENDING_DELETION";
+        public const string INVALID = @"INVALID";
+        public const string PAYMENT_CUSTOMIZATION_NOT_FOUND = @"PAYMENT_CUSTOMIZATION_NOT_FOUND";
+        public const string PAYMENT_CUSTOMIZATION_FUNCTION_NOT_ELIGIBLE = @"PAYMENT_CUSTOMIZATION_FUNCTION_NOT_ELIGIBLE";
+        public const string MAXIMUM_ACTIVE_PAYMENT_CUSTOMIZATIONS = @"MAXIMUM_ACTIVE_PAYMENT_CUSTOMIZATIONS";
+        public const string REQUIRED_INPUT_FIELD = @"REQUIRED_INPUT_FIELD";
+        public const string INVALID_METAFIELDS = @"INVALID_METAFIELDS";
+        public const string FUNCTION_ID_CANNOT_BE_CHANGED = @"FUNCTION_ID_CANNOT_BE_CHANGED";
+    }
+
     ///<summary>
     ///Return type for `paymentCustomizationUpdate` mutation.
     ///</summary>
@@ -43676,6 +49084,38 @@ namespace ShopifyNet.AdminTypes
         ///The payment method for eftpos_au payment.
         ///</summary>
         EFTPOS,
+        ///<summary>
+        ///The payment method for Cartes Bancaires payment.
+        ///</summary>
+        CARTES_BANCAIRES,
+        ///<summary>
+        ///The payment method for Bancontact payment.
+        ///</summary>
+        BANCONTACT,
+    }
+
+    public static class PaymentMethodsStringValues
+    {
+        public const string VISA = @"VISA";
+        public const string MASTERCARD = @"MASTERCARD";
+        public const string DISCOVER = @"DISCOVER";
+        public const string AMERICAN_EXPRESS = @"AMERICAN_EXPRESS";
+        public const string DINERS_CLUB = @"DINERS_CLUB";
+        public const string JCB = @"JCB";
+        public const string UNIONPAY = @"UNIONPAY";
+        public const string ELO = @"ELO";
+        public const string DANKORT = @"DANKORT";
+        public const string MAESTRO = @"MAESTRO";
+        public const string FORBRUGSFORENINGEN = @"FORBRUGSFORENINGEN";
+        public const string PAYPAL = @"PAYPAL";
+        public const string BOGUS = @"BOGUS";
+        public const string BITCOIN = @"BITCOIN";
+        public const string LITECOIN = @"LITECOIN";
+        public const string DOGECOIN = @"DOGECOIN";
+        public const string INTERAC = @"INTERAC";
+        public const string EFTPOS = @"EFTPOS";
+        public const string CARTES_BANCAIRES = @"CARTES_BANCAIRES";
+        public const string BANCONTACT = @"BANCONTACT";
     }
 
     ///<summary>
@@ -43721,6 +49161,11 @@ namespace ShopifyNet.AdminTypes
         ///An error occurred while sending the payment reminder.
         ///</summary>
         PAYMENT_REMINDER_SEND_UNSUCCESSFUL,
+    }
+
+    public static class PaymentReminderSendUserErrorCodeStringValues
+    {
+        public const string PAYMENT_REMINDER_SEND_UNSUCCESSFUL = @"PAYMENT_REMINDER_SEND_UNSUCCESSFUL";
     }
 
     ///<summary>
@@ -43888,6 +49333,11 @@ namespace ShopifyNet.AdminTypes
         PAYMENT_TERMS_CREATION_UNSUCCESSFUL,
     }
 
+    public static class PaymentTermsCreateUserErrorCodeStringValues
+    {
+        public const string PAYMENT_TERMS_CREATION_UNSUCCESSFUL = @"PAYMENT_TERMS_CREATION_UNSUCCESSFUL";
+    }
+
     ///<summary>
     ///Return type for `paymentTermsDelete` mutation.
     ///</summary>
@@ -43931,6 +49381,11 @@ namespace ShopifyNet.AdminTypes
         ///An error occurred while deleting payment terms.
         ///</summary>
         PAYMENT_TERMS_DELETE_UNSUCCESSFUL,
+    }
+
+    public static class PaymentTermsDeleteUserErrorCodeStringValues
+    {
+        public const string PAYMENT_TERMS_DELETE_UNSUCCESSFUL = @"PAYMENT_TERMS_DELETE_UNSUCCESSFUL";
     }
 
     ///<summary>
@@ -43991,6 +49446,15 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class PaymentTermsTypeStringValues
+    {
+        public const string RECEIPT = @"RECEIPT";
+        public const string NET = @"NET";
+        public const string FIXED = @"FIXED";
+        public const string FULFILLMENT = @"FULFILLMENT";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///Return type for `paymentTermsUpdate` mutation.
     ///</summary>
@@ -44036,6 +49500,11 @@ namespace ShopifyNet.AdminTypes
         PAYMENT_TERMS_UPDATE_UNSUCCESSFUL,
     }
 
+    public static class PaymentTermsUpdateUserErrorCodeStringValues
+    {
+        public const string PAYMENT_TERMS_UPDATE_UNSUCCESSFUL = @"PAYMENT_TERMS_UPDATE_UNSUCCESSFUL";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the Payout query.
     ///</summary>
@@ -44078,11 +49547,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         REFUND_GROSS,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `shipping_label_gross` value.
         ///</summary>
         SHIPPING_LABEL_GROSS,
@@ -44090,6 +49554,21 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `status` value.
         ///</summary>
         STATUS,
+    }
+
+    public static class PayoutSortKeysStringValues
+    {
+        public const string ADJUSTMENT_GROSS = @"ADJUSTMENT_GROSS";
+        public const string ADVANCE_GROSS = @"ADVANCE_GROSS";
+        public const string AMOUNT = @"AMOUNT";
+        public const string CHARGE_GROSS = @"CHARGE_GROSS";
+        public const string DUTIES_GROSS = @"DUTIES_GROSS";
+        public const string FEE_AMOUNT = @"FEE_AMOUNT";
+        public const string ID = @"ID";
+        public const string ISSUED_AT = @"ISSUED_AT";
+        public const string REFUND_GROSS = @"REFUND_GROSS";
+        public const string SHIPPING_LABEL_GROSS = @"SHIPPING_LABEL_GROSS";
+        public const string STATUS = @"STATUS";
     }
 
     ///<summary>
@@ -44111,6 +49590,13 @@ namespace ShopifyNet.AdminTypes
         PENDING,
     }
 
+    public static class PaypalExpressSubscriptionsGatewayStatusStringValues
+    {
+        public const string ENABLED = @"ENABLED";
+        public const string DISABLED = @"DISABLED";
+        public const string PENDING = @"PENDING";
+    }
+
     ///<summary>
     ///How to caluclate the parent product variant's price while bulk updating variant relationships.
     ///</summary>
@@ -44128,6 +49614,13 @@ namespace ShopifyNet.AdminTypes
         ///The price of the parent will not be adjusted.
         ///</summary>
         NONE,
+    }
+
+    public static class PriceCalculationTypeStringValues
+    {
+        public const string COMPONENTS_SUM = @"COMPONENTS_SUM";
+        public const string FIXED = @"FIXED";
+        public const string NONE = @"NONE";
     }
 
     ///<summary>
@@ -44220,6 +49713,12 @@ namespace ShopifyNet.AdminTypes
         PERCENTAGE_INCREASE,
     }
 
+    public static class PriceListAdjustmentTypeStringValues
+    {
+        public const string PERCENTAGE_DECREASE = @"PERCENTAGE_DECREASE";
+        public const string PERCENTAGE_INCREASE = @"PERCENTAGE_INCREASE";
+    }
+
     ///<summary>
     ///Represents how the compare at price will be determined for a price list.
     ///</summary>
@@ -44233,6 +49732,12 @@ namespace ShopifyNet.AdminTypes
         ///The compare at prices are set to `null` unless explicitly defined by a fixed price value.
         ///</summary>
         NULLIFY,
+    }
+
+    public static class PriceListCompareAtModeStringValues
+    {
+        public const string ADJUSTED = @"ADJUSTED";
+        public const string NULLIFY = @"NULLIFY";
     }
 
     ///<summary>
@@ -44366,6 +49871,17 @@ namespace ShopifyNet.AdminTypes
         ///Exceeded the 10000 prices to add limit.
         ///</summary>
         PRICE_LIMIT_EXCEEDED,
+    }
+
+    public static class PriceListFixedPricesByProductBulkUpdateUserErrorCodeStringValues
+    {
+        public const string NO_UPDATE_OPERATIONS_SPECIFIED = @"NO_UPDATE_OPERATIONS_SPECIFIED";
+        public const string PRICES_TO_ADD_CURRENCY_MISMATCH = @"PRICES_TO_ADD_CURRENCY_MISMATCH";
+        public const string PRICE_LIST_DOES_NOT_EXIST = @"PRICE_LIST_DOES_NOT_EXIST";
+        public const string DUPLICATE_ID_IN_INPUT = @"DUPLICATE_ID_IN_INPUT";
+        public const string ID_MUST_BE_MUTUALLY_EXCLUSIVE = @"ID_MUST_BE_MUTUALLY_EXCLUSIVE";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRICE_LIMIT_EXCEEDED = @"PRICE_LIMIT_EXCEEDED";
     }
 
     ///<summary>
@@ -44526,6 +50042,12 @@ namespace ShopifyNet.AdminTypes
         RELATIVE,
     }
 
+    public static class PriceListPriceOriginTypeStringValues
+    {
+        public const string FIXED = @"FIXED";
+        public const string RELATIVE = @"RELATIVE";
+    }
+
     ///<summary>
     ///An error for a failed price list price operation.
     ///</summary>
@@ -44572,6 +50094,15 @@ namespace ShopifyNet.AdminTypes
         PRICE_NOT_FIXED,
     }
 
+    public static class PriceListPriceUserErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string PRICE_LIST_NOT_FOUND = @"PRICE_LIST_NOT_FOUND";
+        public const string PRICE_LIST_CURRENCY_MISMATCH = @"PRICE_LIST_CURRENCY_MISMATCH";
+        public const string VARIANT_NOT_FOUND = @"VARIANT_NOT_FOUND";
+        public const string PRICE_NOT_FIXED = @"PRICE_NOT_FIXED";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the PriceList query.
     ///</summary>
@@ -44585,11 +50116,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `name` value.
         ///</summary>
         NAME,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class PriceListSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
     }
 
     ///<summary>
@@ -44656,30 +50188,9 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         PRICE_LIST_LOCKED,
         ///<summary>
-        ///Cannot save the price list with context rule because the limit of context rules per shop was reached.
-        ///</summary>
-        [Obsolete("The limit is removed.")]
-        CONTEXT_RULE_LIMIT_REACHED,
-        ///<summary>
-        ///A price list context rule cannot have more than one country.
-        ///</summary>
-        CONTEXT_RULE_COUNTRIES_LIMIT,
-        ///<summary>
-        ///A price list’s currency must be of the pricing rule’s country.
-        ///</summary>
-        CURRENCY_COUNTRY_MISMATCH,
-        ///<summary>
-        ///A country in a context rule must use a valid currency.
-        ///</summary>
-        COUNTRY_CURRENCY_MISMATCH,
-        ///<summary>
         ///A price list’s currency must be the market currency.
         ///</summary>
         CURRENCY_MARKET_MISMATCH,
-        ///<summary>
-        ///The context rule's market does not use the price list currency.
-        ///</summary>
-        MARKET_CURRENCY_MISMATCH,
         ///<summary>
         ///The adjustment value must be a positive value and not be greater than 100% for `type` `PERCENTAGE_DECREASE` and not be greater than 1000% for `type` `PERCENTAGE_INCREASE`.
         ///</summary>
@@ -44693,29 +50204,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         INVALID_ADJUSTMENT_MAX_VALUE,
         ///<summary>
-        ///A price list for this country is already taken.
-        ///</summary>
-        CONTEXT_RULE_COUNTRY_TAKEN,
-        ///<summary>
-        ///Quantity rules can be associated only with company location catalogs.
+        ///Quantity rules can be associated only with company location catalogs or catalogs associated with compatible markets.
         ///</summary>
         CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES,
         ///<summary>
-        ///Quantity price breaks can be associated only with company location catalogs.
+        ///Quantity price breaks can be associated only with company location catalogs or catalogs associated with compatible markets.
         ///</summary>
         CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_PRICE_BREAKS,
         ///<summary>
         ///Only one context rule option may be specified.
         ///</summary>
         CONTEXT_RULE_LIMIT_ONE_OPTION,
-        ///<summary>
-        ///The specified market wasn't found.
-        ///</summary>
-        CONTEXT_RULE_MARKET_NOT_FOUND,
-        ///<summary>
-        ///A price list for this market is already taken.
-        ///</summary>
-        CONTEXT_RULE_MARKET_TAKEN,
         ///<summary>
         ///The price list currency is not supported by the shop's payment gateway.
         ///</summary>
@@ -44725,17 +50224,9 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         PRICE_LIST_NOT_ALLOWED_FOR_PRIMARY_MARKET,
         ///<summary>
-        ///Cannot assign a catalog to a price list that also has context rules.
-        ///</summary>
-        CATALOG_ASSIGNMENT_NOT_ALLOWED,
-        ///<summary>
         ///The specified catalog does not exist.
         ///</summary>
         CATALOG_DOES_NOT_EXIST,
-        ///<summary>
-        ///The context type of a catalog cannot be changed.
-        ///</summary>
-        CATALOG_CANNOT_CHANGE_CONTEXT_TYPE,
         ///<summary>
         ///The price list currency must match the market catalog currency.
         ///</summary>
@@ -44749,13 +50240,33 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         COUNTRY_PRICE_LIST_ASSIGNMENT,
         ///<summary>
-        ///An app catalog cannot be assigned to a price list.
-        ///</summary>
-        APP_CATALOG_PRICE_LIST_ASSIGNMENT,
-        ///<summary>
         ///Something went wrong when trying to save the price list. Please try again.
         ///</summary>
         GENERIC_ERROR,
+    }
+
+    public static class PriceListUserErrorCodeStringValues
+    {
+        public const string TAKEN = @"TAKEN";
+        public const string BLANK = @"BLANK";
+        public const string INCLUSION = @"INCLUSION";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string PRICE_LIST_NOT_FOUND = @"PRICE_LIST_NOT_FOUND";
+        public const string PRICE_LIST_LOCKED = @"PRICE_LIST_LOCKED";
+        public const string CURRENCY_MARKET_MISMATCH = @"CURRENCY_MARKET_MISMATCH";
+        public const string INVALID_ADJUSTMENT_VALUE = @"INVALID_ADJUSTMENT_VALUE";
+        public const string INVALID_ADJUSTMENT_MIN_VALUE = @"INVALID_ADJUSTMENT_MIN_VALUE";
+        public const string INVALID_ADJUSTMENT_MAX_VALUE = @"INVALID_ADJUSTMENT_MAX_VALUE";
+        public const string CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES = @"CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES";
+        public const string CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_PRICE_BREAKS = @"CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_PRICE_BREAKS";
+        public const string CONTEXT_RULE_LIMIT_ONE_OPTION = @"CONTEXT_RULE_LIMIT_ONE_OPTION";
+        public const string CURRENCY_NOT_SUPPORTED = @"CURRENCY_NOT_SUPPORTED";
+        public const string PRICE_LIST_NOT_ALLOWED_FOR_PRIMARY_MARKET = @"PRICE_LIST_NOT_ALLOWED_FOR_PRIMARY_MARKET";
+        public const string CATALOG_DOES_NOT_EXIST = @"CATALOG_DOES_NOT_EXIST";
+        public const string CATALOG_MARKET_AND_PRICE_LIST_CURRENCY_MISMATCH = @"CATALOG_MARKET_AND_PRICE_LIST_CURRENCY_MISMATCH";
+        public const string CATALOG_TAKEN = @"CATALOG_TAKEN";
+        public const string COUNTRY_PRICE_LIST_ASSIGNMENT = @"COUNTRY_PRICE_LIST_ASSIGNMENT";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
     }
 
     ///<summary>
@@ -44792,12 +50303,18 @@ namespace ShopifyNet.AdminTypes
         ///The customers that can use this price rule.
         ///</summary>
         public PriceRuleCustomerSelection? customerSelection { get; set; }
+
         ///<summary>
         ///The
         ///[discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
         ///that's used to control how discounts can be combined.
         ///</summary>
+        [Obsolete("Use `discountClasses` instead.")]
         public string? discountClass { get; set; }
+        ///<summary>
+        ///The classes of the discount.
+        ///</summary>
+        public IEnumerable<string>? discountClasses { get; set; }
         ///<summary>
         ///List of the price rule's discount codes.
         ///</summary>
@@ -44941,6 +50458,12 @@ namespace ShopifyNet.AdminTypes
         ACROSS,
     }
 
+    public static class PriceRuleAllocationMethodStringValues
+    {
+        public const string EACH = @"EACH";
+        public const string ACROSS = @"ACROSS";
+    }
+
     ///<summary>
     ///A selection of customers for whom the price rule applies.
     ///</summary>
@@ -45057,6 +50580,15 @@ namespace ShopifyNet.AdminTypes
         ///The price rule supports discounts that require a quantity.
         ///</summary>
         QUANTITY_DISCOUNTS,
+    }
+
+    public static class PriceRuleFeatureStringValues
+    {
+        public const string BUY_ONE_GET_ONE = @"BUY_ONE_GET_ONE";
+        public const string BUY_ONE_GET_ONE_WITH_ALLOCATION_LIMIT = @"BUY_ONE_GET_ONE_WITH_ALLOCATION_LIMIT";
+        public const string BULK = @"BULK";
+        public const string SPECIFIC_CUSTOMERS = @"SPECIFIC_CUSTOMERS";
+        public const string QUANTITY_DISCOUNTS = @"QUANTITY_DISCOUNTS";
     }
 
     ///<summary>
@@ -45226,6 +50758,13 @@ namespace ShopifyNet.AdminTypes
         COLLECTION,
     }
 
+    public static class PriceRuleShareableUrlTargetTypeStringValues
+    {
+        public const string HOME = @"HOME";
+        public const string PRODUCT = @"PRODUCT";
+        public const string COLLECTION = @"COLLECTION";
+    }
+
     ///<summary>
     ///The shipping lines to which the price rule applies to.
     ///</summary>
@@ -45264,6 +50803,13 @@ namespace ShopifyNet.AdminTypes
         SCHEDULED,
     }
 
+    public static class PriceRuleStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string EXPIRED = @"EXPIRED";
+        public const string SCHEDULED = @"SCHEDULED";
+    }
+
     ///<summary>
     ///The type of lines (line_item or shipping_line) to which the price rule applies.
     ///</summary>
@@ -45277,6 +50823,12 @@ namespace ShopifyNet.AdminTypes
         ///The price rule applies to shipping lines.
         ///</summary>
         SHIPPING_LINE,
+    }
+
+    public static class PriceRuleTargetStringValues
+    {
+        public const string LINE_ITEM = @"LINE_ITEM";
+        public const string SHIPPING_LINE = @"SHIPPING_LINE";
     }
 
     ///<summary>
@@ -45304,6 +50856,15 @@ namespace ShopifyNet.AdminTypes
         ///The price rule supports discounts that require a quantity.
         ///</summary>
         QUANTITY_DISCOUNTS,
+    }
+
+    public static class PriceRuleTraitStringValues
+    {
+        public const string BUY_ONE_GET_ONE = @"BUY_ONE_GET_ONE";
+        public const string BUY_ONE_GET_ONE_WITH_ALLOCATION_LIMIT = @"BUY_ONE_GET_ONE_WITH_ALLOCATION_LIMIT";
+        public const string BULK = @"BULK";
+        public const string SPECIFIC_CUSTOMERS = @"SPECIFIC_CUSTOMERS";
+        public const string QUANTITY_DISCOUNTS = @"QUANTITY_DISCOUNTS";
     }
 
     ///<summary>
@@ -45358,127 +50919,1399 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
-    ///Private metafields represent custom metadata that is attached to a resource.
-    ///Private metafields are accessible only by the application that created them and only from the GraphQL Admin API.
-    ///
-    ///An application can create a maximum of 10 private metafields per shop resource.
-    ///
-    ///Private metafields are deprecated. Metafields created using a reserved namespace are private by default. See our guide for
-    ///[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).
+    ///A country code from the `ISO 3166` standard. e.g. `CA` for Canada.
     ///</summary>
-    public class PrivateMetafield : GraphQLObject<PrivateMetafield>, INode
+    public enum PrivacyCountryCode
     {
         ///<summary>
-        ///The date and time when the private metafield was created.
+        ///The `ISO 3166` country code of `AN`.
         ///</summary>
-        public DateTime? createdAt { get; set; }
+        AN,
         ///<summary>
-        ///The ID of the private metafield.
+        ///The `ISO 3166` country code of `AC`.
         ///</summary>
-        public string? id { get; set; }
+        AC,
         ///<summary>
-        ///The key name of the private metafield.
+        ///The `ISO 3166` country code of `AD`.
         ///</summary>
-        public string? key { get; set; }
+        AD,
         ///<summary>
-        ///The namespace of the private metafield.
+        ///The `ISO 3166` country code of `AE`.
         ///</summary>
-        public string? @namespace { get; set; }
+        AE,
         ///<summary>
-        ///The date and time when the private metafield was updated.
+        ///The `ISO 3166` country code of `AF`.
         ///</summary>
-        public DateTime? updatedAt { get; set; }
+        AF,
         ///<summary>
-        ///The value of a private metafield.
+        ///The `ISO 3166` country code of `AG`.
         ///</summary>
-        public string? value { get; set; }
+        AG,
         ///<summary>
-        ///Represents the private metafield value type.
+        ///The `ISO 3166` country code of `AI`.
         ///</summary>
-        public string? valueType { get; set; }
+        AI,
+        ///<summary>
+        ///The `ISO 3166` country code of `AL`.
+        ///</summary>
+        AL,
+        ///<summary>
+        ///The `ISO 3166` country code of `AM`.
+        ///</summary>
+        AM,
+        ///<summary>
+        ///The `ISO 3166` country code of `AO`.
+        ///</summary>
+        AO,
+        ///<summary>
+        ///The `ISO 3166` country code of `AQ`.
+        ///</summary>
+        AQ,
+        ///<summary>
+        ///The `ISO 3166` country code of `AR`.
+        ///</summary>
+        AR,
+        ///<summary>
+        ///The `ISO 3166` country code of `AS`.
+        ///</summary>
+        AS,
+        ///<summary>
+        ///The `ISO 3166` country code of `AT`.
+        ///</summary>
+        AT,
+        ///<summary>
+        ///The `ISO 3166` country code of `AU`.
+        ///</summary>
+        AU,
+        ///<summary>
+        ///The `ISO 3166` country code of `AW`.
+        ///</summary>
+        AW,
+        ///<summary>
+        ///The `ISO 3166` country code of `AX`.
+        ///</summary>
+        AX,
+        ///<summary>
+        ///The `ISO 3166` country code of `AZ`.
+        ///</summary>
+        AZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `BA`.
+        ///</summary>
+        BA,
+        ///<summary>
+        ///The `ISO 3166` country code of `BB`.
+        ///</summary>
+        BB,
+        ///<summary>
+        ///The `ISO 3166` country code of `BD`.
+        ///</summary>
+        BD,
+        ///<summary>
+        ///The `ISO 3166` country code of `BE`.
+        ///</summary>
+        BE,
+        ///<summary>
+        ///The `ISO 3166` country code of `BF`.
+        ///</summary>
+        BF,
+        ///<summary>
+        ///The `ISO 3166` country code of `BG`.
+        ///</summary>
+        BG,
+        ///<summary>
+        ///The `ISO 3166` country code of `BH`.
+        ///</summary>
+        BH,
+        ///<summary>
+        ///The `ISO 3166` country code of `BI`.
+        ///</summary>
+        BI,
+        ///<summary>
+        ///The `ISO 3166` country code of `BJ`.
+        ///</summary>
+        BJ,
+        ///<summary>
+        ///The `ISO 3166` country code of `BL`.
+        ///</summary>
+        BL,
+        ///<summary>
+        ///The `ISO 3166` country code of `BM`.
+        ///</summary>
+        BM,
+        ///<summary>
+        ///The `ISO 3166` country code of `BN`.
+        ///</summary>
+        BN,
+        ///<summary>
+        ///The `ISO 3166` country code of `BO`.
+        ///</summary>
+        BO,
+        ///<summary>
+        ///The `ISO 3166` country code of `BQ`.
+        ///</summary>
+        BQ,
+        ///<summary>
+        ///The `ISO 3166` country code of `BR`.
+        ///</summary>
+        BR,
+        ///<summary>
+        ///The `ISO 3166` country code of `BS`.
+        ///</summary>
+        BS,
+        ///<summary>
+        ///The `ISO 3166` country code of `BT`.
+        ///</summary>
+        BT,
+        ///<summary>
+        ///The `ISO 3166` country code of `BV`.
+        ///</summary>
+        BV,
+        ///<summary>
+        ///The `ISO 3166` country code of `BW`.
+        ///</summary>
+        BW,
+        ///<summary>
+        ///The `ISO 3166` country code of `BY`.
+        ///</summary>
+        BY,
+        ///<summary>
+        ///The `ISO 3166` country code of `BZ`.
+        ///</summary>
+        BZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `CA`.
+        ///</summary>
+        CA,
+        ///<summary>
+        ///The `ISO 3166` country code of `CC`.
+        ///</summary>
+        CC,
+        ///<summary>
+        ///The `ISO 3166` country code of `CD`.
+        ///</summary>
+        CD,
+        ///<summary>
+        ///The `ISO 3166` country code of `CF`.
+        ///</summary>
+        CF,
+        ///<summary>
+        ///The `ISO 3166` country code of `CG`.
+        ///</summary>
+        CG,
+        ///<summary>
+        ///The `ISO 3166` country code of `CH`.
+        ///</summary>
+        CH,
+        ///<summary>
+        ///The `ISO 3166` country code of `CI`.
+        ///</summary>
+        CI,
+        ///<summary>
+        ///The `ISO 3166` country code of `CK`.
+        ///</summary>
+        CK,
+        ///<summary>
+        ///The `ISO 3166` country code of `CL`.
+        ///</summary>
+        CL,
+        ///<summary>
+        ///The `ISO 3166` country code of `CM`.
+        ///</summary>
+        CM,
+        ///<summary>
+        ///The `ISO 3166` country code of `CN`.
+        ///</summary>
+        CN,
+        ///<summary>
+        ///The `ISO 3166` country code of `CO`.
+        ///</summary>
+        CO,
+        ///<summary>
+        ///The `ISO 3166` country code of `CR`.
+        ///</summary>
+        CR,
+        ///<summary>
+        ///The `ISO 3166` country code of `CU`.
+        ///</summary>
+        CU,
+        ///<summary>
+        ///The `ISO 3166` country code of `CV`.
+        ///</summary>
+        CV,
+        ///<summary>
+        ///The `ISO 3166` country code of `CW`.
+        ///</summary>
+        CW,
+        ///<summary>
+        ///The `ISO 3166` country code of `CX`.
+        ///</summary>
+        CX,
+        ///<summary>
+        ///The `ISO 3166` country code of `CY`.
+        ///</summary>
+        CY,
+        ///<summary>
+        ///The `ISO 3166` country code of `CZ`.
+        ///</summary>
+        CZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `DE`.
+        ///</summary>
+        DE,
+        ///<summary>
+        ///The `ISO 3166` country code of `DJ`.
+        ///</summary>
+        DJ,
+        ///<summary>
+        ///The `ISO 3166` country code of `DK`.
+        ///</summary>
+        DK,
+        ///<summary>
+        ///The `ISO 3166` country code of `DM`.
+        ///</summary>
+        DM,
+        ///<summary>
+        ///The `ISO 3166` country code of `DO`.
+        ///</summary>
+        DO,
+        ///<summary>
+        ///The `ISO 3166` country code of `DZ`.
+        ///</summary>
+        DZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `EC`.
+        ///</summary>
+        EC,
+        ///<summary>
+        ///The `ISO 3166` country code of `EE`.
+        ///</summary>
+        EE,
+        ///<summary>
+        ///The `ISO 3166` country code of `EG`.
+        ///</summary>
+        EG,
+        ///<summary>
+        ///The `ISO 3166` country code of `EH`.
+        ///</summary>
+        EH,
+        ///<summary>
+        ///The `ISO 3166` country code of `ER`.
+        ///</summary>
+        ER,
+        ///<summary>
+        ///The `ISO 3166` country code of `ES`.
+        ///</summary>
+        ES,
+        ///<summary>
+        ///The `ISO 3166` country code of `ET`.
+        ///</summary>
+        ET,
+        ///<summary>
+        ///The `ISO 3166` country code of `FI`.
+        ///</summary>
+        FI,
+        ///<summary>
+        ///The `ISO 3166` country code of `FJ`.
+        ///</summary>
+        FJ,
+        ///<summary>
+        ///The `ISO 3166` country code of `FK`.
+        ///</summary>
+        FK,
+        ///<summary>
+        ///The `ISO 3166` country code of `FM`.
+        ///</summary>
+        FM,
+        ///<summary>
+        ///The `ISO 3166` country code of `FO`.
+        ///</summary>
+        FO,
+        ///<summary>
+        ///The `ISO 3166` country code of `FR`.
+        ///</summary>
+        FR,
+        ///<summary>
+        ///The `ISO 3166` country code of `GA`.
+        ///</summary>
+        GA,
+        ///<summary>
+        ///The `ISO 3166` country code of `GB`.
+        ///</summary>
+        GB,
+        ///<summary>
+        ///The `ISO 3166` country code of `GD`.
+        ///</summary>
+        GD,
+        ///<summary>
+        ///The `ISO 3166` country code of `GE`.
+        ///</summary>
+        GE,
+        ///<summary>
+        ///The `ISO 3166` country code of `GF`.
+        ///</summary>
+        GF,
+        ///<summary>
+        ///The `ISO 3166` country code of `GG`.
+        ///</summary>
+        GG,
+        ///<summary>
+        ///The `ISO 3166` country code of `GH`.
+        ///</summary>
+        GH,
+        ///<summary>
+        ///The `ISO 3166` country code of `GI`.
+        ///</summary>
+        GI,
+        ///<summary>
+        ///The `ISO 3166` country code of `GL`.
+        ///</summary>
+        GL,
+        ///<summary>
+        ///The `ISO 3166` country code of `GM`.
+        ///</summary>
+        GM,
+        ///<summary>
+        ///The `ISO 3166` country code of `GN`.
+        ///</summary>
+        GN,
+        ///<summary>
+        ///The `ISO 3166` country code of `GP`.
+        ///</summary>
+        GP,
+        ///<summary>
+        ///The `ISO 3166` country code of `GQ`.
+        ///</summary>
+        GQ,
+        ///<summary>
+        ///The `ISO 3166` country code of `GR`.
+        ///</summary>
+        GR,
+        ///<summary>
+        ///The `ISO 3166` country code of `GS`.
+        ///</summary>
+        GS,
+        ///<summary>
+        ///The `ISO 3166` country code of `GT`.
+        ///</summary>
+        GT,
+        ///<summary>
+        ///The `ISO 3166` country code of `GU`.
+        ///</summary>
+        GU,
+        ///<summary>
+        ///The `ISO 3166` country code of `GW`.
+        ///</summary>
+        GW,
+        ///<summary>
+        ///The `ISO 3166` country code of `GY`.
+        ///</summary>
+        GY,
+        ///<summary>
+        ///The `ISO 3166` country code of `HK`.
+        ///</summary>
+        HK,
+        ///<summary>
+        ///The `ISO 3166` country code of `HM`.
+        ///</summary>
+        HM,
+        ///<summary>
+        ///The `ISO 3166` country code of `HN`.
+        ///</summary>
+        HN,
+        ///<summary>
+        ///The `ISO 3166` country code of `HR`.
+        ///</summary>
+        HR,
+        ///<summary>
+        ///The `ISO 3166` country code of `HT`.
+        ///</summary>
+        HT,
+        ///<summary>
+        ///The `ISO 3166` country code of `HU`.
+        ///</summary>
+        HU,
+        ///<summary>
+        ///The `ISO 3166` country code of `ID`.
+        ///</summary>
+        ID,
+        ///<summary>
+        ///The `ISO 3166` country code of `IE`.
+        ///</summary>
+        IE,
+        ///<summary>
+        ///The `ISO 3166` country code of `IL`.
+        ///</summary>
+        IL,
+        ///<summary>
+        ///The `ISO 3166` country code of `IM`.
+        ///</summary>
+        IM,
+        ///<summary>
+        ///The `ISO 3166` country code of `IN`.
+        ///</summary>
+        IN,
+        ///<summary>
+        ///The `ISO 3166` country code of `IO`.
+        ///</summary>
+        IO,
+        ///<summary>
+        ///The `ISO 3166` country code of `IQ`.
+        ///</summary>
+        IQ,
+        ///<summary>
+        ///The `ISO 3166` country code of `IR`.
+        ///</summary>
+        IR,
+        ///<summary>
+        ///The `ISO 3166` country code of `IS`.
+        ///</summary>
+        IS,
+        ///<summary>
+        ///The `ISO 3166` country code of `IT`.
+        ///</summary>
+        IT,
+        ///<summary>
+        ///The `ISO 3166` country code of `JE`.
+        ///</summary>
+        JE,
+        ///<summary>
+        ///The `ISO 3166` country code of `JM`.
+        ///</summary>
+        JM,
+        ///<summary>
+        ///The `ISO 3166` country code of `JO`.
+        ///</summary>
+        JO,
+        ///<summary>
+        ///The `ISO 3166` country code of `JP`.
+        ///</summary>
+        JP,
+        ///<summary>
+        ///The `ISO 3166` country code of `KE`.
+        ///</summary>
+        KE,
+        ///<summary>
+        ///The `ISO 3166` country code of `KG`.
+        ///</summary>
+        KG,
+        ///<summary>
+        ///The `ISO 3166` country code of `KH`.
+        ///</summary>
+        KH,
+        ///<summary>
+        ///The `ISO 3166` country code of `KI`.
+        ///</summary>
+        KI,
+        ///<summary>
+        ///The `ISO 3166` country code of `KM`.
+        ///</summary>
+        KM,
+        ///<summary>
+        ///The `ISO 3166` country code of `KN`.
+        ///</summary>
+        KN,
+        ///<summary>
+        ///The `ISO 3166` country code of `KP`.
+        ///</summary>
+        KP,
+        ///<summary>
+        ///The `ISO 3166` country code of `KR`.
+        ///</summary>
+        KR,
+        ///<summary>
+        ///The `ISO 3166` country code of `KW`.
+        ///</summary>
+        KW,
+        ///<summary>
+        ///The `ISO 3166` country code of `KY`.
+        ///</summary>
+        KY,
+        ///<summary>
+        ///The `ISO 3166` country code of `KZ`.
+        ///</summary>
+        KZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `LA`.
+        ///</summary>
+        LA,
+        ///<summary>
+        ///The `ISO 3166` country code of `LB`.
+        ///</summary>
+        LB,
+        ///<summary>
+        ///The `ISO 3166` country code of `LC`.
+        ///</summary>
+        LC,
+        ///<summary>
+        ///The `ISO 3166` country code of `LI`.
+        ///</summary>
+        LI,
+        ///<summary>
+        ///The `ISO 3166` country code of `LK`.
+        ///</summary>
+        LK,
+        ///<summary>
+        ///The `ISO 3166` country code of `LR`.
+        ///</summary>
+        LR,
+        ///<summary>
+        ///The `ISO 3166` country code of `LS`.
+        ///</summary>
+        LS,
+        ///<summary>
+        ///The `ISO 3166` country code of `LT`.
+        ///</summary>
+        LT,
+        ///<summary>
+        ///The `ISO 3166` country code of `LU`.
+        ///</summary>
+        LU,
+        ///<summary>
+        ///The `ISO 3166` country code of `LV`.
+        ///</summary>
+        LV,
+        ///<summary>
+        ///The `ISO 3166` country code of `LY`.
+        ///</summary>
+        LY,
+        ///<summary>
+        ///The `ISO 3166` country code of `MA`.
+        ///</summary>
+        MA,
+        ///<summary>
+        ///The `ISO 3166` country code of `MC`.
+        ///</summary>
+        MC,
+        ///<summary>
+        ///The `ISO 3166` country code of `MD`.
+        ///</summary>
+        MD,
+        ///<summary>
+        ///The `ISO 3166` country code of `ME`.
+        ///</summary>
+        ME,
+        ///<summary>
+        ///The `ISO 3166` country code of `MF`.
+        ///</summary>
+        MF,
+        ///<summary>
+        ///The `ISO 3166` country code of `MG`.
+        ///</summary>
+        MG,
+        ///<summary>
+        ///The `ISO 3166` country code of `MH`.
+        ///</summary>
+        MH,
+        ///<summary>
+        ///The `ISO 3166` country code of `MK`.
+        ///</summary>
+        MK,
+        ///<summary>
+        ///The `ISO 3166` country code of `ML`.
+        ///</summary>
+        ML,
+        ///<summary>
+        ///The `ISO 3166` country code of `MM`.
+        ///</summary>
+        MM,
+        ///<summary>
+        ///The `ISO 3166` country code of `MN`.
+        ///</summary>
+        MN,
+        ///<summary>
+        ///The `ISO 3166` country code of `MO`.
+        ///</summary>
+        MO,
+        ///<summary>
+        ///The `ISO 3166` country code of `MP`.
+        ///</summary>
+        MP,
+        ///<summary>
+        ///The `ISO 3166` country code of `MQ`.
+        ///</summary>
+        MQ,
+        ///<summary>
+        ///The `ISO 3166` country code of `MR`.
+        ///</summary>
+        MR,
+        ///<summary>
+        ///The `ISO 3166` country code of `MS`.
+        ///</summary>
+        MS,
+        ///<summary>
+        ///The `ISO 3166` country code of `MT`.
+        ///</summary>
+        MT,
+        ///<summary>
+        ///The `ISO 3166` country code of `MU`.
+        ///</summary>
+        MU,
+        ///<summary>
+        ///The `ISO 3166` country code of `MV`.
+        ///</summary>
+        MV,
+        ///<summary>
+        ///The `ISO 3166` country code of `MW`.
+        ///</summary>
+        MW,
+        ///<summary>
+        ///The `ISO 3166` country code of `MX`.
+        ///</summary>
+        MX,
+        ///<summary>
+        ///The `ISO 3166` country code of `MY`.
+        ///</summary>
+        MY,
+        ///<summary>
+        ///The `ISO 3166` country code of `MZ`.
+        ///</summary>
+        MZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `NA`.
+        ///</summary>
+        NA,
+        ///<summary>
+        ///The `ISO 3166` country code of `NC`.
+        ///</summary>
+        NC,
+        ///<summary>
+        ///The `ISO 3166` country code of `NE`.
+        ///</summary>
+        NE,
+        ///<summary>
+        ///The `ISO 3166` country code of `NF`.
+        ///</summary>
+        NF,
+        ///<summary>
+        ///The `ISO 3166` country code of `NG`.
+        ///</summary>
+        NG,
+        ///<summary>
+        ///The `ISO 3166` country code of `NI`.
+        ///</summary>
+        NI,
+        ///<summary>
+        ///The `ISO 3166` country code of `NL`.
+        ///</summary>
+        NL,
+        ///<summary>
+        ///The `ISO 3166` country code of `NO`.
+        ///</summary>
+        NO,
+        ///<summary>
+        ///The `ISO 3166` country code of `NP`.
+        ///</summary>
+        NP,
+        ///<summary>
+        ///The `ISO 3166` country code of `NR`.
+        ///</summary>
+        NR,
+        ///<summary>
+        ///The `ISO 3166` country code of `NS`.
+        ///</summary>
+        NS,
+        ///<summary>
+        ///The `ISO 3166` country code of `NU`.
+        ///</summary>
+        NU,
+        ///<summary>
+        ///The `ISO 3166` country code of `NZ`.
+        ///</summary>
+        NZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `OM`.
+        ///</summary>
+        OM,
+        ///<summary>
+        ///The `ISO 3166` country code of `PA`.
+        ///</summary>
+        PA,
+        ///<summary>
+        ///The `ISO 3166` country code of `PE`.
+        ///</summary>
+        PE,
+        ///<summary>
+        ///The `ISO 3166` country code of `PF`.
+        ///</summary>
+        PF,
+        ///<summary>
+        ///The `ISO 3166` country code of `PG`.
+        ///</summary>
+        PG,
+        ///<summary>
+        ///The `ISO 3166` country code of `PH`.
+        ///</summary>
+        PH,
+        ///<summary>
+        ///The `ISO 3166` country code of `PK`.
+        ///</summary>
+        PK,
+        ///<summary>
+        ///The `ISO 3166` country code of `PL`.
+        ///</summary>
+        PL,
+        ///<summary>
+        ///The `ISO 3166` country code of `PM`.
+        ///</summary>
+        PM,
+        ///<summary>
+        ///The `ISO 3166` country code of `PN`.
+        ///</summary>
+        PN,
+        ///<summary>
+        ///The `ISO 3166` country code of `PR`.
+        ///</summary>
+        PR,
+        ///<summary>
+        ///The `ISO 3166` country code of `PS`.
+        ///</summary>
+        PS,
+        ///<summary>
+        ///The `ISO 3166` country code of `PT`.
+        ///</summary>
+        PT,
+        ///<summary>
+        ///The `ISO 3166` country code of `PW`.
+        ///</summary>
+        PW,
+        ///<summary>
+        ///The `ISO 3166` country code of `PY`.
+        ///</summary>
+        PY,
+        ///<summary>
+        ///The `ISO 3166` country code of `QA`.
+        ///</summary>
+        QA,
+        ///<summary>
+        ///The `ISO 3166` country code of `RE`.
+        ///</summary>
+        RE,
+        ///<summary>
+        ///The `ISO 3166` country code of `RO`.
+        ///</summary>
+        RO,
+        ///<summary>
+        ///The `ISO 3166` country code of `RS`.
+        ///</summary>
+        RS,
+        ///<summary>
+        ///The `ISO 3166` country code of `RU`.
+        ///</summary>
+        RU,
+        ///<summary>
+        ///The `ISO 3166` country code of `RW`.
+        ///</summary>
+        RW,
+        ///<summary>
+        ///The `ISO 3166` country code of `SA`.
+        ///</summary>
+        SA,
+        ///<summary>
+        ///The `ISO 3166` country code of `SB`.
+        ///</summary>
+        SB,
+        ///<summary>
+        ///The `ISO 3166` country code of `SC`.
+        ///</summary>
+        SC,
+        ///<summary>
+        ///The `ISO 3166` country code of `SD`.
+        ///</summary>
+        SD,
+        ///<summary>
+        ///The `ISO 3166` country code of `SE`.
+        ///</summary>
+        SE,
+        ///<summary>
+        ///The `ISO 3166` country code of `SG`.
+        ///</summary>
+        SG,
+        ///<summary>
+        ///The `ISO 3166` country code of `SH`.
+        ///</summary>
+        SH,
+        ///<summary>
+        ///The `ISO 3166` country code of `SI`.
+        ///</summary>
+        SI,
+        ///<summary>
+        ///The `ISO 3166` country code of `SJ`.
+        ///</summary>
+        SJ,
+        ///<summary>
+        ///The `ISO 3166` country code of `SK`.
+        ///</summary>
+        SK,
+        ///<summary>
+        ///The `ISO 3166` country code of `SL`.
+        ///</summary>
+        SL,
+        ///<summary>
+        ///The `ISO 3166` country code of `SM`.
+        ///</summary>
+        SM,
+        ///<summary>
+        ///The `ISO 3166` country code of `SN`.
+        ///</summary>
+        SN,
+        ///<summary>
+        ///The `ISO 3166` country code of `SO`.
+        ///</summary>
+        SO,
+        ///<summary>
+        ///The `ISO 3166` country code of `SR`.
+        ///</summary>
+        SR,
+        ///<summary>
+        ///The `ISO 3166` country code of `SS`.
+        ///</summary>
+        SS,
+        ///<summary>
+        ///The `ISO 3166` country code of `ST`.
+        ///</summary>
+        ST,
+        ///<summary>
+        ///The `ISO 3166` country code of `SV`.
+        ///</summary>
+        SV,
+        ///<summary>
+        ///The `ISO 3166` country code of `SX`.
+        ///</summary>
+        SX,
+        ///<summary>
+        ///The `ISO 3166` country code of `SY`.
+        ///</summary>
+        SY,
+        ///<summary>
+        ///The `ISO 3166` country code of `SZ`.
+        ///</summary>
+        SZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `TA`.
+        ///</summary>
+        TA,
+        ///<summary>
+        ///The `ISO 3166` country code of `TC`.
+        ///</summary>
+        TC,
+        ///<summary>
+        ///The `ISO 3166` country code of `TD`.
+        ///</summary>
+        TD,
+        ///<summary>
+        ///The `ISO 3166` country code of `TF`.
+        ///</summary>
+        TF,
+        ///<summary>
+        ///The `ISO 3166` country code of `TG`.
+        ///</summary>
+        TG,
+        ///<summary>
+        ///The `ISO 3166` country code of `TH`.
+        ///</summary>
+        TH,
+        ///<summary>
+        ///The `ISO 3166` country code of `TJ`.
+        ///</summary>
+        TJ,
+        ///<summary>
+        ///The `ISO 3166` country code of `TK`.
+        ///</summary>
+        TK,
+        ///<summary>
+        ///The `ISO 3166` country code of `TL`.
+        ///</summary>
+        TL,
+        ///<summary>
+        ///The `ISO 3166` country code of `TM`.
+        ///</summary>
+        TM,
+        ///<summary>
+        ///The `ISO 3166` country code of `TN`.
+        ///</summary>
+        TN,
+        ///<summary>
+        ///The `ISO 3166` country code of `TO`.
+        ///</summary>
+        TO,
+        ///<summary>
+        ///The `ISO 3166` country code of `TR`.
+        ///</summary>
+        TR,
+        ///<summary>
+        ///The `ISO 3166` country code of `TT`.
+        ///</summary>
+        TT,
+        ///<summary>
+        ///The `ISO 3166` country code of `TV`.
+        ///</summary>
+        TV,
+        ///<summary>
+        ///The `ISO 3166` country code of `TW`.
+        ///</summary>
+        TW,
+        ///<summary>
+        ///The `ISO 3166` country code of `TZ`.
+        ///</summary>
+        TZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `UA`.
+        ///</summary>
+        UA,
+        ///<summary>
+        ///The `ISO 3166` country code of `UG`.
+        ///</summary>
+        UG,
+        ///<summary>
+        ///The `ISO 3166` country code of `UM`.
+        ///</summary>
+        UM,
+        ///<summary>
+        ///The `ISO 3166` country code of `US`.
+        ///</summary>
+        US,
+        ///<summary>
+        ///The `ISO 3166` country code of `UY`.
+        ///</summary>
+        UY,
+        ///<summary>
+        ///The `ISO 3166` country code of `UZ`.
+        ///</summary>
+        UZ,
+        ///<summary>
+        ///The `ISO 3166` country code of `VA`.
+        ///</summary>
+        VA,
+        ///<summary>
+        ///The `ISO 3166` country code of `VC`.
+        ///</summary>
+        VC,
+        ///<summary>
+        ///The `ISO 3166` country code of `VE`.
+        ///</summary>
+        VE,
+        ///<summary>
+        ///The `ISO 3166` country code of `VG`.
+        ///</summary>
+        VG,
+        ///<summary>
+        ///The `ISO 3166` country code of `VI`.
+        ///</summary>
+        VI,
+        ///<summary>
+        ///The `ISO 3166` country code of `VN`.
+        ///</summary>
+        VN,
+        ///<summary>
+        ///The `ISO 3166` country code of `VU`.
+        ///</summary>
+        VU,
+        ///<summary>
+        ///The `ISO 3166` country code of `WF`.
+        ///</summary>
+        WF,
+        ///<summary>
+        ///The `ISO 3166` country code of `WS`.
+        ///</summary>
+        WS,
+        ///<summary>
+        ///The `ISO 3166` country code of `XK`.
+        ///</summary>
+        XK,
+        ///<summary>
+        ///The `ISO 3166` country code of `YE`.
+        ///</summary>
+        YE,
+        ///<summary>
+        ///The `ISO 3166` country code of `YT`.
+        ///</summary>
+        YT,
+        ///<summary>
+        ///The `ISO 3166` country code of `ZA`.
+        ///</summary>
+        ZA,
+        ///<summary>
+        ///The `ISO 3166` country code of `ZM`.
+        ///</summary>
+        ZM,
+        ///<summary>
+        ///The `ISO 3166` country code of `ZW`.
+        ///</summary>
+        ZW,
+        ///<summary>
+        ///The `ISO 3166` country code of `XX`.
+        ///</summary>
+        XX,
+    }
+
+    public static class PrivacyCountryCodeStringValues
+    {
+        public const string AN = @"AN";
+        public const string AC = @"AC";
+        public const string AD = @"AD";
+        public const string AE = @"AE";
+        public const string AF = @"AF";
+        public const string AG = @"AG";
+        public const string AI = @"AI";
+        public const string AL = @"AL";
+        public const string AM = @"AM";
+        public const string AO = @"AO";
+        public const string AQ = @"AQ";
+        public const string AR = @"AR";
+        public const string AS = @"AS";
+        public const string AT = @"AT";
+        public const string AU = @"AU";
+        public const string AW = @"AW";
+        public const string AX = @"AX";
+        public const string AZ = @"AZ";
+        public const string BA = @"BA";
+        public const string BB = @"BB";
+        public const string BD = @"BD";
+        public const string BE = @"BE";
+        public const string BF = @"BF";
+        public const string BG = @"BG";
+        public const string BH = @"BH";
+        public const string BI = @"BI";
+        public const string BJ = @"BJ";
+        public const string BL = @"BL";
+        public const string BM = @"BM";
+        public const string BN = @"BN";
+        public const string BO = @"BO";
+        public const string BQ = @"BQ";
+        public const string BR = @"BR";
+        public const string BS = @"BS";
+        public const string BT = @"BT";
+        public const string BV = @"BV";
+        public const string BW = @"BW";
+        public const string BY = @"BY";
+        public const string BZ = @"BZ";
+        public const string CA = @"CA";
+        public const string CC = @"CC";
+        public const string CD = @"CD";
+        public const string CF = @"CF";
+        public const string CG = @"CG";
+        public const string CH = @"CH";
+        public const string CI = @"CI";
+        public const string CK = @"CK";
+        public const string CL = @"CL";
+        public const string CM = @"CM";
+        public const string CN = @"CN";
+        public const string CO = @"CO";
+        public const string CR = @"CR";
+        public const string CU = @"CU";
+        public const string CV = @"CV";
+        public const string CW = @"CW";
+        public const string CX = @"CX";
+        public const string CY = @"CY";
+        public const string CZ = @"CZ";
+        public const string DE = @"DE";
+        public const string DJ = @"DJ";
+        public const string DK = @"DK";
+        public const string DM = @"DM";
+        public const string DO = @"DO";
+        public const string DZ = @"DZ";
+        public const string EC = @"EC";
+        public const string EE = @"EE";
+        public const string EG = @"EG";
+        public const string EH = @"EH";
+        public const string ER = @"ER";
+        public const string ES = @"ES";
+        public const string ET = @"ET";
+        public const string FI = @"FI";
+        public const string FJ = @"FJ";
+        public const string FK = @"FK";
+        public const string FM = @"FM";
+        public const string FO = @"FO";
+        public const string FR = @"FR";
+        public const string GA = @"GA";
+        public const string GB = @"GB";
+        public const string GD = @"GD";
+        public const string GE = @"GE";
+        public const string GF = @"GF";
+        public const string GG = @"GG";
+        public const string GH = @"GH";
+        public const string GI = @"GI";
+        public const string GL = @"GL";
+        public const string GM = @"GM";
+        public const string GN = @"GN";
+        public const string GP = @"GP";
+        public const string GQ = @"GQ";
+        public const string GR = @"GR";
+        public const string GS = @"GS";
+        public const string GT = @"GT";
+        public const string GU = @"GU";
+        public const string GW = @"GW";
+        public const string GY = @"GY";
+        public const string HK = @"HK";
+        public const string HM = @"HM";
+        public const string HN = @"HN";
+        public const string HR = @"HR";
+        public const string HT = @"HT";
+        public const string HU = @"HU";
+        public const string ID = @"ID";
+        public const string IE = @"IE";
+        public const string IL = @"IL";
+        public const string IM = @"IM";
+        public const string IN = @"IN";
+        public const string IO = @"IO";
+        public const string IQ = @"IQ";
+        public const string IR = @"IR";
+        public const string IS = @"IS";
+        public const string IT = @"IT";
+        public const string JE = @"JE";
+        public const string JM = @"JM";
+        public const string JO = @"JO";
+        public const string JP = @"JP";
+        public const string KE = @"KE";
+        public const string KG = @"KG";
+        public const string KH = @"KH";
+        public const string KI = @"KI";
+        public const string KM = @"KM";
+        public const string KN = @"KN";
+        public const string KP = @"KP";
+        public const string KR = @"KR";
+        public const string KW = @"KW";
+        public const string KY = @"KY";
+        public const string KZ = @"KZ";
+        public const string LA = @"LA";
+        public const string LB = @"LB";
+        public const string LC = @"LC";
+        public const string LI = @"LI";
+        public const string LK = @"LK";
+        public const string LR = @"LR";
+        public const string LS = @"LS";
+        public const string LT = @"LT";
+        public const string LU = @"LU";
+        public const string LV = @"LV";
+        public const string LY = @"LY";
+        public const string MA = @"MA";
+        public const string MC = @"MC";
+        public const string MD = @"MD";
+        public const string ME = @"ME";
+        public const string MF = @"MF";
+        public const string MG = @"MG";
+        public const string MH = @"MH";
+        public const string MK = @"MK";
+        public const string ML = @"ML";
+        public const string MM = @"MM";
+        public const string MN = @"MN";
+        public const string MO = @"MO";
+        public const string MP = @"MP";
+        public const string MQ = @"MQ";
+        public const string MR = @"MR";
+        public const string MS = @"MS";
+        public const string MT = @"MT";
+        public const string MU = @"MU";
+        public const string MV = @"MV";
+        public const string MW = @"MW";
+        public const string MX = @"MX";
+        public const string MY = @"MY";
+        public const string MZ = @"MZ";
+        public const string NA = @"NA";
+        public const string NC = @"NC";
+        public const string NE = @"NE";
+        public const string NF = @"NF";
+        public const string NG = @"NG";
+        public const string NI = @"NI";
+        public const string NL = @"NL";
+        public const string NO = @"NO";
+        public const string NP = @"NP";
+        public const string NR = @"NR";
+        public const string NS = @"NS";
+        public const string NU = @"NU";
+        public const string NZ = @"NZ";
+        public const string OM = @"OM";
+        public const string PA = @"PA";
+        public const string PE = @"PE";
+        public const string PF = @"PF";
+        public const string PG = @"PG";
+        public const string PH = @"PH";
+        public const string PK = @"PK";
+        public const string PL = @"PL";
+        public const string PM = @"PM";
+        public const string PN = @"PN";
+        public const string PR = @"PR";
+        public const string PS = @"PS";
+        public const string PT = @"PT";
+        public const string PW = @"PW";
+        public const string PY = @"PY";
+        public const string QA = @"QA";
+        public const string RE = @"RE";
+        public const string RO = @"RO";
+        public const string RS = @"RS";
+        public const string RU = @"RU";
+        public const string RW = @"RW";
+        public const string SA = @"SA";
+        public const string SB = @"SB";
+        public const string SC = @"SC";
+        public const string SD = @"SD";
+        public const string SE = @"SE";
+        public const string SG = @"SG";
+        public const string SH = @"SH";
+        public const string SI = @"SI";
+        public const string SJ = @"SJ";
+        public const string SK = @"SK";
+        public const string SL = @"SL";
+        public const string SM = @"SM";
+        public const string SN = @"SN";
+        public const string SO = @"SO";
+        public const string SR = @"SR";
+        public const string SS = @"SS";
+        public const string ST = @"ST";
+        public const string SV = @"SV";
+        public const string SX = @"SX";
+        public const string SY = @"SY";
+        public const string SZ = @"SZ";
+        public const string TA = @"TA";
+        public const string TC = @"TC";
+        public const string TD = @"TD";
+        public const string TF = @"TF";
+        public const string TG = @"TG";
+        public const string TH = @"TH";
+        public const string TJ = @"TJ";
+        public const string TK = @"TK";
+        public const string TL = @"TL";
+        public const string TM = @"TM";
+        public const string TN = @"TN";
+        public const string TO = @"TO";
+        public const string TR = @"TR";
+        public const string TT = @"TT";
+        public const string TV = @"TV";
+        public const string TW = @"TW";
+        public const string TZ = @"TZ";
+        public const string UA = @"UA";
+        public const string UG = @"UG";
+        public const string UM = @"UM";
+        public const string US = @"US";
+        public const string UY = @"UY";
+        public const string UZ = @"UZ";
+        public const string VA = @"VA";
+        public const string VC = @"VC";
+        public const string VE = @"VE";
+        public const string VG = @"VG";
+        public const string VI = @"VI";
+        public const string VN = @"VN";
+        public const string VU = @"VU";
+        public const string WF = @"WF";
+        public const string WS = @"WS";
+        public const string XK = @"XK";
+        public const string YE = @"YE";
+        public const string YT = @"YT";
+        public const string ZA = @"ZA";
+        public const string ZM = @"ZM";
+        public const string ZW = @"ZW";
+        public const string XX = @"XX";
     }
 
     ///<summary>
-    ///An auto-generated type for paginating through multiple PrivateMetafields.
+    ///Return type for `privacyFeaturesDisable` mutation.
     ///</summary>
-    public class PrivateMetafieldConnection : GraphQLObject<PrivateMetafieldConnection>, IConnectionWithNodesAndEdges<PrivateMetafieldEdge, PrivateMetafield>
+    public class PrivacyFeaturesDisablePayload : GraphQLObject<PrivacyFeaturesDisablePayload>
     {
         ///<summary>
-        ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
+        ///The privacy features that were disabled.
         ///</summary>
-        public IEnumerable<PrivateMetafieldEdge>? edges { get; set; }
-        ///<summary>
-        ///A list of nodes that are contained in PrivateMetafieldEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
-        ///</summary>
-        public IEnumerable<PrivateMetafield>? nodes { get; set; }
-        ///<summary>
-        ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
-        ///</summary>
-        public PageInfo? pageInfo { get; set; }
-    }
-
-    ///<summary>
-    ///Return type for `privateMetafieldDelete` mutation.
-    ///</summary>
-    public class PrivateMetafieldDeletePayload : GraphQLObject<PrivateMetafieldDeletePayload>
-    {
-        ///<summary>
-        ///The ID of private metafield that was deleted.
-        ///</summary>
-        public string? deletedPrivateMetafieldId { get; set; }
+        public IEnumerable<string>? featuresDisabled { get; set; }
         ///<summary>
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
+        public IEnumerable<PrivacyFeaturesDisableUserError>? userErrors { get; set; }
     }
 
     ///<summary>
-    ///An auto-generated type which holds one PrivateMetafield and a cursor during pagination.
+    ///An error that occurs during the execution of `PrivacyFeaturesDisable`.
     ///</summary>
-    public class PrivateMetafieldEdge : GraphQLObject<PrivateMetafieldEdge>, IEdge<PrivateMetafield>
+    public class PrivacyFeaturesDisableUserError : GraphQLObject<PrivacyFeaturesDisableUserError>, IDisplayableError
     {
         ///<summary>
-        ///The position of each node in an array, used in [pagination](https://shopify.dev/api/usage/pagination-graphql).
+        ///The error code.
         ///</summary>
-        public string? cursor { get; set; }
+        public string? code { get; set; }
         ///<summary>
-        ///The item at the end of PrivateMetafieldEdge.
+        ///The path to the input field that caused the error.
         ///</summary>
-        public PrivateMetafield? node { get; set; }
+        public IEnumerable<string>? field { get; set; }
+        ///<summary>
+        ///The error message.
+        ///</summary>
+        public string? message { get; set; }
     }
 
     ///<summary>
-    ///Return type for `privateMetafieldUpsert` mutation.
+    ///Possible error codes that can be returned by `PrivacyFeaturesDisableUserError`.
     ///</summary>
-    public class PrivateMetafieldUpsertPayload : GraphQLObject<PrivateMetafieldUpsertPayload>
+    public enum PrivacyFeaturesDisableUserErrorCode
     {
         ///<summary>
-        ///The private metafield that was created or updated.
+        ///Failed to disable privacy features.
         ///</summary>
-        public PrivateMetafield? privateMetafield { get; set; }
-        ///<summary>
-        ///The list of errors that occurred from executing the mutation.
-        ///</summary>
-        public IEnumerable<UserError>? userErrors { get; set; }
+        FAILED,
+    }
+
+    public static class PrivacyFeaturesDisableUserErrorCodeStringValues
+    {
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
-    ///Supported private metafield value types.
+    ///The input fields for a shop's privacy settings.
     ///</summary>
-    public enum PrivateMetafieldValueType
+    public enum PrivacyFeaturesEnum
     {
         ///<summary>
-        ///A string metafield.
+        ///The cookie banner feature.
         ///</summary>
-        STRING,
+        COOKIE_BANNER,
         ///<summary>
-        ///An integer metafield.
+        ///The data sale opt out page feature.
         ///</summary>
-        INTEGER,
+        DATA_SALE_OPT_OUT_PAGE,
         ///<summary>
-        ///A JSON string metafield.
+        ///The privacy policy feature.
         ///</summary>
-        JSON_STRING,
+        PRIVACY_POLICY,
+    }
+
+    public static class PrivacyFeaturesEnumStringValues
+    {
+        public const string COOKIE_BANNER = @"COOKIE_BANNER";
+        public const string DATA_SALE_OPT_OUT_PAGE = @"DATA_SALE_OPT_OUT_PAGE";
+        public const string PRIVACY_POLICY = @"PRIVACY_POLICY";
+    }
+
+    ///<summary>
+    ///A shop's privacy policy settings.
+    ///</summary>
+    public class PrivacyPolicy : GraphQLObject<PrivacyPolicy>
+    {
+        ///<summary>
+        ///Whether the policy is auto managed.
+        ///</summary>
+        public bool? autoManaged { get; set; }
+        ///<summary>
+        ///Policy template supported locales.
+        ///</summary>
+        public IEnumerable<string>? supportedLocales { get; set; }
+    }
+
+    ///<summary>
+    ///A shop's privacy settings.
+    ///</summary>
+    public class PrivacySettings : GraphQLObject<PrivacySettings>
+    {
+        ///<summary>
+        ///Banner customizations for the 'cookie banner'.
+        ///</summary>
+        public CookieBanner? banner { get; set; }
+        ///<summary>
+        ///A shop's data sale opt out page (e.g. CCPA).
+        ///</summary>
+        public DataSaleOptOutPage? dataSaleOptOutPage { get; set; }
+        ///<summary>
+        ///A shop's privacy policy settings.
+        ///</summary>
+        public PrivacyPolicy? privacyPolicy { get; set; }
     }
 
     ///<summary>
@@ -45705,18 +52538,6 @@ namespace ShopifyNet.AdminTypes
         public ProductPriceRangeV2? priceRangeV2 { get; set; }
 
         ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
-
-        ///<summary>
         ///The product category specified by the merchant.
         ///</summary>
         [Obsolete("Deprecated in API version 2024-04. Use `category` instead.")]
@@ -45917,6 +52738,7 @@ namespace ShopifyNet.AdminTypes
         public DateTime? updatedAt { get; set; }
         ///<summary>
         ///A list of [variants](https://shopify.dev/docs/api/admin-graphql/latest/objects/ProductVariant) associated with the product.
+        ///If querying a single product at the root, you can fetch up to 2000 variants.
         ///</summary>
         public ProductVariantConnection? variants { get; set; }
         ///<summary>
@@ -46039,6 +52861,14 @@ namespace ShopifyNet.AdminTypes
         UNAVAILABLE,
     }
 
+    public static class ProductBundleComponentOptionSelectionStatusStringValues
+    {
+        public const string SELECTED = @"SELECTED";
+        public const string DESELECTED = @"DESELECTED";
+        public const string NEW = @"NEW";
+        public const string UNAVAILABLE = @"UNAVAILABLE";
+    }
+
     ///<summary>
     ///A component option value related to a bundle line.
     ///</summary>
@@ -46143,6 +52973,14 @@ namespace ShopifyNet.AdminTypes
         ///Error processing request in the background job.
         ///</summary>
         JOB_ERROR,
+    }
+
+    public static class ProductBundleMutationUserErrorCodeStringValues
+    {
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string JOB_ERROR = @"JOB_ERROR";
     }
 
     ///<summary>
@@ -46255,6 +53093,12 @@ namespace ShopifyNet.AdminTypes
         COMBINED_LISTINGS_NOT_COMPATIBLE_WITH_SHOP,
     }
 
+    public static class ProductChangeStatusUserErrorCodeStringValues
+    {
+        public const string PRODUCT_NOT_FOUND = @"PRODUCT_NOT_FOUND";
+        public const string COMBINED_LISTINGS_NOT_COMPATIBLE_WITH_SHOP = @"COMBINED_LISTINGS_NOT_COMPATIBLE_WITH_SHOP";
+    }
+
     ///<summary>
     ///The set of valid sort keys for products belonging to a collection.
     ///</summary>
@@ -46292,6 +53136,18 @@ namespace ShopifyNet.AdminTypes
         ///Sort by title.
         ///</summary>
         TITLE,
+    }
+
+    public static class ProductCollectionSortKeysStringValues
+    {
+        public const string BEST_SELLING = @"BEST_SELLING";
+        public const string COLLECTION_DEFAULT = @"COLLECTION_DEFAULT";
+        public const string CREATED = @"CREATED";
+        public const string ID = @"ID";
+        public const string MANUAL = @"MANUAL";
+        public const string PRICE = @"PRICE";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
     }
 
     ///<summary>
@@ -46680,6 +53536,12 @@ namespace ShopifyNet.AdminTypes
         TAKEN,
     }
 
+    public static class ProductFeedCreateUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+    }
+
     ///<summary>
     ///Return type for `productFeedDelete` mutation.
     ///</summary>
@@ -46725,6 +53587,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class ProductFeedDeleteUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one ProductFeed and a cursor during pagination.
     ///</summary>
@@ -46755,11 +53622,21 @@ namespace ShopifyNet.AdminTypes
         INACTIVE,
     }
 
+    public static class ProductFeedStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string INACTIVE = @"INACTIVE";
+    }
+
     ///<summary>
     ///Return type for `productFullSync` mutation.
     ///</summary>
     public class ProductFullSyncPayload : GraphQLObject<ProductFullSyncPayload>
     {
+        ///<summary>
+        ///The ID for the full sync operation.
+        ///</summary>
+        public string? id { get; set; }
         ///<summary>
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
@@ -46796,6 +53673,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class ProductFullSyncUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the ProductImage query.
     ///</summary>
@@ -46813,11 +53695,13 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `position` value.
         ///</summary>
         POSITION,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class ProductImageSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string POSITION = @"POSITION";
     }
 
     ///<summary>
@@ -46863,11 +53747,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `position` value.
         ///</summary>
         POSITION,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class ProductMediaSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string POSITION = @"POSITION";
     }
 
     ///<summary>
@@ -46911,6 +53796,13 @@ namespace ShopifyNet.AdminTypes
         ///Operation is complete.
         ///</summary>
         COMPLETE,
+    }
+
+    public static class ProductOperationStatusStringValues
+    {
+        public const string CREATED = @"CREATED";
+        public const string ACTIVE = @"ACTIVE";
+        public const string COMPLETE = @"COMPLETE";
     }
 
     ///<summary>
@@ -46967,6 +53859,12 @@ namespace ShopifyNet.AdminTypes
         CREATE,
     }
 
+    public static class ProductOptionCreateVariantStrategyStringValues
+    {
+        public const string LEAVE_AS_IS = @"LEAVE_AS_IS";
+        public const string CREATE = @"CREATE";
+    }
+
     ///<summary>
     ///The set of strategies available for use on the `productOptionDelete` mutation.
     ///</summary>
@@ -46984,6 +53882,13 @@ namespace ShopifyNet.AdminTypes
         ///An `Option` with multiple `values` can be deleted, but the operation only succeeds if no product variants get deleted.
         ///</summary>
         NON_DESTRUCTIVE,
+    }
+
+    public static class ProductOptionDeleteStrategyStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string POSITION = @"POSITION";
+        public const string NON_DESTRUCTIVE = @"NON_DESTRUCTIVE";
     }
 
     ///<summary>
@@ -47147,6 +54052,40 @@ namespace ShopifyNet.AdminTypes
         TOO_MANY_VARIANTS_CREATED,
     }
 
+    public static class ProductOptionUpdateUserErrorCodeStringValues
+    {
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string OPTION_DOES_NOT_EXIST = @"OPTION_DOES_NOT_EXIST";
+        public const string OPTION_ALREADY_EXISTS = @"OPTION_ALREADY_EXISTS";
+        public const string INVALID_POSITION = @"INVALID_POSITION";
+        public const string INVALID_NAME = @"INVALID_NAME";
+        public const string OPTION_VALUES_OVER_LIMIT = @"OPTION_VALUES_OVER_LIMIT";
+        public const string OPTION_VALUE_DOES_NOT_EXIST = @"OPTION_VALUE_DOES_NOT_EXIST";
+        public const string OPTION_VALUE_ALREADY_EXISTS = @"OPTION_VALUE_ALREADY_EXISTS";
+        public const string OPTION_VALUE_HAS_VARIANTS = @"OPTION_VALUE_HAS_VARIANTS";
+        public const string CANNOT_DELETE_ALL_OPTION_VALUES_IN_OPTION = @"CANNOT_DELETE_ALL_OPTION_VALUES_IN_OPTION";
+        public const string CANNOT_LEAVE_OPTIONS_WITHOUT_VARIANTS = @"CANNOT_LEAVE_OPTIONS_WITHOUT_VARIANTS";
+        public const string NO_KEY_ON_CREATE = @"NO_KEY_ON_CREATE";
+        public const string KEY_MISSING_IN_INPUT = @"KEY_MISSING_IN_INPUT";
+        public const string DUPLICATED_OPTION_VALUE = @"DUPLICATED_OPTION_VALUE";
+        public const string OPTION_NAME_TOO_LONG = @"OPTION_NAME_TOO_LONG";
+        public const string OPTION_VALUE_NAME_TOO_LONG = @"OPTION_VALUE_NAME_TOO_LONG";
+        public const string OPTION_VALUE_CONFLICTING_OPERATION = @"OPTION_VALUE_CONFLICTING_OPERATION";
+        public const string CANNOT_CREATE_VARIANTS_ABOVE_LIMIT = @"CANNOT_CREATE_VARIANTS_ABOVE_LIMIT";
+        public const string CANNOT_COMBINE_LINKED_AND_NONLINKED_OPTION_VALUES = @"CANNOT_COMBINE_LINKED_AND_NONLINKED_OPTION_VALUES";
+        public const string INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION = @"INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION";
+        public const string DUPLICATE_LINKED_OPTION = @"DUPLICATE_LINKED_OPTION";
+        public const string OPTION_LINKED_METAFIELD_ALREADY_TAKEN = @"OPTION_LINKED_METAFIELD_ALREADY_TAKEN";
+        public const string LINKED_OPTION_UPDATE_MISSING_VALUES = @"LINKED_OPTION_UPDATE_MISSING_VALUES";
+        public const string LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP = @"LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP";
+        public const string LINKED_METAFIELD_DEFINITION_NOT_FOUND = @"LINKED_METAFIELD_DEFINITION_NOT_FOUND";
+        public const string CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU = @"CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+        public const string CANNOT_DELETE_VARIANT_WITHOUT_PERMISSION = @"CANNOT_DELETE_VARIANT_WITHOUT_PERMISSION";
+        public const string TOO_MANY_VARIANTS_CREATED = @"TOO_MANY_VARIANTS_CREATED";
+    }
+
     ///<summary>
     ///The set of variant strategies available for use in the `productOptionUpdate` mutation.
     ///</summary>
@@ -47168,6 +54107,12 @@ namespace ShopifyNet.AdminTypes
         ///If an option value is deleted, all variants referencing that option value will be deleted.
         ///</summary>
         MANAGE,
+    }
+
+    public static class ProductOptionUpdateVariantStrategyStringValues
+    {
+        public const string LEAVE_AS_IS = @"LEAVE_AS_IS";
+        public const string MANAGE = @"MANAGE";
     }
 
     ///<summary>
@@ -47361,6 +54306,36 @@ namespace ShopifyNet.AdminTypes
         TOO_MANY_VARIANTS_CREATED,
     }
 
+    public static class ProductOptionsCreateUserErrorCodeStringValues
+    {
+        public const string OPTION_ALREADY_EXISTS = @"OPTION_ALREADY_EXISTS";
+        public const string OPTIONS_OVER_LIMIT = @"OPTIONS_OVER_LIMIT";
+        public const string OPTION_VALUES_OVER_LIMIT = @"OPTION_VALUES_OVER_LIMIT";
+        public const string INVALID_NAME = @"INVALID_NAME";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string NEW_OPTION_WITHOUT_VALUE_FOR_EXISTING_VARIANTS = @"NEW_OPTION_WITHOUT_VALUE_FOR_EXISTING_VARIANTS";
+        public const string DUPLICATED_OPTION_NAME = @"DUPLICATED_OPTION_NAME";
+        public const string DUPLICATED_OPTION_VALUE = @"DUPLICATED_OPTION_VALUE";
+        public const string OPTION_NAME_MISSING = @"OPTION_NAME_MISSING";
+        public const string OPTION_VALUES_MISSING = @"OPTION_VALUES_MISSING";
+        public const string OPTION_VALUE_NAME_TOO_LONG = @"OPTION_VALUE_NAME_TOO_LONG";
+        public const string OPTION_NAME_TOO_LONG = @"OPTION_NAME_TOO_LONG";
+        public const string POSITION_OUT_OF_BOUNDS = @"POSITION_OUT_OF_BOUNDS";
+        public const string OPTION_POSITION_MISSING = @"OPTION_POSITION_MISSING";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string LINKED_METAFIELD_DEFINITION_NOT_FOUND = @"LINKED_METAFIELD_DEFINITION_NOT_FOUND";
+        public const string INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION = @"INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION";
+        public const string MISSING_METAFIELD_VALUES_FOR_LINKED_OPTION = @"MISSING_METAFIELD_VALUES_FOR_LINKED_OPTION";
+        public const string CANNOT_COMBINE_LINKED_METAFIELD_AND_OPTION_VALUES = @"CANNOT_COMBINE_LINKED_METAFIELD_AND_OPTION_VALUES";
+        public const string DUPLICATE_LINKED_OPTION = @"DUPLICATE_LINKED_OPTION";
+        public const string OPTION_LINKED_METAFIELD_ALREADY_TAKEN = @"OPTION_LINKED_METAFIELD_ALREADY_TAKEN";
+        public const string LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP = @"LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP";
+        public const string CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU = @"CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+        public const string LINKED_METAFIELD_VALUE_WITHOUT_LINKED_OPTION = @"LINKED_METAFIELD_VALUE_WITHOUT_LINKED_OPTION";
+        public const string TOO_MANY_VARIANTS_CREATED = @"TOO_MANY_VARIANTS_CREATED";
+    }
+
     ///<summary>
     ///Return type for `productOptionsDelete` mutation.
     ///</summary>
@@ -47440,6 +54415,19 @@ namespace ShopifyNet.AdminTypes
         ///Cannot perform option deletion because it would result in deleting variants, and you don't have the required permissions.
         ///</summary>
         CANNOT_DELETE_VARIANT_WITHOUT_PERMISSION,
+    }
+
+    public static class ProductOptionsDeleteUserErrorCodeStringValues
+    {
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string OPTION_DOES_NOT_EXIST = @"OPTION_DOES_NOT_EXIST";
+        public const string OPTIONS_DO_NOT_BELONG_TO_THE_SAME_PRODUCT = @"OPTIONS_DO_NOT_BELONG_TO_THE_SAME_PRODUCT";
+        public const string CANNOT_DELETE_OPTION_WITH_MULTIPLE_VALUES = @"CANNOT_DELETE_OPTION_WITH_MULTIPLE_VALUES";
+        public const string CANNOT_USE_NON_DESTRUCTIVE_STRATEGY = @"CANNOT_USE_NON_DESTRUCTIVE_STRATEGY";
+        public const string CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU = @"CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+        public const string CANNOT_DELETE_VARIANT_WITHOUT_PERMISSION = @"CANNOT_DELETE_VARIANT_WITHOUT_PERMISSION";
     }
 
     ///<summary>
@@ -47533,6 +54521,23 @@ namespace ShopifyNet.AdminTypes
         ///At least one of the product variants has invalid SKUs.
         ///</summary>
         CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU,
+    }
+
+    public static class ProductOptionsReorderUserErrorCodeStringValues
+    {
+        public const string OPTION_NAME_DOES_NOT_EXIST = @"OPTION_NAME_DOES_NOT_EXIST";
+        public const string OPTION_VALUE_DOES_NOT_EXIST = @"OPTION_VALUE_DOES_NOT_EXIST";
+        public const string OPTION_ID_DOES_NOT_EXIST = @"OPTION_ID_DOES_NOT_EXIST";
+        public const string OPTION_VALUE_ID_DOES_NOT_EXIST = @"OPTION_VALUE_ID_DOES_NOT_EXIST";
+        public const string DUPLICATED_OPTION_NAME = @"DUPLICATED_OPTION_NAME";
+        public const string DUPLICATED_OPTION_VALUE = @"DUPLICATED_OPTION_VALUE";
+        public const string MISSING_OPTION_NAME = @"MISSING_OPTION_NAME";
+        public const string MISSING_OPTION_VALUE = @"MISSING_OPTION_VALUE";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string NO_KEY_ON_REORDER = @"NO_KEY_ON_REORDER";
+        public const string MIXING_ID_AND_NAME_KEYS_IS_NOT_ALLOWED = @"MIXING_ID_AND_NAME_KEYS_IS_NOT_ALLOWED";
+        public const string CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU = @"CANNOT_MAKE_CHANGES_IF_VARIANT_IS_MISSING_REQUIRED_SKU";
     }
 
     ///<summary>
@@ -47841,6 +54846,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         NOT_FOUND,
         ///<summary>
+        ///The input argument `metafields` (if present) must contain the `customId` value.
+        ///</summary>
+        METAFIELD_MISMATCH,
+        ///<summary>
         ///Something went wrong, please try again.
         ///</summary>
         GENERIC_ERROR,
@@ -47941,6 +54950,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         DUPLICATE_LINKED_OPTION,
         ///<summary>
+        ///Duplicated metafield value for linked option.
+        ///</summary>
+        DUPLICATED_METAFIELD_VALUE,
+        ///<summary>
         ///Linked options are currently not supported for this shop.
         ///</summary>
         LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP,
@@ -47956,6 +54969,45 @@ namespace ShopifyNet.AdminTypes
         ///Handle already in use. Please provide a new handle.
         ///</summary>
         HANDLE_NOT_UNIQUE,
+    }
+
+    public static class ProductSetUserErrorCodeStringValues
+    {
+        public const string ID_NOT_ALLOWED = @"ID_NOT_ALLOWED";
+        public const string MISSING_FIELD_REQUIRED = @"MISSING_FIELD_REQUIRED";
+        public const string INPUT_MISMATCH = @"INPUT_MISMATCH";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string METAFIELD_MISMATCH = @"METAFIELD_MISMATCH";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string INVALID_METAFIELD = @"INVALID_METAFIELD";
+        public const string INVALID_VARIANT = @"INVALID_VARIANT";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string PRODUCT_VARIANT_DOES_NOT_EXIST = @"PRODUCT_VARIANT_DOES_NOT_EXIST";
+        public const string OPTION_DOES_NOT_EXIST = @"OPTION_DOES_NOT_EXIST";
+        public const string OPTION_VALUE_DOES_NOT_EXIST = @"OPTION_VALUE_DOES_NOT_EXIST";
+        public const string OPTIONS_OVER_LIMIT = @"OPTIONS_OVER_LIMIT";
+        public const string OPTION_VALUES_OVER_LIMIT = @"OPTION_VALUES_OVER_LIMIT";
+        public const string OPTION_VALUES_MISSING = @"OPTION_VALUES_MISSING";
+        public const string DUPLICATED_OPTION_NAME = @"DUPLICATED_OPTION_NAME";
+        public const string DUPLICATED_OPTION_VALUE = @"DUPLICATED_OPTION_VALUE";
+        public const string VARIANTS_OVER_LIMIT = @"VARIANTS_OVER_LIMIT";
+        public const string PRODUCT_OPTIONS_INPUT_MISSING = @"PRODUCT_OPTIONS_INPUT_MISSING";
+        public const string VARIANTS_INPUT_MISSING = @"VARIANTS_INPUT_MISSING";
+        public const string GIFT_CARDS_NOT_ACTIVATED = @"GIFT_CARDS_NOT_ACTIVATED";
+        public const string GIFT_CARD_ATTRIBUTE_CANNOT_BE_CHANGED = @"GIFT_CARD_ATTRIBUTE_CANNOT_BE_CHANGED";
+        public const string INVALID_PRODUCT = @"INVALID_PRODUCT";
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string JOB_ERROR = @"JOB_ERROR";
+        public const string CAPABILITY_VIOLATION = @"CAPABILITY_VIOLATION";
+        public const string CANNOT_COMBINE_LINKED_AND_NONLINKED_OPTION_VALUES = @"CANNOT_COMBINE_LINKED_AND_NONLINKED_OPTION_VALUES";
+        public const string INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION = @"INVALID_METAFIELD_VALUE_FOR_LINKED_OPTION";
+        public const string DUPLICATE_LINKED_OPTION = @"DUPLICATE_LINKED_OPTION";
+        public const string DUPLICATED_METAFIELD_VALUE = @"DUPLICATED_METAFIELD_VALUE";
+        public const string LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP = @"LINKED_OPTIONS_NOT_SUPPORTED_FOR_SHOP";
+        public const string LINKED_METAFIELD_DEFINITION_NOT_FOUND = @"LINKED_METAFIELD_DEFINITION_NOT_FOUND";
+        public const string DUPLICATED_VALUE = @"DUPLICATED_VALUE";
+        public const string HANDLE_NOT_UNIQUE = @"HANDLE_NOT_UNIQUE";
     }
 
     ///<summary>
@@ -48002,6 +55054,19 @@ namespace ShopifyNet.AdminTypes
         VENDOR,
     }
 
+    public static class ProductSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string INVENTORY_TOTAL = @"INVENTORY_TOTAL";
+        public const string PRODUCT_TYPE = @"PRODUCT_TYPE";
+        public const string PUBLISHED_AT = @"PUBLISHED_AT";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+        public const string VENDOR = @"VENDOR";
+    }
+
     ///<summary>
     ///The possible product statuses.
     ///</summary>
@@ -48019,6 +55084,13 @@ namespace ShopifyNet.AdminTypes
         ///The product isn't ready to sell and is unavailable to customers on sales channels and apps. By default, duplicated and unarchived products are set to draft.
         ///</summary>
         DRAFT,
+    }
+
+    public static class ProductStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string ARCHIVED = @"ARCHIVED";
+        public const string DRAFT = @"DRAFT";
     }
 
     ///<summary>
@@ -48110,7 +55182,7 @@ namespace ShopifyNet.AdminTypes
     ///<summary>
     ///Represents a product variant.
     ///</summary>
-    public class ProductVariant : GraphQLObject<ProductVariant>, IHasEvents, IHasMetafieldDefinitions, IHasMetafields, IHasPublishedTranslations, ILegacyInteroperability, INavigable, INode, ICommentEventEmbed, IMetafieldReference, IMetafieldReferencer
+    public class ProductVariant : GraphQLObject<ProductVariant>, IHasEvents, IHasMetafieldDefinitions, IHasMetafields, IHasPublishedTranslations, ILegacyInteroperability, INavigable, INode, ICommentEventEmbed, IDeliveryPromiseParticipantOwner, IMetafieldReference, IMetafieldReferencer
     {
         ///<summary>
         ///Whether the product variant is available for sale.
@@ -48207,18 +55279,6 @@ namespace ShopifyNet.AdminTypes
         ///The price of the product variant in the default shop currency.
         ///</summary>
         public decimal? price { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The product that this variant belongs to.
         ///</summary>
@@ -48463,6 +55523,12 @@ namespace ShopifyNet.AdminTypes
         CONTINUE,
     }
 
+    public static class ProductVariantInventoryPolicyStringValues
+    {
+        public const string DENY = @"DENY";
+        public const string CONTINUE = @"CONTINUE";
+    }
+
     ///<summary>
     ///Return type for `productVariantJoinSellingPlanGroups` mutation.
     ///</summary>
@@ -48671,6 +55737,32 @@ namespace ShopifyNet.AdminTypes
         CHILD_PRODUCT_VARIANT_CANNOT_BE_COMBINED_LISTING,
     }
 
+    public static class ProductVariantRelationshipBulkUpdateUserErrorCodeStringValues
+    {
+        public const string PARENT_REQUIRED = @"PARENT_REQUIRED";
+        public const string FAILED_TO_CREATE = @"FAILED_TO_CREATE";
+        public const string PRODUCT_VARIANTS_NOT_FOUND = @"PRODUCT_VARIANTS_NOT_FOUND";
+        public const string CIRCULAR_REFERENCE = @"CIRCULAR_REFERENCE";
+        public const string NESTED_PARENT_PRODUCT_VARIANT = @"NESTED_PARENT_PRODUCT_VARIANT";
+        public const string INVALID_QUANTITY = @"INVALID_QUANTITY";
+        public const string DUPLICATE_PRODUCT_VARIANT_RELATIONSHIP = @"DUPLICATE_PRODUCT_VARIANT_RELATIONSHIP";
+        public const string EXCEEDED_PRODUCT_VARIANT_RELATIONSHIP_LIMIT = @"EXCEEDED_PRODUCT_VARIANT_RELATIONSHIP_LIMIT";
+        public const string PRODUCT_VARIANT_RELATIONSHIP_TYPE_CONFLICT = @"PRODUCT_VARIANT_RELATIONSHIP_TYPE_CONFLICT";
+        public const string UNEXPECTED_ERROR = @"UNEXPECTED_ERROR";
+        public const string FAILED_TO_REMOVE = @"FAILED_TO_REMOVE";
+        public const string MUST_SPECIFY_COMPONENTS = @"MUST_SPECIFY_COMPONENTS";
+        public const string FAILED_TO_UPDATE = @"FAILED_TO_UPDATE";
+        public const string FAILED_TO_UPDATE_PARENT_PRODUCT_VARIANT_PRICE = @"FAILED_TO_UPDATE_PARENT_PRODUCT_VARIANT_PRICE";
+        public const string UPDATE_PARENT_VARIANT_PRICE_REQUIRED = @"UPDATE_PARENT_VARIANT_PRICE_REQUIRED";
+        public const string PRODUCT_VARIANTS_NOT_COMPONENTS = @"PRODUCT_VARIANTS_NOT_COMPONENTS";
+        public const string PRODUCT_EXPANDER_APP_OWNERSHIP_ALREADY_EXISTS = @"PRODUCT_EXPANDER_APP_OWNERSHIP_ALREADY_EXISTS";
+        public const string UNSUPPORTED_MULTIPACK_RELATIONSHIP = @"UNSUPPORTED_MULTIPACK_RELATIONSHIP";
+        public const string PARENT_PRODUCT_VARIANT_CANNOT_BE_GIFT_CARD = @"PARENT_PRODUCT_VARIANT_CANNOT_BE_GIFT_CARD";
+        public const string PARENT_PRODUCT_VARIANT_CANNOT_REQUIRE_SELLING_PLAN = @"PARENT_PRODUCT_VARIANT_CANNOT_REQUIRE_SELLING_PLAN";
+        public const string PARENT_PRODUCT_VARIANT_CANNOT_BE_COMBINED_LISTING = @"PARENT_PRODUCT_VARIANT_CANNOT_BE_COMBINED_LISTING";
+        public const string CHILD_PRODUCT_VARIANT_CANNOT_BE_COMBINED_LISTING = @"CHILD_PRODUCT_VARIANT_CANNOT_BE_COMBINED_LISTING";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the ProductVariant query.
     ///</summary>
@@ -48728,6 +55820,22 @@ namespace ShopifyNet.AdminTypes
         TITLE,
     }
 
+    public static class ProductVariantSortKeysStringValues
+    {
+        public const string FULL_TITLE = @"FULL_TITLE";
+        public const string ID = @"ID";
+        public const string INVENTORY_LEVELS_AVAILABLE = @"INVENTORY_LEVELS_AVAILABLE";
+        public const string INVENTORY_MANAGEMENT = @"INVENTORY_MANAGEMENT";
+        public const string INVENTORY_POLICY = @"INVENTORY_POLICY";
+        public const string INVENTORY_QUANTITY = @"INVENTORY_QUANTITY";
+        public const string NAME = @"NAME";
+        public const string POPULAR = @"POPULAR";
+        public const string POSITION = @"POSITION";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string SKU = @"SKU";
+        public const string TITLE = @"TITLE";
+    }
+
     ///<summary>
     ///Return type for `productVariantsBulkCreate` mutation.
     ///</summary>
@@ -48760,6 +55868,12 @@ namespace ShopifyNet.AdminTypes
         ///Delete the standalone variant (when product has only a single or default variant) when creating new variants in bulk.
         ///</summary>
         REMOVE_STANDALONE_VARIANT,
+    }
+
+    public static class ProductVariantsBulkCreateStrategyStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string REMOVE_STANDALONE_VARIANT = @"REMOVE_STANDALONE_VARIANT";
     }
 
     ///<summary>
@@ -48860,6 +55974,28 @@ namespace ShopifyNet.AdminTypes
         CANNOT_SET_NAME_FOR_LINKED_OPTION_VALUE,
     }
 
+    public static class ProductVariantsBulkCreateUserErrorCodeStringValues
+    {
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string NO_KEY_ON_CREATE = @"NO_KEY_ON_CREATE";
+        public const string VARIANT_ALREADY_EXISTS = @"VARIANT_ALREADY_EXISTS";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string NEED_TO_ADD_OPTION_VALUES = @"NEED_TO_ADD_OPTION_VALUES";
+        public const string OPTION_VALUES_FOR_NUMBER_OF_UNKNOWN_OPTIONS = @"OPTION_VALUES_FOR_NUMBER_OF_UNKNOWN_OPTIONS";
+        public const string TOO_MANY_INVENTORY_LOCATIONS = @"TOO_MANY_INVENTORY_LOCATIONS";
+        public const string SUBSCRIPTION_VIOLATION = @"SUBSCRIPTION_VIOLATION";
+        public const string VARIANT_ALREADY_EXISTS_CHANGE_OPTION_VALUE = @"VARIANT_ALREADY_EXISTS_CHANGE_OPTION_VALUE";
+        public const string TRACKED_VARIANT_LOCATION_NOT_FOUND = @"TRACKED_VARIANT_LOCATION_NOT_FOUND";
+        public const string MUST_BE_FOR_THIS_PRODUCT = @"MUST_BE_FOR_THIS_PRODUCT";
+        public const string NOT_DEFINED_FOR_SHOP = @"NOT_DEFINED_FOR_SHOP";
+        public const string INVALID = @"INVALID";
+        public const string NEGATIVE_PRICE_VALUE = @"NEGATIVE_PRICE_VALUE";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+        public const string CANNOT_SET_NAME_FOR_LINKED_OPTION_VALUE = @"CANNOT_SET_NAME_FOR_LINKED_OPTION_VALUE";
+    }
+
     ///<summary>
     ///Return type for `productVariantsBulkDelete` mutation.
     ///</summary>
@@ -48921,6 +56057,15 @@ namespace ShopifyNet.AdminTypes
         UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION,
     }
 
+    public static class ProductVariantsBulkDeleteUserErrorCodeStringValues
+    {
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string CANNOT_DELETE_LAST_VARIANT = @"CANNOT_DELETE_LAST_VARIANT";
+        public const string AT_LEAST_ONE_VARIANT_DOES_NOT_BELONG_TO_THE_PRODUCT = @"AT_LEAST_ONE_VARIANT_DOES_NOT_BELONG_TO_THE_PRODUCT";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+    }
+
     ///<summary>
     ///Return type for `productVariantsBulkReorder` mutation.
     ///</summary>
@@ -48980,6 +56125,15 @@ namespace ShopifyNet.AdminTypes
         ///Something went wrong, please try again.
         ///</summary>
         GENERIC_ERROR,
+    }
+
+    public static class ProductVariantsBulkReorderUserErrorCodeStringValues
+    {
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string MISSING_VARIANT = @"MISSING_VARIANT";
+        public const string INVALID_POSITION = @"INVALID_POSITION";
+        public const string DUPLICATED_VARIANT_ID = @"DUPLICATED_VARIANT_ID";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
     }
 
     ///<summary>
@@ -49131,6 +56285,36 @@ namespace ShopifyNet.AdminTypes
         UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION,
     }
 
+    public static class ProductVariantsBulkUpdateUserErrorCodeStringValues
+    {
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+        public const string CANNOT_SPECIFY_BOTH = @"CANNOT_SPECIFY_BOTH";
+        public const string MUST_SPECIFY_ONE_OF_PAIR = @"MUST_SPECIFY_ONE_OF_PAIR";
+        public const string OPTION_VALUE_NAME_TOO_LONG = @"OPTION_VALUE_NAME_TOO_LONG";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string PRODUCT_VARIANT_ID_MISSING = @"PRODUCT_VARIANT_ID_MISSING";
+        public const string PRODUCT_VARIANT_DOES_NOT_EXIST = @"PRODUCT_VARIANT_DOES_NOT_EXIST";
+        public const string OPTION_DOES_NOT_EXIST = @"OPTION_DOES_NOT_EXIST";
+        public const string OPTION_VALUE_DOES_NOT_EXIST = @"OPTION_VALUE_DOES_NOT_EXIST";
+        public const string MUST_BE_FOR_THIS_PRODUCT = @"MUST_BE_FOR_THIS_PRODUCT";
+        public const string NOT_DEFINED_FOR_SHOP = @"NOT_DEFINED_FOR_SHOP";
+        public const string PRODUCT_SUSPENDED = @"PRODUCT_SUSPENDED";
+        public const string NO_INVENTORY_QUANTITIES_ON_VARIANTS_UPDATE = @"NO_INVENTORY_QUANTITIES_ON_VARIANTS_UPDATE";
+        public const string VARIANT_ALREADY_EXISTS = @"VARIANT_ALREADY_EXISTS";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string NEED_TO_ADD_OPTION_VALUES = @"NEED_TO_ADD_OPTION_VALUES";
+        public const string OPTION_VALUES_FOR_NUMBER_OF_UNKNOWN_OPTIONS = @"OPTION_VALUES_FOR_NUMBER_OF_UNKNOWN_OPTIONS";
+        public const string SUBSCRIPTION_VIOLATION = @"SUBSCRIPTION_VIOLATION";
+        public const string NO_INVENTORY_QUANTITES_DURING_UPDATE = @"NO_INVENTORY_QUANTITES_DURING_UPDATE";
+        public const string NEGATIVE_PRICE_VALUE = @"NEGATIVE_PRICE_VALUE";
+        public const string BLANK = @"BLANK";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string CANNOT_SET_NAME_FOR_LINKED_OPTION_VALUE = @"CANNOT_SET_NAME_FOR_LINKED_OPTION_VALUE";
+        public const string UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION = @"UNSUPPORTED_COMBINED_LISTING_PARENT_OPERATION";
+    }
+
     ///<summary>
     ///The set of valid sort keys for the ProfileItem query.
     ///</summary>
@@ -49173,6 +56357,19 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `vendor` value.
         ///</summary>
         VENDOR,
+    }
+
+    public static class ProfileItemSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string INVENTORY_TOTAL = @"INVENTORY_TOTAL";
+        public const string PRODUCT_TYPE = @"PRODUCT_TYPE";
+        public const string PUBLISHED_AT = @"PUBLISHED_AT";
+        public const string RELEVANCE = @"RELEVANCE";
+        public const string TITLE = @"TITLE";
+        public const string UPDATED_AT = @"UPDATED_AT";
+        public const string VENDOR = @"VENDOR";
     }
 
     ///<summary>
@@ -49239,6 +56436,12 @@ namespace ShopifyNet.AdminTypes
         TAKEN,
     }
 
+    public static class PubSubWebhookSubscriptionCreateUserErrorCodeStringValues
+    {
+        public const string INVALID_PARAMETERS = @"INVALID_PARAMETERS";
+        public const string TAKEN = @"TAKEN";
+    }
+
     ///<summary>
     ///Return type for `pubSubWebhookSubscriptionUpdate` mutation.
     ///</summary>
@@ -49284,6 +56487,11 @@ namespace ShopifyNet.AdminTypes
         INVALID_PARAMETERS,
     }
 
+    public static class PubSubWebhookSubscriptionUpdateUserErrorCodeStringValues
+    {
+        public const string INVALID_PARAMETERS = @"INVALID_PARAMETERS";
+    }
+
     ///<summary>
     ///A publication is a group of products and collections that is published to an app.
     ///</summary>
@@ -49318,6 +56526,10 @@ namespace ShopifyNet.AdminTypes
         ///A globally-unique ID.
         ///</summary>
         public string? id { get; set; }
+        ///<summary>
+        ///The list of products included, but not necessarily published, in the publication.
+        ///</summary>
+        public ProductConnection? includedProducts { get; set; }
 
         ///<summary>
         ///Name of the publication.
@@ -49374,6 +56586,12 @@ namespace ShopifyNet.AdminTypes
         ///The publication is populated with all products.
         ///</summary>
         ALL_PRODUCTS,
+    }
+
+    public static class PublicationCreateInputPublicationDefaultStateStringValues
+    {
+        public const string EMPTY = @"EMPTY";
+        public const string ALL_PRODUCTS = @"ALL_PRODUCTS";
     }
 
     ///<summary>
@@ -49585,6 +56803,28 @@ namespace ShopifyNet.AdminTypes
         ///The limit for simultaneous publication updates has been exceeded.
         ///</summary>
         PUBLICATION_UPDATE_LIMIT_EXCEEDED,
+    }
+
+    public static class PublicationUserErrorCodeStringValues
+    {
+        public const string UNSUPPORTED_PUBLICATION_ACTION = @"UNSUPPORTED_PUBLICATION_ACTION";
+        public const string PUBLICATION_NOT_FOUND = @"PUBLICATION_NOT_FOUND";
+        public const string PUBLICATION_LOCKED = @"PUBLICATION_LOCKED";
+        public const string UNSUPPORTED_PUBLISHABLE_TYPE = @"UNSUPPORTED_PUBLISHABLE_TYPE";
+        public const string INVALID_PUBLISHABLE_ID = @"INVALID_PUBLISHABLE_ID";
+        public const string MARKET_NOT_FOUND = @"MARKET_NOT_FOUND";
+        public const string CATALOG_NOT_FOUND = @"CATALOG_NOT_FOUND";
+        public const string CANNOT_MODIFY_APP_CATALOG_PUBLICATION = @"CANNOT_MODIFY_APP_CATALOG_PUBLICATION";
+        public const string CANNOT_MODIFY_MARKET_CATALOG_PUBLICATION = @"CANNOT_MODIFY_MARKET_CATALOG_PUBLICATION";
+        public const string CANNOT_MODIFY_APP_CATALOG = @"CANNOT_MODIFY_APP_CATALOG";
+        public const string CANNOT_MODIFY_MARKET_CATALOG = @"CANNOT_MODIFY_MARKET_CATALOG";
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string BLANK = @"BLANK";
+        public const string PRODUCT_TYPE_INCOMPATIBLE_WITH_CATALOG_TYPE = @"PRODUCT_TYPE_INCOMPATIBLE_WITH_CATALOG_TYPE";
+        public const string PUBLICATION_UPDATE_LIMIT_EXCEEDED = @"PUBLICATION_UPDATE_LIMIT_EXCEEDED";
     }
 
     ///<summary>
@@ -49851,11 +57091,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `minimum_quantity` value.
         ///</summary>
         MINIMUM_QUANTITY,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class QuantityPriceBreakSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string MINIMUM_QUANTITY = @"MINIMUM_QUANTITY";
     }
 
     ///<summary>
@@ -50043,6 +57284,46 @@ namespace ShopifyNet.AdminTypes
         QUANTITY_PRICE_BREAK_DELETE_BY_VARIANT_ID_VARIANT_NOT_FOUND,
     }
 
+    public static class QuantityPricingByVariantUserErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string PRICE_LIST_NOT_FOUND = @"PRICE_LIST_NOT_FOUND";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
+        public const string QUANTITY_PRICE_BREAK_ADD_INVALID = @"QUANTITY_PRICE_BREAK_ADD_INVALID";
+        public const string QUANTITY_PRICE_BREAK_ADD_PRICE_LIST_PRICE_NOT_FOUND = @"QUANTITY_PRICE_BREAK_ADD_PRICE_LIST_PRICE_NOT_FOUND";
+        public const string QUANTITY_PRICE_BREAK_ADD_LIMIT_EXCEEDED = @"QUANTITY_PRICE_BREAK_ADD_LIMIT_EXCEEDED";
+        public const string QUANTITY_PRICE_BREAK_ADD_CURRENCY_MISMATCH = @"QUANTITY_PRICE_BREAK_ADD_CURRENCY_MISMATCH";
+        public const string QUANTITY_PRICE_BREAK_ADD_FAILED_TO_SAVE = @"QUANTITY_PRICE_BREAK_ADD_FAILED_TO_SAVE";
+        public const string QUANTITY_PRICE_BREAK_ADD_MIN_LOWER_THAN_QUANTITY_RULES_MIN = @"QUANTITY_PRICE_BREAK_ADD_MIN_LOWER_THAN_QUANTITY_RULES_MIN";
+        public const string QUANTITY_PRICE_BREAK_ADD_MIN_HIGHER_THAN_QUANTITY_RULES_MAX = @"QUANTITY_PRICE_BREAK_ADD_MIN_HIGHER_THAN_QUANTITY_RULES_MAX";
+        public const string QUANTITY_PRICE_BREAK_ADD_MIN_NOT_A_MULTIPLE_OF_QUANTITY_RULES_INCREMENT = @"QUANTITY_PRICE_BREAK_ADD_MIN_NOT_A_MULTIPLE_OF_QUANTITY_RULES_INCREMENT";
+        public const string QUANTITY_PRICE_BREAK_ADD_VARIANT_NOT_FOUND = @"QUANTITY_PRICE_BREAK_ADD_VARIANT_NOT_FOUND";
+        public const string QUANTITY_PRICE_BREAK_ADD_DUPLICATE_INPUT_FOR_VARIANT_AND_MIN = @"QUANTITY_PRICE_BREAK_ADD_DUPLICATE_INPUT_FOR_VARIANT_AND_MIN";
+        public const string QUANTITY_PRICE_BREAK_DELETE_NOT_FOUND = @"QUANTITY_PRICE_BREAK_DELETE_NOT_FOUND";
+        public const string QUANTITY_PRICE_BREAK_DELETE_FAILED = @"QUANTITY_PRICE_BREAK_DELETE_FAILED";
+        public const string QUANTITY_RULE_ADD_VARIANT_NOT_FOUND = @"QUANTITY_RULE_ADD_VARIANT_NOT_FOUND";
+        public const string QUANTITY_RULE_ADD_MIN_HIGHER_THAN_QUANTITY_PRICE_BREAK_MIN = @"QUANTITY_RULE_ADD_MIN_HIGHER_THAN_QUANTITY_PRICE_BREAK_MIN";
+        public const string QUANTITY_RULE_ADD_MAX_LOWER_THAN_QUANTITY_PRICE_BREAK_MIN = @"QUANTITY_RULE_ADD_MAX_LOWER_THAN_QUANTITY_PRICE_BREAK_MIN";
+        public const string QUANTITY_RULE_ADD_INCREMENT_NOT_A_MULTIPLE_OF_QUANTITY_PRICE_BREAK_MIN = @"QUANTITY_RULE_ADD_INCREMENT_NOT_A_MULTIPLE_OF_QUANTITY_PRICE_BREAK_MIN";
+        public const string QUANTITY_RULE_ADD_CATALOG_CONTEXT_NOT_SUPPORTED = @"QUANTITY_RULE_ADD_CATALOG_CONTEXT_NOT_SUPPORTED";
+        public const string QUANTITY_RULE_ADD_INCREMENT_IS_GREATER_THAN_MINIMUM = @"QUANTITY_RULE_ADD_INCREMENT_IS_GREATER_THAN_MINIMUM";
+        public const string QUANTITY_RULE_ADD_MINIMUM_NOT_A_MULTIPLE_OF_INCREMENT = @"QUANTITY_RULE_ADD_MINIMUM_NOT_A_MULTIPLE_OF_INCREMENT";
+        public const string QUANTITY_RULE_ADD_MAXIMUM_NOT_A_MULTIPLE_OF_INCREMENT = @"QUANTITY_RULE_ADD_MAXIMUM_NOT_A_MULTIPLE_OF_INCREMENT";
+        public const string QUANTITY_RULE_ADD_MINIMUM_GREATER_THAN_MAXIMUM = @"QUANTITY_RULE_ADD_MINIMUM_GREATER_THAN_MAXIMUM";
+        public const string QUANTITY_RULE_ADD_INCREMENT_IS_LESS_THAN_ONE = @"QUANTITY_RULE_ADD_INCREMENT_IS_LESS_THAN_ONE";
+        public const string QUANTITY_RULE_ADD_MINIMUM_IS_LESS_THAN_ONE = @"QUANTITY_RULE_ADD_MINIMUM_IS_LESS_THAN_ONE";
+        public const string QUANTITY_RULE_ADD_MAXIMUM_IS_LESS_THAN_ONE = @"QUANTITY_RULE_ADD_MAXIMUM_IS_LESS_THAN_ONE";
+        public const string QUANTITY_RULE_ADD_DUPLICATE_INPUT_FOR_VARIANT = @"QUANTITY_RULE_ADD_DUPLICATE_INPUT_FOR_VARIANT";
+        public const string QUANTITY_RULE_DELETE_RULE_NOT_FOUND = @"QUANTITY_RULE_DELETE_RULE_NOT_FOUND";
+        public const string QUANTITY_RULE_DELETE_VARIANT_NOT_FOUND = @"QUANTITY_RULE_DELETE_VARIANT_NOT_FOUND";
+        public const string PRICE_ADD_CURRENCY_MISMATCH = @"PRICE_ADD_CURRENCY_MISMATCH";
+        public const string PRICE_ADD_VARIANT_NOT_FOUND = @"PRICE_ADD_VARIANT_NOT_FOUND";
+        public const string PRICE_ADD_DUPLICATE_INPUT_FOR_VARIANT = @"PRICE_ADD_DUPLICATE_INPUT_FOR_VARIANT";
+        public const string PRICE_DELETE_PRICE_NOT_FIXED = @"PRICE_DELETE_PRICE_NOT_FIXED";
+        public const string PRICE_DELETE_VARIANT_NOT_FOUND = @"PRICE_DELETE_VARIANT_NOT_FOUND";
+        public const string QUANTITY_PRICE_BREAK_DELETE_BY_VARIANT_ID_VARIANT_NOT_FOUND = @"QUANTITY_PRICE_BREAK_DELETE_BY_VARIANT_ID_VARIANT_NOT_FOUND";
+    }
+
     ///<summary>
     ///The quantity rule for the product variant in a given context.
     ///</summary>
@@ -50129,6 +57410,12 @@ namespace ShopifyNet.AdminTypes
         RELATIVE,
     }
 
+    public static class QuantityRuleOriginTypeStringValues
+    {
+        public const string FIXED = @"FIXED";
+        public const string RELATIVE = @"RELATIVE";
+    }
+
     ///<summary>
     ///An error for a failed quantity rule operation.
     ///</summary>
@@ -50202,7 +57489,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         MINIMUM_NOT_MULTIPLE_OF_INCREMENT,
         ///<summary>
-        ///Quantity rules can be associated only with company location catalogs.
+        ///Quantity rules can be associated only with company location catalogs or catalogs associated with compatible markets.
         ///</summary>
         CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES,
         ///<summary>
@@ -50213,6 +57500,25 @@ namespace ShopifyNet.AdminTypes
         ///Something went wrong when trying to save the quantity rule. Please try again later.
         ///</summary>
         GENERIC_ERROR,
+    }
+
+    public static class QuantityRuleUserErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string PRODUCT_VARIANT_DOES_NOT_EXIST = @"PRODUCT_VARIANT_DOES_NOT_EXIST";
+        public const string PRICE_LIST_DOES_NOT_EXIST = @"PRICE_LIST_DOES_NOT_EXIST";
+        public const string VARIANT_QUANTITY_RULE_DOES_NOT_EXIST = @"VARIANT_QUANTITY_RULE_DOES_NOT_EXIST";
+        public const string MINIMUM_IS_GREATER_THAN_MAXIMUM = @"MINIMUM_IS_GREATER_THAN_MAXIMUM";
+        public const string MINIMUM_IS_HIGHER_THAN_QUANTITY_PRICE_BREAK_MINIMUM = @"MINIMUM_IS_HIGHER_THAN_QUANTITY_PRICE_BREAK_MINIMUM";
+        public const string MAXIMUM_IS_LOWER_THAN_QUANTITY_PRICE_BREAK_MINIMUM = @"MAXIMUM_IS_LOWER_THAN_QUANTITY_PRICE_BREAK_MINIMUM";
+        public const string INCREMENT_NOT_A_MULTIPLE_OF_QUANTITY_PRICE_BREAK_MINIMUM = @"INCREMENT_NOT_A_MULTIPLE_OF_QUANTITY_PRICE_BREAK_MINIMUM";
+        public const string INCREMENT_IS_GREATER_THAN_MINIMUM = @"INCREMENT_IS_GREATER_THAN_MINIMUM";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string MAXIMUM_NOT_MULTIPLE_OF_INCREMENT = @"MAXIMUM_NOT_MULTIPLE_OF_INCREMENT";
+        public const string MINIMUM_NOT_MULTIPLE_OF_INCREMENT = @"MINIMUM_NOT_MULTIPLE_OF_INCREMENT";
+        public const string CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES = @"CATALOG_CONTEXT_DOES_NOT_SUPPORT_QUANTITY_RULES";
+        public const string DUPLICATE_INPUT_FOR_VARIANT = @"DUPLICATE_INPUT_FOR_VARIANT";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
     }
 
     ///<summary>
@@ -50255,7 +57561,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public AbandonedCheckoutConnection? abandonedCheckouts { get; set; }
         ///<summary>
-        ///Returns the count of abandoned checkouts for the given shop. Limited to a maximum of 10000.
+        ///Returns the count of abandoned checkouts for the given shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? abandonedCheckoutsCount { get; set; }
         ///<summary>
@@ -50289,6 +57595,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public IEnumerable<AppDiscountType>? appDiscountTypes { get; set; }
         ///<summary>
+        ///A list of app discount types installed by apps.
+        ///</summary>
+        public AppDiscountTypeConnection? appDiscountTypesNodes { get; set; }
+        ///<summary>
         ///Lookup an AppInstallation by ID or return the AppInstallation for the currently authenticated App.
         ///</summary>
         public AppInstallation? appInstallation { get; set; }
@@ -50300,6 +57610,10 @@ namespace ShopifyNet.AdminTypes
         ///Returns an Article resource by ID.
         ///</summary>
         public Article? article { get; set; }
+        ///<summary>
+        ///List of article authors for the shop.
+        ///</summary>
+        public ArticleAuthorConnection? articleAuthors { get; set; }
         ///<summary>
         ///List of all article tags.
         ///</summary>
@@ -50355,6 +57669,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `automaticDiscountNodes` instead.")]
         public DiscountAutomaticConnection? automaticDiscounts { get; set; }
         ///<summary>
+        ///The regions that can be used as the backup region of the shop.
+        ///</summary>
+        public IEnumerable<IMarketRegion>? availableBackupRegions { get; set; }
+        ///<summary>
         ///Returns a list of activated carrier services and associated shop locations that support them.
         ///</summary>
         public IEnumerable<DeliveryCarrierServiceAndLocations>? availableCarrierServices { get; set; }
@@ -50362,6 +57680,10 @@ namespace ShopifyNet.AdminTypes
         ///A list of available locales.
         ///</summary>
         public IEnumerable<Locale>? availableLocales { get; set; }
+        ///<summary>
+        ///The backup region of the shop.
+        ///</summary>
+        public IMarketRegion? backupRegion { get; set; }
         ///<summary>
         ///Returns a Blog resource by ID.
         ///</summary>
@@ -50418,7 +57740,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CatalogConnection? catalogs { get; set; }
         ///<summary>
-        ///The count of catalogs belonging to the shop. Limited to a maximum of 10000.
+        ///The count of catalogs belonging to the shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? catalogsCount { get; set; }
 
@@ -50476,6 +57798,10 @@ namespace ShopifyNet.AdminTypes
         [Obsolete("Use `collectionByIdentifier` instead.")]
         public Collection? collectionByHandle { get; set; }
         ///<summary>
+        ///Return a collection by an identifier.
+        ///</summary>
+        public Collection? collectionByIdentifier { get; set; }
+        ///<summary>
         ///Lists all rules that can be used to create smart collections.
         ///</summary>
         public IEnumerable<CollectionRuleConditions>? collectionRulesConditions { get; set; }
@@ -50488,7 +57814,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CollectionConnection? collections { get; set; }
         ///<summary>
-        ///Count of collections. Limited to a maximum of 10000.
+        ///Count of collections. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? collectionsCount { get; set; }
         ///<summary>
@@ -50528,6 +57854,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CompanyLocationConnection? companyLocations { get; set; }
         ///<summary>
+        ///Returns the customer privacy consent policies of a shop.
+        ///</summary>
+        public IEnumerable<ConsentPolicy>? consentPolicy { get; set; }
+        ///<summary>
+        ///List of countries and regions for which consent policies can be created or updated.
+        ///</summary>
+        public IEnumerable<ConsentPolicyRegion>? consentPolicyRegions { get; set; }
+        ///<summary>
         ///Return the AppInstallation for the currently authenticated App.
         ///</summary>
         public AppInstallation? currentAppInstallation { get; set; }
@@ -50552,6 +57886,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public CustomerAccountPageConnection? customerAccountPages { get; set; }
         ///<summary>
+        ///Return a customer by an identifier.
+        ///</summary>
+        public Customer? customerByIdentifier { get; set; }
+        ///<summary>
         ///Returns the status of a customer merge request job.
         ///</summary>
         public CustomerMergeRequest? customerMergeJobStatus { get; set; }
@@ -50563,6 +57901,10 @@ namespace ShopifyNet.AdminTypes
         ///Returns a CustomerPaymentMethod resource by its ID.
         ///</summary>
         public CustomerPaymentMethod? customerPaymentMethod { get; set; }
+        ///<summary>
+        ///List of the shop's customer saved searches.
+        ///</summary>
+        public SavedSearchConnection? customerSavedSearches { get; set; }
         ///<summary>
         ///The list of members, such as customers, that's associated with an individual segment.
         ///The maximum page size is 1000.
@@ -50609,9 +57951,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public DeliveryProfileConnection? deliveryProfiles { get; set; }
         ///<summary>
+        ///Returns delivery promise participants.
+        ///</summary>
+        public DeliveryPromiseParticipantConnection? deliveryPromiseParticipants { get; set; }
+        ///<summary>
         ///Lookup a delivery promise provider.
         ///</summary>
         public DeliveryPromiseProvider? deliveryPromiseProvider { get; set; }
+        ///<summary>
+        ///Represents the delivery promise settings for a shop.
+        ///</summary>
+        public DeliveryPromiseSetting? deliveryPromiseSettings { get; set; }
         ///<summary>
         ///Returns the shop-wide shipping settings.
         ///</summary>
@@ -50629,7 +57979,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public DiscountNodeConnection? discountNodes { get; set; }
         ///<summary>
-        ///The total number of discounts for the shop. Limited to a maximum of 10000.
+        ///The total number of discounts for the shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? discountNodesCount { get; set; }
         ///<summary>
@@ -50693,6 +58043,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public FileConnection? files { get; set; }
         ///<summary>
+        ///Returns the access policy for a finance app .
+        ///</summary>
+        public FinanceAppAccessPolicy? financeAppAccessPolicy { get; set; }
+        ///<summary>
+        ///Returns the KYC information for the shop's Shopify Payments account, used in embedded finance apps.
+        ///</summary>
+        public FinanceKycInformation? financeKycInformation { get; set; }
+        ///<summary>
         ///Returns a Fulfillment resource by ID.
         ///</summary>
         public Fulfillment? fulfillment { get; set; }
@@ -50727,11 +58085,15 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public GiftCard? giftCard { get; set; }
         ///<summary>
+        ///The configuration for the shop's gift cards.
+        ///</summary>
+        public GiftCardConfiguration? giftCardConfiguration { get; set; }
+        ///<summary>
         ///Returns a list of gift cards.
         ///</summary>
         public GiftCardConnection? giftCards { get; set; }
         ///<summary>
-        ///The total number of gift cards issued for the shop. Limited to a maximum of 10000.
+        ///The total number of gift cards issued for the shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? giftCardsCount { get; set; }
         ///<summary>
@@ -50763,6 +58125,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public Location? location { get; set; }
         ///<summary>
+        ///Return a location by an identifier.
+        ///</summary>
+        public Location? locationByIdentifier { get; set; }
+        ///<summary>
         ///Returns a list of active inventory locations.
         ///</summary>
         public LocationConnection? locations { get; set; }
@@ -50777,7 +58143,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public LocationConnection? locationsAvailableForDeliveryProfilesConnection { get; set; }
         ///<summary>
-        ///Returns the count of locations for the given shop. Limited to a maximum of 10000.
+        ///Returns the count of locations for the given shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? locationsCount { get; set; }
         ///<summary>
@@ -50788,9 +58154,11 @@ namespace ShopifyNet.AdminTypes
         ///Returns a market resource by ID.
         ///</summary>
         public Market? market { get; set; }
+
         ///<summary>
         ///Returns the applicable market for a customer based on where they are in the world.
         ///</summary>
+        [Obsolete("This `market_by_geography` field will be removed in a future version of the API.")]
         public Market? marketByGeography { get; set; }
         ///<summary>
         ///A resource that can have localized values for different markets.
@@ -50847,19 +58215,6 @@ namespace ShopifyNet.AdminTypes
         ///Returns a list of metafield definitions.
         ///</summary>
         public MetafieldDefinitionConnection? metafieldDefinitions { get; set; }
-
-        ///<summary>
-        ///List of the `MetafieldStorefrontVisibility` records.
-        ///</summary>
-        [Obsolete("This query will be removed in a future version. Use the `access.storefront` field for nodes inside the `metafieldDefinitions` query instead.")]
-        public MetafieldStorefrontVisibilityConnection? metafieldStorefrontVisibilities { get; set; }
-
-        ///<summary>
-        ///Returns a `MetafieldStorefrontVisibility` record by ID. A `MetafieldStorefrontVisibility` record lists the
-        ///metafields to make visible in the Storefront API.
-        ///</summary>
-        [Obsolete("This query will be removed in a future version. Use the `access.storefront` field inside the `metafieldDefinition` query instead.")]
-        public MetafieldStorefrontVisibility? metafieldStorefrontVisibility { get; set; }
         ///<summary>
         ///Retrieves a metaobject by ID.
         ///</summary>
@@ -50929,6 +58284,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public Order? order { get; set; }
         ///<summary>
+        ///Return an order by an identifier.
+        ///</summary>
+        public Order? orderByIdentifier { get; set; }
+        ///<summary>
         ///Returns a payment status by payment reference ID. Used to check the status of a deferred payment.
         ///</summary>
         public OrderPaymentStatus? orderPaymentStatus { get; set; }
@@ -50943,7 +58302,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public OrderConnection? orders { get; set; }
         ///<summary>
-        ///Returns the count of orders for the given shop. Limited to a maximum of 10000.
+        ///Returns the count of orders for the given shop. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? ordersCount { get; set; }
         ///<summary>
@@ -50988,19 +58347,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `backupRegion` instead.")]
         public Market? primaryMarket { get; set; }
-
         ///<summary>
-        ///Returns a private metafield by ID.
-        ///Private metafields are accessible only by the application that created them.
+        ///Privacy related settings for a shop.
         ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///Returns a list of private metafields associated to a resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
+        public PrivacySettings? privacySettings { get; set; }
         ///<summary>
         ///Returns a Product resource by ID.
         ///</summary>
@@ -51011,6 +58361,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `productByIdentifier` instead.")]
         public Product? productByHandle { get; set; }
+        ///<summary>
+        ///Return a product by an identifier.
+        ///</summary>
+        public Product? productByIdentifier { get; set; }
         ///<summary>
         ///Returns the product duplicate job.
         ///</summary>
@@ -51051,9 +58405,23 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public SavedSearchConnection? productSavedSearches { get; set; }
         ///<summary>
+        ///A list of tags that have been added to products.
+        ///The maximum page size is 5000.
+        ///</summary>
+        public StringConnection? productTags { get; set; }
+        ///<summary>
+        ///The list of types added to products.
+        ///The maximum page size is 1000.
+        ///</summary>
+        public StringConnection? productTypes { get; set; }
+        ///<summary>
         ///Returns a ProductVariant resource by ID.
         ///</summary>
         public ProductVariant? productVariant { get; set; }
+        ///<summary>
+        ///Return a product variant by an identifier.
+        ///</summary>
+        public ProductVariant? productVariantByIdentifier { get; set; }
         ///<summary>
         ///Returns a list of product variants.
         ///</summary>
@@ -51062,6 +58430,11 @@ namespace ShopifyNet.AdminTypes
         ///Count of product variants.
         ///</summary>
         public Count? productVariantsCount { get; set; }
+        ///<summary>
+        ///The list of vendors added to products.
+        ///The maximum page size is 1000.
+        ///</summary>
+        public StringConnection? productVendors { get; set; }
         ///<summary>
         ///Returns a list of products.
         ///</summary>
@@ -51087,7 +58460,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public Count? publicationsCount { get; set; }
         ///<summary>
-        ///Returns a count of published products by publication ID.
+        ///Returns a count of published products by publication ID. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? publishedProductsCount { get; set; }
         ///<summary>
@@ -51316,7 +58689,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public UrlRedirectConnection? urlRedirects { get; set; }
         ///<summary>
-        ///Count of redirects. Limited to a maximum of 10000.
+        ///Count of redirects. Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? urlRedirectsCount { get; set; }
         ///<summary>
@@ -51334,6 +58707,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public WebPixel? webPixel { get; set; }
         ///<summary>
+        ///The web presences for the shop.
+        ///</summary>
+        public MarketWebPresenceConnection? webPresences { get; set; }
+        ///<summary>
         ///Returns a webhook subscription by ID.
         ///
         ///Building an app? If you only use app-specific webhooks, you won't need this. App-specific webhook subscriptions specified in your `shopify.app.toml` may be easier. They are automatically kept up to date by Shopify & require less maintenance. Please read [About managing webhook subscriptions](https://shopify.dev/docs/apps/build/webhooks/subscribe).
@@ -51348,7 +58725,7 @@ namespace ShopifyNet.AdminTypes
         ///<summary>
         ///The count of webhook subscriptions.
         ///
-        ///Building an app? If you only use app-specific webhooks, you won't need this. App-specific webhook subscriptions specified in your `shopify.app.toml` may be easier. They are automatically kept up to date by Shopify & require less maintenance. Please read [About managing webhook subscriptions](https://shopify.dev/docs/apps/build/webhooks/subscribe). Limited to a maximum of 10000.
+        ///Building an app? If you only use app-specific webhooks, you won't need this. App-specific webhook subscriptions specified in your `shopify.app.toml` may be easier. They are automatically kept up to date by Shopify & require less maintenance. Please read [About managing webhook subscriptions](https://shopify.dev/docs/apps/build/webhooks/subscribe). Limited to a maximum of 10000 by default.
         ///</summary>
         public Count? webhookSubscriptionsCount { get; set; }
     }
@@ -51525,6 +58902,12 @@ namespace ShopifyNet.AdminTypes
         FULL,
     }
 
+    public static class RefundDutyRefundTypeStringValues
+    {
+        public const string PROPORTIONAL = @"PROPORTIONAL";
+        public const string FULL = @"FULL";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one Refund and a cursor during pagination.
     ///</summary>
@@ -51658,6 +59041,14 @@ namespace ShopifyNet.AdminTypes
         NO_RESTOCK,
     }
 
+    public static class RefundLineItemRestockTypeStringValues
+    {
+        public const string RETURN = @"RETURN";
+        public const string CANCEL = @"CANCEL";
+        public const string LEGACY_RESTOCK = @"LEGACY_RESTOCK";
+        public const string NO_RESTOCK = @"NO_RESTOCK";
+    }
+
     ///<summary>
     ///A shipping line item that's included in a refund.
     ///</summary>
@@ -51713,6 +59104,21 @@ namespace ShopifyNet.AdminTypes
         ///The item at the end of RefundShippingLineEdge.
         ///</summary>
         public RefundShippingLine? node { get; set; }
+    }
+
+    ///<summary>
+    ///A condition checking the visitor's region.
+    ///</summary>
+    public class RegionsCondition : GraphQLObject<RegionsCondition>
+    {
+        ///<summary>
+        ///The application level for the condition.
+        ///</summary>
+        public string? applicationLevel { get; set; }
+        ///<summary>
+        ///The regions that comprise the market.
+        ///</summary>
+        public MarketRegionConnection? regions { get; set; }
     }
 
     ///<summary>
@@ -51787,6 +59193,12 @@ namespace ShopifyNet.AdminTypes
         INFORMATION_CIRCLE,
     }
 
+    public static class ResourceAlertIconStringValues
+    {
+        public const string CHECKMARK_CIRCLE = @"CHECKMARK_CIRCLE";
+        public const string INFORMATION_CIRCLE = @"INFORMATION_CIRCLE";
+    }
+
     ///<summary>
     ///The possible severity levels for a resource alert.
     ///</summary>
@@ -51814,6 +59226,17 @@ namespace ShopifyNet.AdminTypes
         CRITICAL,
         [Obsolete("`ERROR` severity is being deprecated in favour of `WARNING` or `CRITICAL` instead.")]
         ERROR,
+    }
+
+    public static class ResourceAlertSeverityStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string INFO = @"INFO";
+        public const string WARNING = @"WARNING";
+        public const string SUCCESS = @"SUCCESS";
+        public const string CRITICAL = @"CRITICAL";
+        [Obsolete("`ERROR` severity is being deprecated in favour of `WARNING` or `CRITICAL` instead.")]
+        public const string ERROR = @"ERROR";
     }
 
     ///<summary>
@@ -51849,6 +59272,12 @@ namespace ShopifyNet.AdminTypes
         ///The merchant needs to resolve an issue with the resource.
         ///</summary>
         REQUIRES_ACTION,
+    }
+
+    public static class ResourceFeedbackStateStringValues
+    {
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string REQUIRES_ACTION = @"REQUIRES_ACTION";
     }
 
     ///<summary>
@@ -51898,6 +59327,13 @@ namespace ShopifyNet.AdminTypes
         ///Operation is complete.
         ///</summary>
         COMPLETE,
+    }
+
+    public static class ResourceOperationStatusStringValues
+    {
+        public const string CREATED = @"CREATED";
+        public const string ACTIVE = @"ACTIVE";
+        public const string COMPLETE = @"COMPLETE";
     }
 
     ///<summary>
@@ -52282,6 +59718,13 @@ namespace ShopifyNet.AdminTypes
         OTHER,
     }
 
+    public static class ReturnDeclineReasonStringValues
+    {
+        public const string RETURN_PERIOD_ENDED = @"RETURN_PERIOD_ENDED";
+        public const string FINAL_SALE = @"FINAL_SALE";
+        public const string OTHER = @"OTHER";
+    }
+
     ///<summary>
     ///Return type for `returnDeclineRequest` mutation.
     ///</summary>
@@ -52417,6 +59860,35 @@ namespace ShopifyNet.AdminTypes
         ///A requested item could not be found.
         ///</summary>
         NOT_FOUND,
+    }
+
+    public static class ReturnErrorCodeStringValues
+    {
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+        public const string TOO_MANY_ARGUMENTS = @"TOO_MANY_ARGUMENTS";
+        public const string BLANK = @"BLANK";
+        public const string EQUAL_TO = @"EQUAL_TO";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INVALID = @"INVALID";
+        public const string LESS_THAN = @"LESS_THAN";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string NOT_A_NUMBER = @"NOT_A_NUMBER";
+        public const string PRESENT = @"PRESENT";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_BIG = @"TOO_BIG";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string WRONG_LENGTH = @"WRONG_LENGTH";
+        public const string ALREADY_EXISTS = @"ALREADY_EXISTS";
+        public const string CREATION_FAILED = @"CREATION_FAILED";
+        public const string FEATURE_NOT_ENABLED = @"FEATURE_NOT_ENABLED";
+        public const string INVALID_STATE = @"INVALID_STATE";
+        public const string MISSING_PERMISSION = @"MISSING_PERMISSION";
+        public const string NOTIFICATION_FAILED = @"NOTIFICATION_FAILED";
+        public const string NOT_EDITABLE = @"NOT_EDITABLE";
+        public const string NOT_FOUND = @"NOT_FOUND";
     }
 
     ///<summary>
@@ -52600,6 +60072,20 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class ReturnReasonStringValues
+    {
+        public const string SIZE_TOO_SMALL = @"SIZE_TOO_SMALL";
+        public const string SIZE_TOO_LARGE = @"SIZE_TOO_LARGE";
+        public const string UNWANTED = @"UNWANTED";
+        public const string NOT_AS_DESCRIBED = @"NOT_AS_DESCRIBED";
+        public const string WRONG_ITEM = @"WRONG_ITEM";
+        public const string DEFECTIVE = @"DEFECTIVE";
+        public const string STYLE = @"STYLE";
+        public const string COLOR = @"COLOR";
+        public const string OTHER = @"OTHER";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///Return type for `returnRefund` mutation.
     ///</summary>
@@ -52685,6 +60171,15 @@ namespace ShopifyNet.AdminTypes
         ///The return was declined.
         ///</summary>
         DECLINED,
+    }
+
+    public static class ReturnStatusStringValues
+    {
+        public const string CANCELED = @"CANCELED";
+        public const string CLOSED = @"CLOSED";
+        public const string OPEN = @"OPEN";
+        public const string REQUESTED = @"REQUESTED";
+        public const string DECLINED = @"DECLINED";
     }
 
     ///<summary>
@@ -53041,11 +60536,9 @@ namespace ShopifyNet.AdminTypes
         ///The list of reverse fulfillment order line items for the reverse fulfillment order.
         ///</summary>
         public ReverseFulfillmentOrderLineItemConnection? lineItems { get; set; }
-
         ///<summary>
         ///The order associated with the reverse fulfillment order.
         ///</summary>
-        [Obsolete("Order will be nullable as of API version 2025-01. Older versions will return an error when order is null.")]
         public Order? order { get; set; }
         ///<summary>
         ///The list of reverse deliveries for the reverse fulfillment order.
@@ -53142,6 +60635,14 @@ namespace ShopifyNet.AdminTypes
         MISSING,
     }
 
+    public static class ReverseFulfillmentOrderDispositionTypeStringValues
+    {
+        public const string RESTOCKED = @"RESTOCKED";
+        public const string PROCESSING_REQUIRED = @"PROCESSING_REQUIRED";
+        public const string NOT_RESTOCKED = @"NOT_RESTOCKED";
+        public const string MISSING = @"MISSING";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one ReverseFulfillmentOrder and a cursor during pagination.
     ///</summary>
@@ -53233,6 +60734,13 @@ namespace ShopifyNet.AdminTypes
         OPEN,
     }
 
+    public static class ReverseFulfillmentOrderStatusStringValues
+    {
+        public const string CANCELED = @"CANCELED";
+        public const string CLOSED = @"CLOSED";
+        public const string OPEN = @"OPEN";
+    }
+
     ///<summary>
     ///The third-party confirmation of a reverse fulfillment order.
     ///</summary>
@@ -53275,6 +60783,16 @@ namespace ShopifyNet.AdminTypes
         REJECTED,
     }
 
+    public static class ReverseFulfillmentOrderThirdPartyConfirmationStatusStringValues
+    {
+        public const string ACCEPTED = @"ACCEPTED";
+        public const string CANCEL_ACCEPTED = @"CANCEL_ACCEPTED";
+        public const string CANCEL_REJECTED = @"CANCEL_REJECTED";
+        public const string PENDING_ACCEPTANCE = @"PENDING_ACCEPTANCE";
+        public const string PENDING_CANCELATION = @"PENDING_CANCELATION";
+        public const string REJECTED = @"REJECTED";
+    }
+
     ///<summary>
     ///List of possible values for a RiskAssessment result.
     ///</summary>
@@ -53300,6 +60818,15 @@ namespace ShopifyNet.AdminTypes
         ///Indicates that the risk assessment is still pending.
         ///</summary>
         PENDING,
+    }
+
+    public static class RiskAssessmentResultStringValues
+    {
+        public const string HIGH = @"HIGH";
+        public const string MEDIUM = @"MEDIUM";
+        public const string LOW = @"LOW";
+        public const string NONE = @"NONE";
+        public const string PENDING = @"PENDING";
     }
 
     ///<summary>
@@ -53334,6 +60861,13 @@ namespace ShopifyNet.AdminTypes
         ///A negative contributor that increases the risk.
         ///</summary>
         NEGATIVE,
+    }
+
+    public static class RiskFactSentimentStringValues
+    {
+        public const string POSITIVE = @"POSITIVE";
+        public const string NEUTRAL = @"NEUTRAL";
+        public const string NEGATIVE = @"NEGATIVE";
     }
 
     ///<summary>
@@ -53451,6 +60985,14 @@ namespace ShopifyNet.AdminTypes
         UNKNOWN,
     }
 
+    public static class SaleActionTypeStringValues
+    {
+        public const string ORDER = @"ORDER";
+        public const string RETURN = @"RETURN";
+        public const string UPDATE = @"UPDATE";
+        public const string UNKNOWN = @"UNKNOWN";
+    }
+
     ///<summary>
     ///The additional fee details for a line item.
     ///</summary>
@@ -53549,6 +61091,19 @@ namespace ShopifyNet.AdminTypes
         ///A sale adjustment.
         ///</summary>
         ADJUSTMENT,
+    }
+
+    public static class SaleLineTypeStringValues
+    {
+        public const string PRODUCT = @"PRODUCT";
+        public const string TIP = @"TIP";
+        public const string GIFT_CARD = @"GIFT_CARD";
+        public const string SHIPPING = @"SHIPPING";
+        public const string DUTY = @"DUTY";
+        public const string ADDITIONAL_FEE = @"ADDITIONAL_FEE";
+        public const string FEE = @"FEE";
+        public const string UNKNOWN = @"UNKNOWN";
+        public const string ADJUSTMENT = @"ADJUSTMENT";
     }
 
     ///<summary>
@@ -53775,11 +61330,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class ScheduledChangeSortKeysStringValues
+    {
+        public const string EXPECTED_AT = @"EXPECTED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -53936,6 +61492,15 @@ namespace ShopifyNet.AdminTypes
         ///Include the script only on the web storefront.
         ///</summary>
         ONLINE_STORE,
+    }
+
+    public static class ScriptTagDisplayScopeStringValues
+    {
+        [Obsolete("`ALL` is deprecated. Use `ONLINE_STORE` instead.")]
+        public const string ALL = @"ALL";
+        [Obsolete("`ORDER_STATUS` is deprecated and unavailable as a mutation input as of <b>2025-01</b>.")]
+        public const string ORDER_STATUS = @"ORDER_STATUS";
+        public const string ONLINE_STORE = @"ONLINE_STORE";
     }
 
     ///<summary>
@@ -54096,6 +61661,23 @@ namespace ShopifyNet.AdminTypes
         ///A balance transaction.
         ///</summary>
         BALANCE_TRANSACTION,
+    }
+
+    public static class SearchResultTypeStringValues
+    {
+        public const string CUSTOMER = @"CUSTOMER";
+        public const string DRAFT_ORDER = @"DRAFT_ORDER";
+        public const string PRODUCT = @"PRODUCT";
+        public const string COLLECTION = @"COLLECTION";
+        public const string FILE = @"FILE";
+        public const string PAGE = @"PAGE";
+        public const string BLOG = @"BLOG";
+        public const string ARTICLE = @"ARTICLE";
+        public const string URL_REDIRECT = @"URL_REDIRECT";
+        public const string PRICE_RULE = @"PRICE_RULE";
+        public const string DISCOUNT_REDEEM_CODE = @"DISCOUNT_REDEEM_CODE";
+        public const string ORDER = @"ORDER";
+        public const string BALANCE_TRANSACTION = @"BALANCE_TRANSACTION";
     }
 
     ///<summary>
@@ -54550,6 +62132,14 @@ namespace ShopifyNet.AdminTypes
         RELEVANCE,
     }
 
+    public static class SegmentSortKeysStringValues
+    {
+        public const string CREATION_DATE = @"CREATION_DATE";
+        public const string ID = @"ID";
+        public const string LAST_EDIT_DATE = @"LAST_EDIT_DATE";
+        public const string RELEVANCE = @"RELEVANCE";
+    }
+
     ///<summary>
     ///The statistics of a given segment.
     ///</summary>
@@ -54739,18 +62329,6 @@ namespace ShopifyNet.AdminTypes
         ///Selling plan pricing details.
         ///</summary>
         public IEnumerable<ISellingPlanPricingPolicy>? pricingPolicies { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The published translations associated with the resource.
         ///</summary>
@@ -54822,6 +62400,13 @@ namespace ShopifyNet.AdminTypes
         YEARDAY,
     }
 
+    public static class SellingPlanAnchorTypeStringValues
+    {
+        public const string WEEKDAY = @"WEEKDAY";
+        public const string MONTHDAY = @"MONTHDAY";
+        public const string YEARDAY = @"YEARDAY";
+    }
+
     ///<summary>
     ///Represents the billing frequency associated to the selling plan (for example, bill every week, or bill every
     ///three months). The selling plan billing policy and associated records (selling plan groups, selling plans, pricing
@@ -54860,6 +62445,14 @@ namespace ShopifyNet.AdminTypes
         ///The selling plan is for try before you buy purchases.
         ///</summary>
         TRY_BEFORE_YOU_BUY,
+    }
+
+    public static class SellingPlanCategoryStringValues
+    {
+        public const string OTHER = @"OTHER";
+        public const string PRE_ORDER = @"PRE_ORDER";
+        public const string SUBSCRIPTION = @"SUBSCRIPTION";
+        public const string TRY_BEFORE_YOU_BUY = @"TRY_BEFORE_YOU_BUY";
     }
 
     ///<summary>
@@ -54901,6 +62494,12 @@ namespace ShopifyNet.AdminTypes
         ///The checkout charge is a fixed price amount.
         ///</summary>
         PRICE,
+    }
+
+    public static class SellingPlanCheckoutChargeTypeStringValues
+    {
+        public const string PERCENTAGE = @"PERCENTAGE";
+        public const string PRICE = @"PRICE";
     }
 
     ///<summary>
@@ -55052,6 +62651,11 @@ namespace ShopifyNet.AdminTypes
         FULFILLMENT_BEGIN,
     }
 
+    public static class SellingPlanFixedDeliveryPolicyIntentStringValues
+    {
+        public const string FULFILLMENT_BEGIN = @"FULFILLMENT_BEGIN";
+    }
+
     ///<summary>
     ///The fulfillment or delivery behavior of the first fulfillment when the orderis placed before the anchor.
     ///</summary>
@@ -55067,6 +62671,12 @@ namespace ShopifyNet.AdminTypes
         ///delivered at the following anchor.
         ///</summary>
         NEXT,
+    }
+
+    public static class SellingPlanFixedDeliveryPolicyPreAnchorBehaviorStringValues
+    {
+        public const string ASAP = @"ASAP";
+        public const string NEXT = @"NEXT";
     }
 
     ///<summary>
@@ -55113,6 +62723,14 @@ namespace ShopifyNet.AdminTypes
         ///Unknown. Usually to be determined in the future.
         ///</summary>
         UNKNOWN,
+    }
+
+    public static class SellingPlanFulfillmentTriggerStringValues
+    {
+        public const string ANCHOR = @"ANCHOR";
+        public const string ASAP = @"ASAP";
+        public const string EXACT_TIME = @"EXACT_TIME";
+        public const string UNKNOWN = @"UNKNOWN";
     }
 
     ///<summary>
@@ -55338,14 +62956,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         NAME,
         ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
-        ///<summary>
         ///Sort by the `updated_at` value.
         ///</summary>
         UPDATED_AT,
+    }
+
+    public static class SellingPlanGroupSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string NAME = @"NAME";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -55645,6 +63266,73 @@ namespace ShopifyNet.AdminTypes
         INVALID_INPUT,
     }
 
+    public static class SellingPlanGroupUserErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string EQUAL_TO = @"EQUAL_TO";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string INCLUSION = @"INCLUSION";
+        public const string INVALID = @"INVALID";
+        public const string LESS_THAN = @"LESS_THAN";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string NOT_A_NUMBER = @"NOT_A_NUMBER";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string PRESENT = @"PRESENT";
+        public const string TAKEN = @"TAKEN";
+        public const string TOO_BIG = @"TOO_BIG";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string WRONG_LENGTH = @"WRONG_LENGTH";
+        public const string SELLING_PLAN_COUNT_UPPER_BOUND = @"SELLING_PLAN_COUNT_UPPER_BOUND";
+        public const string SELLING_PLAN_COUNT_LOWER_BOUND = @"SELLING_PLAN_COUNT_LOWER_BOUND";
+        public const string SELLING_PLAN_MAX_CYCLES_MUST_BE_GREATER_THAN_MIN_CYCLES = @"SELLING_PLAN_MAX_CYCLES_MUST_BE_GREATER_THAN_MIN_CYCLES";
+        public const string SELLING_PLAN_BILLING_AND_DELIVERY_POLICY_ANCHORS_MUST_BE_EQUAL = @"SELLING_PLAN_BILLING_AND_DELIVERY_POLICY_ANCHORS_MUST_BE_EQUAL";
+        public const string SELLING_PLAN_BILLING_CYCLE_MUST_BE_A_MULTIPLE_OF_DELIVERY_CYCLE = @"SELLING_PLAN_BILLING_CYCLE_MUST_BE_A_MULTIPLE_OF_DELIVERY_CYCLE";
+        public const string SELLING_PLAN_PRICING_POLICIES_MUST_CONTAIN_A_FIXED_PRICING_POLICY = @"SELLING_PLAN_PRICING_POLICIES_MUST_CONTAIN_A_FIXED_PRICING_POLICY";
+        public const string SELLING_PLAN_MISSING_OPTION2_LABEL_ON_PARENT_GROUP = @"SELLING_PLAN_MISSING_OPTION2_LABEL_ON_PARENT_GROUP";
+        public const string SELLING_PLAN_MISSING_OPTION3_LABEL_ON_PARENT_GROUP = @"SELLING_PLAN_MISSING_OPTION3_LABEL_ON_PARENT_GROUP";
+        public const string SELLING_PLAN_OPTION2_REQUIRED_AS_DEFINED_ON_PARENT_GROUP = @"SELLING_PLAN_OPTION2_REQUIRED_AS_DEFINED_ON_PARENT_GROUP";
+        public const string SELLING_PLAN_OPTION3_REQUIRED_AS_DEFINED_ON_PARENT_GROUP = @"SELLING_PLAN_OPTION3_REQUIRED_AS_DEFINED_ON_PARENT_GROUP";
+        public const string SELLING_PLAN_PRICING_POLICIES_LIMIT = @"SELLING_PLAN_PRICING_POLICIES_LIMIT";
+        public const string RESOURCE_LIST_CONTAINS_INVALID_IDS = @"RESOURCE_LIST_CONTAINS_INVALID_IDS";
+        public const string PRODUCT_VARIANT_DOES_NOT_EXIST = @"PRODUCT_VARIANT_DOES_NOT_EXIST";
+        public const string PRODUCT_DOES_NOT_EXIST = @"PRODUCT_DOES_NOT_EXIST";
+        public const string GROUP_DOES_NOT_EXIST = @"GROUP_DOES_NOT_EXIST";
+        public const string GROUP_COULD_NOT_BE_DELETED = @"GROUP_COULD_NOT_BE_DELETED";
+        public const string ERROR_ADDING_RESOURCE_TO_GROUP = @"ERROR_ADDING_RESOURCE_TO_GROUP";
+        public const string SELLING_PLAN_DELIVERY_POLICY_MISSING = @"SELLING_PLAN_DELIVERY_POLICY_MISSING";
+        public const string SELLING_PLAN_BILLING_POLICY_MISSING = @"SELLING_PLAN_BILLING_POLICY_MISSING";
+        public const string PLAN_DOES_NOT_EXIST = @"PLAN_DOES_NOT_EXIST";
+        public const string PLAN_ID_MUST_BE_SPECIFIED_TO_UPDATE = @"PLAN_ID_MUST_BE_SPECIFIED_TO_UPDATE";
+        public const string ONLY_NEED_ONE_BILLING_POLICY_TYPE = @"ONLY_NEED_ONE_BILLING_POLICY_TYPE";
+        public const string ONLY_NEED_ONE_DELIVERY_POLICY_TYPE = @"ONLY_NEED_ONE_DELIVERY_POLICY_TYPE";
+        public const string ONLY_NEED_ONE_PRICING_POLICY_TYPE = @"ONLY_NEED_ONE_PRICING_POLICY_TYPE";
+        public const string BILLING_AND_DELIVERY_POLICY_TYPES_MUST_BE_THE_SAME = @"BILLING_AND_DELIVERY_POLICY_TYPES_MUST_BE_THE_SAME";
+        public const string ONLY_NEED_ONE_PRICING_POLICY_VALUE = @"ONLY_NEED_ONE_PRICING_POLICY_VALUE";
+        public const string PRICING_POLICY_ADJUSTMENT_VALUE_AND_TYPE_MUST_MATCH = @"PRICING_POLICY_ADJUSTMENT_VALUE_AND_TYPE_MUST_MATCH";
+        public const string SELLING_PLAN_DUPLICATE_NAME = @"SELLING_PLAN_DUPLICATE_NAME";
+        public const string SELLING_PLAN_DUPLICATE_OPTIONS = @"SELLING_PLAN_DUPLICATE_OPTIONS";
+        public const string SELLING_PLAN_FIXED_PRICING_POLICIES_LIMIT = @"SELLING_PLAN_FIXED_PRICING_POLICIES_LIMIT";
+        public const string REMAINING_BALANCE_CHARGE_EXACT_TIME_REQUIRED = @"REMAINING_BALANCE_CHARGE_EXACT_TIME_REQUIRED";
+        public const string CHECKOUT_CHARGE_VALUE_AND_TYPE_MUST_MATCH = @"CHECKOUT_CHARGE_VALUE_AND_TYPE_MUST_MATCH";
+        public const string ONLY_NEED_ONE_CHECKOUT_CHARGE_VALUE = @"ONLY_NEED_ONE_CHECKOUT_CHARGE_VALUE";
+        public const string REMAINING_BALANCE_CHARGE_EXACT_TIME_NOT_ALLOWED = @"REMAINING_BALANCE_CHARGE_EXACT_TIME_NOT_ALLOWED";
+        public const string REMAINING_BALANCE_CHARGE_TIME_AFTER_CHECKOUT_MUST_BE_GREATER_THAN_ZERO = @"REMAINING_BALANCE_CHARGE_TIME_AFTER_CHECKOUT_MUST_BE_GREATER_THAN_ZERO";
+        public const string REMAINING_BALANCE_CHARGE_TRIGGER_ON_FULL_CHECKOUT = @"REMAINING_BALANCE_CHARGE_TRIGGER_ON_FULL_CHECKOUT";
+        public const string REMAINING_BALANCE_CHARGE_TRIGGER_NO_REMAINING_BALANCE_ON_PARTIAL_PERCENTAGE_CHECKOUT_CHARGE = @"REMAINING_BALANCE_CHARGE_TRIGGER_NO_REMAINING_BALANCE_ON_PARTIAL_PERCENTAGE_CHECKOUT_CHARGE";
+        public const string REMAINING_BALANCE_CHARGE_TRIGGER_NO_REMAINING_BALANCE_ON_PRICE_CHECKOUT_CHARGE = @"REMAINING_BALANCE_CHARGE_TRIGGER_NO_REMAINING_BALANCE_ON_PRICE_CHECKOUT_CHARGE";
+        public const string FULFILLMENT_EXACT_TIME_REQUIRED = @"FULFILLMENT_EXACT_TIME_REQUIRED";
+        public const string FULFILLMENT_EXACT_TIME_NOT_ALLOWED = @"FULFILLMENT_EXACT_TIME_NOT_ALLOWED";
+        public const string SELLING_PLAN_ANCHORS_NOT_ALLOWED = @"SELLING_PLAN_ANCHORS_NOT_ALLOWED";
+        public const string SELLING_PLAN_ANCHORS_REQUIRED = @"SELLING_PLAN_ANCHORS_REQUIRED";
+        public const string ONLY_ONE_OF_FIXED_OR_RECURRING_BILLING = @"ONLY_ONE_OF_FIXED_OR_RECURRING_BILLING";
+        public const string ONLY_ONE_OF_FIXED_OR_RECURRING_DELIVERY = @"ONLY_ONE_OF_FIXED_OR_RECURRING_DELIVERY";
+        public const string BILLING_POLICY_INTERVAL_TOO_LARGE = @"BILLING_POLICY_INTERVAL_TOO_LARGE";
+        public const string DELIVERY_POLICY_INTERVAL_TOO_LARGE = @"DELIVERY_POLICY_INTERVAL_TOO_LARGE";
+        public const string INVALID_INPUT = @"INVALID_INPUT";
+    }
+
     ///<summary>
     ///Represents valid selling plan interval.
     ///</summary>
@@ -55666,6 +63354,14 @@ namespace ShopifyNet.AdminTypes
         ///Year interval.
         ///</summary>
         YEAR,
+    }
+
+    public static class SellingPlanIntervalStringValues
+    {
+        public const string DAY = @"DAY";
+        public const string WEEK = @"WEEK";
+        public const string MONTH = @"MONTH";
+        public const string YEAR = @"YEAR";
     }
 
     ///<summary>
@@ -55724,6 +63420,13 @@ namespace ShopifyNet.AdminTypes
         ///Price of the policy.
         ///</summary>
         PRICE,
+    }
+
+    public static class SellingPlanPricingPolicyAdjustmentTypeStringValues
+    {
+        public const string PERCENTAGE = @"PERCENTAGE";
+        public const string FIXED_AMOUNT = @"FIXED_AMOUNT";
+        public const string PRICE = @"PRICE";
     }
 
     ///<summary>
@@ -55849,6 +63552,11 @@ namespace ShopifyNet.AdminTypes
         FULFILLMENT_BEGIN,
     }
 
+    public static class SellingPlanRecurringDeliveryPolicyIntentStringValues
+    {
+        public const string FULFILLMENT_BEGIN = @"FULFILLMENT_BEGIN";
+    }
+
     ///<summary>
     ///The fulfillment or delivery behaviors of the first fulfillment when the orderis placed before the anchor.
     ///</summary>
@@ -55864,6 +63572,12 @@ namespace ShopifyNet.AdminTypes
         ///delivered at the following anchor.
         ///</summary>
         NEXT,
+    }
+
+    public static class SellingPlanRecurringDeliveryPolicyPreAnchorBehaviorStringValues
+    {
+        public const string ASAP = @"ASAP";
+        public const string NEXT = @"NEXT";
     }
 
     ///<summary>
@@ -55908,6 +63622,13 @@ namespace ShopifyNet.AdminTypes
         TIME_AFTER_CHECKOUT,
     }
 
+    public static class SellingPlanRemainingBalanceChargeTriggerStringValues
+    {
+        public const string NO_REMAINING_BALANCE = @"NO_REMAINING_BALANCE";
+        public const string EXACT_TIME = @"EXACT_TIME";
+        public const string TIME_AFTER_CHECKOUT = @"TIME_AFTER_CHECKOUT";
+    }
+
     ///<summary>
     ///When to reserve inventory for a selling plan.
     ///</summary>
@@ -55921,6 +63642,12 @@ namespace ShopifyNet.AdminTypes
         ///Reserve inventory at time of sale.
         ///</summary>
         ON_SALE,
+    }
+
+    public static class SellingPlanReserveStringValues
+    {
+        public const string ON_FULFILLMENT = @"ON_FULFILLMENT";
+        public const string ON_SALE = @"ON_SALE";
     }
 
     ///<summary>
@@ -55991,6 +63718,13 @@ namespace ShopifyNet.AdminTypes
         DISCONNECTED_CONFIGURED,
     }
 
+    public static class ServerPixelStatusStringValues
+    {
+        public const string CONNECTED = @"CONNECTED";
+        public const string DISCONNECTED_UNCONFIGURED = @"DISCONNECTED_UNCONFIGURED";
+        public const string DISCONNECTED_CONFIGURED = @"DISCONNECTED_CONFIGURED";
+    }
+
     ///<summary>
     ///The [discount class](https://help.shopify.com/manual/discounts/combining-discounts/discount-combinations)
     ///that's used to control how discounts can be combined.
@@ -56001,6 +63735,11 @@ namespace ShopifyNet.AdminTypes
         ///Combined as a shipping discount.
         ///</summary>
         SHIPPING,
+    }
+
+    public static class ShippingDiscountClassStringValues
+    {
+        public const string SHIPPING = @"SHIPPING";
     }
 
     ///<summary>
@@ -56228,6 +63967,14 @@ namespace ShopifyNet.AdminTypes
         SOFT_PACK,
     }
 
+    public static class ShippingPackageTypeStringValues
+    {
+        public const string BOX = @"BOX";
+        public const string FLAT_RATE = @"FLAT_RATE";
+        public const string ENVELOPE = @"ENVELOPE";
+        public const string SOFT_PACK = @"SOFT_PACK";
+    }
+
     ///<summary>
     ///Return type for `shippingPackageUpdate` mutation.
     ///</summary>
@@ -56371,18 +64118,6 @@ namespace ShopifyNet.AdminTypes
         public bool? checkoutApiSupported { get; set; }
 
         ///<summary>
-        ///Return a collection by its handle.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.collectionByHandle` instead.")]
-        public Collection? collectionByHandle { get; set; }
-
-        ///<summary>
-        ///List of the shop's collection saved searches.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.collectionSavedSearches` instead.")]
-        public SavedSearchConnection? collectionSavedSearches { get; set; }
-
-        ///<summary>
         ///List of the shop's collections.
         ///</summary>
         [Obsolete("Use `QueryRoot.collections` instead.")]
@@ -56420,12 +64155,6 @@ namespace ShopifyNet.AdminTypes
         ///Information about the shop's customer accounts.
         ///</summary>
         public CustomerAccountsV2? customerAccountsV2 { get; set; }
-
-        ///<summary>
-        ///List of the shop's customer saved searches.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.customerSavedSearches` instead.")]
-        public SavedSearchConnection? customerSavedSearches { get; set; }
         ///<summary>
         ///A list of tags that have been added to customer accounts.
         ///</summary>
@@ -56446,12 +64175,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `domainsPaginated` instead.")]
         public IEnumerable<Domain>? domains { get; set; }
-
-        ///<summary>
-        ///List of the shop's draft order saved searches.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.draftOrderSavedSearches` instead.")]
-        public SavedSearchConnection? draftOrderSavedSearches { get; set; }
         ///<summary>
         ///A list of tags that have been added to draft orders.
         ///</summary>
@@ -56471,6 +64194,10 @@ namespace ShopifyNet.AdminTypes
         ///The presentment currencies enabled for the shop.
         ///</summary>
         public IEnumerable<string>? enabledPresentmentCurrencies { get; set; }
+        ///<summary>
+        ///The entitlements for a shop.
+        ///</summary>
+        public EntitlementsType? entitlements { get; set; }
         ///<summary>
         ///The set of features enabled for the shop.
         ///</summary>
@@ -56512,12 +64239,6 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("Use `QueryRoot.locations` instead.")]
         public LocationConnection? locations { get; set; }
-
-        ///<summary>
-        ///List of a shop's marketing events.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.marketingEvents` instead.")]
-        public MarketingEventConnection? marketingEvents { get; set; }
         ///<summary>
         ///Whether SMS marketing has been enabled on the shop's checkout configuration settings.
         ///</summary>
@@ -56557,12 +64278,6 @@ namespace ShopifyNet.AdminTypes
         ///The suffix that appears after order numbers.
         ///</summary>
         public string? orderNumberFormatSuffix { get; set; }
-
-        ///<summary>
-        ///List of the shop's order saved searches.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.orderSavedSearches` instead.")]
-        public SavedSearchConnection? orderSavedSearches { get; set; }
         ///<summary>
         ///A list of tags that have been added to orders.
         ///</summary>
@@ -56587,34 +64302,10 @@ namespace ShopifyNet.AdminTypes
         public Domain? primaryDomain { get; set; }
 
         ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
-
-        ///<summary>
-        ///Return a product by its handle.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.productByHandle` instead.")]
-        public Product? productByHandle { get; set; }
-
-        ///<summary>
         ///The list of all images of all products for the shop.
         ///</summary>
         [Obsolete("Use `files` instead. See [filesQuery](https://shopify.dev/docs/api/admin-graphql/latest/queries/files) and its [query](https://shopify.dev/docs/api/admin-graphql/2024-01/queries/files#argument-query) argument for more information.")]
         public ImageConnection? productImages { get; set; }
-
-        ///<summary>
-        ///List of the shop's product saved searches.
-        ///</summary>
-        [Obsolete("Use `QueryRoot.productSavedSearches` instead.")]
-        public SavedSearchConnection? productSavedSearches { get; set; }
 
         ///<summary>
         ///A list of tags that have been added to products.
@@ -56735,12 +64426,6 @@ namespace ShopifyNet.AdminTypes
         ///The date and time when the shop was last updated.
         ///</summary>
         public DateTime? updatedAt { get; set; }
-
-        ///<summary>
-        ///Fetches a list of images uploaded to the shop by their IDs.
-        ///</summary>
-        [Obsolete("Use `files` instead. See [filesQuery](https://shopify.dev/docs/api/admin-graphql/latest/queries/files) and its [query](https://shopify.dev/docs/api/admin-graphql/2024-01/queries/files#argument-query) argument for more information.")]
-        public IEnumerable<Image>? uploadedImagesByIds { get; set; }
         ///<summary>
         ///The URL of the shop's online store.
         ///</summary>
@@ -56919,6 +64604,14 @@ namespace ShopifyNet.AdminTypes
         SHOPIFY,
     }
 
+    public static class ShopBrandingStringValues
+    {
+        public const string SHOPIFY_GOLD = @"SHOPIFY_GOLD";
+        public const string SHOPIFY_PLUS = @"SHOPIFY_PLUS";
+        public const string ROGERS = @"ROGERS";
+        public const string SHOPIFY = @"SHOPIFY";
+    }
+
     ///<summary>
     ///Represents the shop's customer account requirement preference.
     ///</summary>
@@ -56927,6 +64620,13 @@ namespace ShopifyNet.AdminTypes
         REQUIRED,
         OPTIONAL,
         DISABLED,
+    }
+
+    public static class ShopCustomerAccountsSettingStringValues
+    {
+        public const string REQUIRED = @"REQUIRED";
+        public const string OPTIONAL = @"OPTIONAL";
+        public const string DISABLED = @"DISABLED";
     }
 
     ///<summary>
@@ -56995,13 +64695,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("All shops have international domains through Shopify Markets.")]
         public bool? internationalDomains { get; set; }
+
         ///<summary>
         ///Whether a shop can enable international price overrides.
         ///</summary>
+        [Obsolete("Use the `markets` field on `EntitlementsType` in API version 2025-04 or later.\nEach market entitlement has a `catalogs` field that indicates\nwhether the shop's markets have access to catalogs and price overrides.")]
         public bool? internationalPriceOverrides { get; set; }
+
         ///<summary>
         ///Whether a shop can enable international price rules.
         ///</summary>
+        [Obsolete("Use the `markets` field on `EntitlementsType` in API version 2025-04 or later.\nEach market entitlement has a `catalogs` field that indicates\nwhether the shop's markets have access to catalogs and price overrides.")]
         public bool? internationalPriceRules { get; set; }
         ///<summary>
         ///Whether a shop has enabled a legacy subscription gateway to handle older subscriptions.
@@ -57012,12 +64716,6 @@ namespace ShopifyNet.AdminTypes
         ///or don't have a storefront.
         ///</summary>
         public bool? liveView { get; set; }
-
-        ///<summary>
-        ///Whether a shop has multi-location functionality.
-        ///</summary>
-        [Obsolete("All shops support multi-location inventory. Use `QueryRoot.locations` to determine whether shop has more than one location.")]
-        public bool? multiLocation { get; set; }
 
         ///<summary>
         ///Whether a shop has access to the onboarding visual.
@@ -57050,6 +64748,10 @@ namespace ShopifyNet.AdminTypes
         ///Whether a shop has an online store.
         ///</summary>
         public bool? storefront { get; set; }
+        ///<summary>
+        ///Whether a shop is eligible for Unified Markets.
+        ///</summary>
+        public bool? unifiedMarkets { get; set; }
         ///<summary>
         ///Whether a shop is using Shopify Balance.
         ///</summary>
@@ -57209,6 +64911,11 @@ namespace ShopifyNet.AdminTypes
         TOO_BIG,
     }
 
+    public static class ShopPolicyErrorCodeStringValues
+    {
+        public const string TOO_BIG = @"TOO_BIG";
+    }
+
     ///<summary>
     ///Available shop policy types.
     ///</summary>
@@ -57246,6 +64953,18 @@ namespace ShopifyNet.AdminTypes
         ///The contact information.
         ///</summary>
         CONTACT_INFORMATION,
+    }
+
+    public static class ShopPolicyTypeStringValues
+    {
+        public const string REFUND_POLICY = @"REFUND_POLICY";
+        public const string SHIPPING_POLICY = @"SHIPPING_POLICY";
+        public const string PRIVACY_POLICY = @"PRIVACY_POLICY";
+        public const string TERMS_OF_SERVICE = @"TERMS_OF_SERVICE";
+        public const string TERMS_OF_SALE = @"TERMS_OF_SALE";
+        public const string LEGAL_NOTICE = @"LEGAL_NOTICE";
+        public const string SUBSCRIPTION_POLICY = @"SUBSCRIPTION_POLICY";
+        public const string CONTACT_INFORMATION = @"CONTACT_INFORMATION";
     }
 
     ///<summary>
@@ -57343,6 +65062,15 @@ namespace ShopifyNet.AdminTypes
         PRESENT,
     }
 
+    public static class ShopResourceFeedbackCreateUserErrorCodeStringValues
+    {
+        public const string OUTDATED_FEEDBACK = @"OUTDATED_FEEDBACK";
+        public const string FEEDBACK_DATE_IN_FUTURE = @"FEEDBACK_DATE_IN_FUTURE";
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string PRESENT = @"PRESENT";
+    }
+
     ///<summary>
     ///Resource limits of a shop.
     ///</summary>
@@ -57379,6 +65107,12 @@ namespace ShopifyNet.AdminTypes
         ///Popularity sort.
         ///</summary>
         POPULAR,
+    }
+
+    public static class ShopTagSortStringValues
+    {
+        public const string ALPHABETICAL = @"ALPHABETICAL";
+        public const string POPULAR = @"POPULAR";
     }
 
     ///<summary>
@@ -57471,6 +65205,10 @@ namespace ShopifyNet.AdminTypes
     public class ShopifyPaymentsAccount : GraphQLObject<ShopifyPaymentsAccount>, INode
     {
         ///<summary>
+        ///The name of the account opener.
+        ///</summary>
+        public string? accountOpenerName { get; set; }
+        ///<summary>
         ///Whether the Shopify Payments setup is completed.
         ///</summary>
         public bool? activated { get; set; }
@@ -57537,6 +65275,37 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///A Shopify Payments address.
+    ///</summary>
+    public class ShopifyPaymentsAddressBasic : GraphQLObject<ShopifyPaymentsAddressBasic>
+    {
+        ///<summary>
+        ///Line 1 of the address.
+        ///</summary>
+        public string? addressLine1 { get; set; }
+        ///<summary>
+        ///Line 2 of the address.
+        ///</summary>
+        public string? addressLine2 { get; set; }
+        ///<summary>
+        ///The address city.
+        ///</summary>
+        public string? city { get; set; }
+        ///<summary>
+        ///The address country.
+        ///</summary>
+        public string? country { get; set; }
+        ///<summary>
+        ///The address postal code.
+        ///</summary>
+        public string? postalCode { get; set; }
+        ///<summary>
+        ///The address state/province/zone.
+        ///</summary>
+        public string? zone { get; set; }
+    }
+
+    ///<summary>
     ///The adjustment order object.
     ///</summary>
     public class ShopifyPaymentsAdjustmentOrder : GraphQLObject<ShopifyPaymentsAdjustmentOrder>
@@ -57546,6 +65315,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public MoneyV2? amount { get; set; }
         ///<summary>
+        ///The fee of the adjustment order.
+        ///</summary>
+        public MoneyV2? fees { get; set; }
+        ///<summary>
         ///The link to the adjustment order.
         ///</summary>
         public string? link { get; set; }
@@ -57553,6 +65326,10 @@ namespace ShopifyNet.AdminTypes
         ///The name of the adjustment order.
         ///</summary>
         public string? name { get; set; }
+        ///<summary>
+        ///The net of the adjustment order.
+        ///</summary>
+        public MoneyV2? net { get; set; }
         ///<summary>
         ///The ID of the order transaction.
         ///</summary>
@@ -57727,15 +65504,23 @@ namespace ShopifyNet.AdminTypes
         ACTION_REQUIRED,
     }
 
+    public static class ShopifyPaymentsBalanceTransactionPayoutStatusStringValues
+    {
+        public const string SCHEDULED = @"SCHEDULED";
+        [Obsolete("Use `SCHEDULED` instead.")]
+        public const string IN_TRANSIT = @"IN_TRANSIT";
+        public const string PAID = @"PAID";
+        public const string FAILED = @"FAILED";
+        public const string CANCELED = @"CANCELED";
+        public const string PENDING = @"PENDING";
+        public const string ACTION_REQUIRED = @"ACTION_REQUIRED";
+    }
+
     ///<summary>
     ///A bank account that can receive payouts.
     ///</summary>
     public class ShopifyPaymentsBankAccount : GraphQLObject<ShopifyPaymentsBankAccount>, INode
     {
-        ///<summary>
-        ///The account number of the bank account.
-        ///</summary>
-        public string? accountNumber { get; set; }
         ///<summary>
         ///The last digits of the account number (the rest is redacted).
         ///</summary>
@@ -57764,10 +65549,6 @@ namespace ShopifyNet.AdminTypes
         ///All current and previous payouts made between the account and the bank account.
         ///</summary>
         public ShopifyPaymentsPayoutConnection? payouts { get; set; }
-        ///<summary>
-        ///The routing number of the bank account.
-        ///</summary>
-        public string? routingNumber { get; set; }
         ///<summary>
         ///The status of the bank account.
         ///</summary>
@@ -57829,6 +65610,150 @@ namespace ShopifyNet.AdminTypes
         ///A payout to the bank account failed.
         ///</summary>
         ERRORED,
+    }
+
+    public static class ShopifyPaymentsBankAccountStatusStringValues
+    {
+        public const string NEW = @"NEW";
+        public const string VALIDATED = @"VALIDATED";
+        public const string VERIFIED = @"VERIFIED";
+        public const string ERRORED = @"ERRORED";
+    }
+
+    ///<summary>
+    ///The business type of a Shopify Payments account.
+    ///</summary>
+    public enum ShopifyPaymentsBusinessType
+    {
+        ///<summary>
+        ///The business type is a corporation.
+        ///</summary>
+        CORPORATION,
+        ///<summary>
+        ///The business type is a government.
+        ///</summary>
+        GOVERNMENT,
+        ///<summary>
+        ///The business type is an incorporated partnership.
+        ///</summary>
+        INCORPORATED_PARTNERSHIP,
+        ///<summary>
+        ///The business is an individual.
+        ///</summary>
+        INDIVIDUAL,
+        ///<summary>
+        ///The business type is a Limited Liability Company.
+        ///</summary>
+        LLC,
+        ///<summary>
+        ///The business type is a non profit.
+        ///</summary>
+        NON_PROFIT,
+        ///<summary>
+        ///The business type is a non profit (incorporated).
+        ///</summary>
+        NON_PROFIT_INCORPORATED,
+        ///<summary>
+        ///The business type is a non profit (unincorporated).
+        ///</summary>
+        NON_PROFIT_UNINCORPORATED,
+        ///<summary>
+        ///The business type is a non profit (unincorporated_association).
+        ///</summary>
+        NON_PROFIT_UNINCORPORATED_ASSOCIATION,
+        ///<summary>
+        ///The business type is a non profit (registered charity).
+        ///</summary>
+        NON_PROFIT_REGISTERED_CHARITY,
+        ///<summary>
+        ///The business type is a partnership.
+        ///</summary>
+        PARTNERSHIP,
+        ///<summary>
+        ///The business type is a private corporation.
+        ///</summary>
+        PRIVATE_CORPORATION,
+        ///<summary>
+        ///The business type is a public company.
+        ///</summary>
+        PUBLIC_COMPANY,
+        ///<summary>
+        ///The business type is a public corporation.
+        ///</summary>
+        PUBLIC_CORPORATION,
+        ///<summary>
+        ///The business type is a sole proprietorship.
+        ///</summary>
+        SOLE_PROP,
+        ///<summary>
+        ///The business type is an unincorporated partnership.
+        ///</summary>
+        UNINCORPORATED_PARTNERSHIP,
+        ///<summary>
+        ///The business type is a private multi member LLC.
+        ///</summary>
+        PRIVATE_MULTI_MEMBER_LLC,
+        ///<summary>
+        ///The business type is a private single member LLC.
+        ///</summary>
+        PRIVATE_SINGLE_MEMBER_LLC,
+        ///<summary>
+        ///The business type is a private unincorporated association.
+        ///</summary>
+        PRIVATE_UNINCORPORATED_ASSOCIATION,
+        ///<summary>
+        ///The business type is a private partnership.
+        ///</summary>
+        PRIVATE_PARTNERSHIP,
+        ///<summary>
+        ///The business type is a public partnership.
+        ///</summary>
+        PUBLIC_PARTNERSHIP,
+        ///<summary>
+        ///The business type is a free zone establishment.
+        ///</summary>
+        FREE_ZONE_ESTABLISHMENT,
+        ///<summary>
+        ///The business type is a free zone LLC.
+        ///</summary>
+        FREE_ZONE_LLC,
+        ///<summary>
+        ///The business type is a sole establishment.
+        ///</summary>
+        SOLE_ESTABLISHMENT,
+        ///<summary>
+        ///The business type is not set. This is usually because onboarding is incomplete.
+        ///</summary>
+        NOT_SET,
+    }
+
+    public static class ShopifyPaymentsBusinessTypeStringValues
+    {
+        public const string CORPORATION = @"CORPORATION";
+        public const string GOVERNMENT = @"GOVERNMENT";
+        public const string INCORPORATED_PARTNERSHIP = @"INCORPORATED_PARTNERSHIP";
+        public const string INDIVIDUAL = @"INDIVIDUAL";
+        public const string LLC = @"LLC";
+        public const string NON_PROFIT = @"NON_PROFIT";
+        public const string NON_PROFIT_INCORPORATED = @"NON_PROFIT_INCORPORATED";
+        public const string NON_PROFIT_UNINCORPORATED = @"NON_PROFIT_UNINCORPORATED";
+        public const string NON_PROFIT_UNINCORPORATED_ASSOCIATION = @"NON_PROFIT_UNINCORPORATED_ASSOCIATION";
+        public const string NON_PROFIT_REGISTERED_CHARITY = @"NON_PROFIT_REGISTERED_CHARITY";
+        public const string PARTNERSHIP = @"PARTNERSHIP";
+        public const string PRIVATE_CORPORATION = @"PRIVATE_CORPORATION";
+        public const string PUBLIC_COMPANY = @"PUBLIC_COMPANY";
+        public const string PUBLIC_CORPORATION = @"PUBLIC_CORPORATION";
+        public const string SOLE_PROP = @"SOLE_PROP";
+        public const string UNINCORPORATED_PARTNERSHIP = @"UNINCORPORATED_PARTNERSHIP";
+        public const string PRIVATE_MULTI_MEMBER_LLC = @"PRIVATE_MULTI_MEMBER_LLC";
+        public const string PRIVATE_SINGLE_MEMBER_LLC = @"PRIVATE_SINGLE_MEMBER_LLC";
+        public const string PRIVATE_UNINCORPORATED_ASSOCIATION = @"PRIVATE_UNINCORPORATED_ASSOCIATION";
+        public const string PRIVATE_PARTNERSHIP = @"PRIVATE_PARTNERSHIP";
+        public const string PUBLIC_PARTNERSHIP = @"PUBLIC_PARTNERSHIP";
+        public const string FREE_ZONE_ESTABLISHMENT = @"FREE_ZONE_ESTABLISHMENT";
+        public const string FREE_ZONE_LLC = @"FREE_ZONE_LLC";
+        public const string SOLE_ESTABLISHMENT = @"SOLE_ESTABLISHMENT";
+        public const string NOT_SET = @"NOT_SET";
     }
 
     ///<summary>
@@ -58085,6 +66010,16 @@ namespace ShopifyNet.AdminTypes
         SERVICE_DOCUMENTATION_FILE,
     }
 
+    public static class ShopifyPaymentsDisputeEvidenceFileTypeStringValues
+    {
+        public const string CUSTOMER_COMMUNICATION_FILE = @"CUSTOMER_COMMUNICATION_FILE";
+        public const string REFUND_POLICY_FILE = @"REFUND_POLICY_FILE";
+        public const string CANCELLATION_POLICY_FILE = @"CANCELLATION_POLICY_FILE";
+        public const string UNCATEGORIZED_FILE = @"UNCATEGORIZED_FILE";
+        public const string SHIPPING_DOCUMENTATION_FILE = @"SHIPPING_DOCUMENTATION_FILE";
+        public const string SERVICE_DOCUMENTATION_FILE = @"SERVICE_DOCUMENTATION_FILE";
+    }
+
     ///<summary>
     ///The file upload associated with the dispute evidence.
     ///</summary>
@@ -58202,6 +66137,24 @@ namespace ShopifyNet.AdminTypes
         NONCOMPLIANT,
     }
 
+    public static class ShopifyPaymentsDisputeReasonStringValues
+    {
+        public const string FRAUDULENT = @"FRAUDULENT";
+        public const string GENERAL = @"GENERAL";
+        public const string UNRECOGNIZED = @"UNRECOGNIZED";
+        public const string DUPLICATE = @"DUPLICATE";
+        public const string SUBSCRIPTION_CANCELLED = @"SUBSCRIPTION_CANCELLED";
+        public const string PRODUCT_UNACCEPTABLE = @"PRODUCT_UNACCEPTABLE";
+        public const string PRODUCT_NOT_RECEIVED = @"PRODUCT_NOT_RECEIVED";
+        public const string CREDIT_NOT_PROCESSED = @"CREDIT_NOT_PROCESSED";
+        public const string INCORRECT_ACCOUNT_DETAILS = @"INCORRECT_ACCOUNT_DETAILS";
+        public const string INSUFFICIENT_FUNDS = @"INSUFFICIENT_FUNDS";
+        public const string BANK_CANNOT_PROCESS = @"BANK_CANNOT_PROCESS";
+        public const string DEBIT_NOT_AUTHORIZED = @"DEBIT_NOT_AUTHORIZED";
+        public const string CUSTOMER_INITIATED = @"CUSTOMER_INITIATED";
+        public const string NONCOMPLIANT = @"NONCOMPLIANT";
+    }
+
     ///<summary>
     ///Details regarding a dispute reason.
     ///</summary>
@@ -58253,6 +66206,33 @@ namespace ShopifyNet.AdminTypes
         ///The prefix of the statement descriptor.
         ///</summary>
         public string? prefix { get; set; }
+    }
+
+    ///<summary>
+    ///A MerchantCategoryCode (MCC) is a four-digit number listed in ISO 18245 for retail financial services and used to classify the business by the type of goods or services it provides.
+    ///</summary>
+    public class ShopifyPaymentsMerchantCategoryCode : GraphQLObject<ShopifyPaymentsMerchantCategoryCode>
+    {
+        ///<summary>
+        ///The category of the MCC.
+        ///</summary>
+        public string? category { get; set; }
+        ///<summary>
+        ///The category label of the MCC.
+        ///</summary>
+        public string? categoryLabel { get; set; }
+        ///<summary>
+        ///A four-digit number listed in ISO 18245.
+        ///</summary>
+        public int? code { get; set; }
+        ///<summary>
+        ///The ID of the MCC.
+        ///</summary>
+        public int? id { get; set; }
+        ///<summary>
+        ///The subcategory label of the MCC.
+        ///</summary>
+        public string? subcategoryLabel { get; set; }
     }
 
     ///<summary>
@@ -58368,6 +66348,14 @@ namespace ShopifyNet.AdminTypes
         ALTERNATE_CURRENCY_PAYOUT_FAILED_NO_ELIGIBLE_BALANCE,
     }
 
+    public static class ShopifyPaymentsPayoutAlternateCurrencyCreateUserErrorCodeStringValues
+    {
+        public const string MISSING_PROVIDER_ACCOUNT = @"MISSING_PROVIDER_ACCOUNT";
+        public const string ALTERNATE_CURRENCY_PAYOUT_FAILED_STRIPE_ERROR = @"ALTERNATE_CURRENCY_PAYOUT_FAILED_STRIPE_ERROR";
+        public const string UNKNOWN_CORE_ERROR = @"UNKNOWN_CORE_ERROR";
+        public const string ALTERNATE_CURRENCY_PAYOUT_FAILED_NO_ELIGIBLE_BALANCE = @"ALTERNATE_CURRENCY_PAYOUT_FAILED_NO_ELIGIBLE_BALANCE";
+    }
+
     ///<summary>
     ///An auto-generated type for paginating through multiple ShopifyPaymentsPayouts.
     ///</summary>
@@ -58425,6 +66413,14 @@ namespace ShopifyNet.AdminTypes
         MANUAL,
     }
 
+    public static class ShopifyPaymentsPayoutIntervalStringValues
+    {
+        public const string DAILY = @"DAILY";
+        public const string WEEKLY = @"WEEKLY";
+        public const string MONTHLY = @"MONTHLY";
+        public const string MANUAL = @"MANUAL";
+    }
+
     ///<summary>
     ///The payment schedule for a payments account.
     ///</summary>
@@ -58478,6 +66474,16 @@ namespace ShopifyNet.AdminTypes
         ///The payout has been canceled by Shopify.
         ///</summary>
         CANCELED,
+    }
+
+    public static class ShopifyPaymentsPayoutStatusStringValues
+    {
+        public const string SCHEDULED = @"SCHEDULED";
+        [Obsolete("Use `SCHEDULED` instead.")]
+        public const string IN_TRANSIT = @"IN_TRANSIT";
+        public const string PAID = @"PAID";
+        public const string FAILED = @"FAILED";
+        public const string CANCELED = @"CANCELED";
     }
 
     ///<summary>
@@ -58551,6 +66557,12 @@ namespace ShopifyNet.AdminTypes
         WITHDRAWAL,
     }
 
+    public static class ShopifyPaymentsPayoutTransactionTypeStringValues
+    {
+        public const string DEPOSIT = @"DEPOSIT";
+        public const string WITHDRAWAL = @"WITHDRAWAL";
+    }
+
     ///<summary>
     ///Presents all Shopify Payments specific information related to an order refund.
     ///</summary>
@@ -58595,6 +66607,58 @@ namespace ShopifyNet.AdminTypes
         ///The transfer source type.
         ///</summary>
         TRANSFER,
+    }
+
+    public static class ShopifyPaymentsSourceTypeStringValues
+    {
+        public const string ADJUSTMENT_REVERSAL = @"ADJUSTMENT_REVERSAL";
+        public const string CHARGE = @"CHARGE";
+        public const string REFUND = @"REFUND";
+        public const string SYSTEM_ADJUSTMENT = @"SYSTEM_ADJUSTMENT";
+        public const string DISPUTE = @"DISPUTE";
+        public const string ADJUSTMENT = @"ADJUSTMENT";
+        public const string TRANSFER = @"TRANSFER";
+    }
+
+    ///<summary>
+    ///A typed identifier that represents an individual within a tax jurisdiction.
+    ///</summary>
+    public class ShopifyPaymentsTaxIdentification : GraphQLObject<ShopifyPaymentsTaxIdentification>
+    {
+        ///<summary>
+        ///The type of the identification.
+        ///</summary>
+        public string? taxIdentificationType { get; set; }
+        ///<summary>
+        ///The value of the identification.
+        ///</summary>
+        public string? value { get; set; }
+    }
+
+    ///<summary>
+    ///The type of tax identification field.
+    ///</summary>
+    public enum ShopifyPaymentsTaxIdentificationType
+    {
+        ///<summary>
+        ///The last 4 digits of the SSN.
+        ///</summary>
+        SSN_LAST4_DIGITS,
+        ///<summary>
+        ///Full SSN.
+        ///</summary>
+        FULL_SSN,
+        ///<summary>
+        ///Business EIN.
+        ///</summary>
+        EIN,
+    }
+
+    public static class ShopifyPaymentsTaxIdentificationTypeStringValues
+    {
+        public const string SSN_LAST4_DIGITS = @"SSN_LAST4_DIGITS";
+        public const string FULL_SSN = @"FULL_SSN";
+        public const string EIN = @"EIN";
     }
 
     ///<summary>
@@ -59022,6 +67086,104 @@ namespace ShopifyNet.AdminTypes
         IMPORT_TAX_REFUND,
     }
 
+    public static class ShopifyPaymentsTransactionTypeStringValues
+    {
+        public const string CHARGEBACK_PROTECTION_CREDIT = @"CHARGEBACK_PROTECTION_CREDIT";
+        public const string CHARGEBACK_PROTECTION_CREDIT_REVERSAL = @"CHARGEBACK_PROTECTION_CREDIT_REVERSAL";
+        public const string CHARGEBACK_PROTECTION_DEBIT = @"CHARGEBACK_PROTECTION_DEBIT";
+        public const string CHARGEBACK_PROTECTION_DEBIT_REVERSAL = @"CHARGEBACK_PROTECTION_DEBIT_REVERSAL";
+        public const string COLLECTIONS_CREDIT = @"COLLECTIONS_CREDIT";
+        public const string COLLECTIONS_CREDIT_REVERSAL = @"COLLECTIONS_CREDIT_REVERSAL";
+        public const string PROMOTION_CREDIT = @"PROMOTION_CREDIT";
+        public const string PROMOTION_CREDIT_REVERSAL = @"PROMOTION_CREDIT_REVERSAL";
+        public const string ANOMALY_CREDIT = @"ANOMALY_CREDIT";
+        public const string ANOMALY_CREDIT_REVERSAL = @"ANOMALY_CREDIT_REVERSAL";
+        public const string ANOMALY_DEBIT = @"ANOMALY_DEBIT";
+        public const string ANOMALY_DEBIT_REVERSAL = @"ANOMALY_DEBIT_REVERSAL";
+        public const string VAT_REFUND_CREDIT = @"VAT_REFUND_CREDIT";
+        public const string VAT_REFUND_CREDIT_REVERSAL = @"VAT_REFUND_CREDIT_REVERSAL";
+        public const string CHANNEL_CREDIT = @"CHANNEL_CREDIT";
+        public const string CHANNEL_CREDIT_REVERSAL = @"CHANNEL_CREDIT_REVERSAL";
+        public const string CHANNEL_TRANSFER_CREDIT = @"CHANNEL_TRANSFER_CREDIT";
+        public const string CHANNEL_TRANSFER_CREDIT_REVERSAL = @"CHANNEL_TRANSFER_CREDIT_REVERSAL";
+        public const string CHANNEL_TRANSFER_DEBIT = @"CHANNEL_TRANSFER_DEBIT";
+        public const string CHANNEL_TRANSFER_DEBIT_REVERSAL = @"CHANNEL_TRANSFER_DEBIT_REVERSAL";
+        public const string CHANNEL_PROMOTION_CREDIT = @"CHANNEL_PROMOTION_CREDIT";
+        public const string CHANNEL_PROMOTION_CREDIT_REVERSAL = @"CHANNEL_PROMOTION_CREDIT_REVERSAL";
+        public const string MARKETPLACE_FEE_CREDIT = @"MARKETPLACE_FEE_CREDIT";
+        public const string MARKETPLACE_FEE_CREDIT_REVERSAL = @"MARKETPLACE_FEE_CREDIT_REVERSAL";
+        public const string MERCHANT_GOODWILL_CREDIT = @"MERCHANT_GOODWILL_CREDIT";
+        public const string MERCHANT_GOODWILL_CREDIT_REVERSAL = @"MERCHANT_GOODWILL_CREDIT_REVERSAL";
+        public const string TAX_ADJUSTMENT_DEBIT = @"TAX_ADJUSTMENT_DEBIT";
+        public const string TAX_ADJUSTMENT_DEBIT_REVERSAL = @"TAX_ADJUSTMENT_DEBIT_REVERSAL";
+        public const string TAX_ADJUSTMENT_CREDIT = @"TAX_ADJUSTMENT_CREDIT";
+        public const string TAX_ADJUSTMENT_CREDIT_REVERSAL = @"TAX_ADJUSTMENT_CREDIT_REVERSAL";
+        public const string BILLING_DEBIT = @"BILLING_DEBIT";
+        public const string BILLING_DEBIT_REVERSAL = @"BILLING_DEBIT_REVERSAL";
+        public const string SHOP_CASH_CREDIT = @"SHOP_CASH_CREDIT";
+        public const string SHOP_CASH_CREDIT_REVERSAL = @"SHOP_CASH_CREDIT_REVERSAL";
+        public const string SHOP_CASH_BILLING_DEBIT = @"SHOP_CASH_BILLING_DEBIT";
+        public const string SHOP_CASH_BILLING_DEBIT_REVERSAL = @"SHOP_CASH_BILLING_DEBIT_REVERSAL";
+        public const string SHOP_CASH_REFUND_DEBIT = @"SHOP_CASH_REFUND_DEBIT";
+        public const string SHOP_CASH_REFUND_DEBIT_REVERSAL = @"SHOP_CASH_REFUND_DEBIT_REVERSAL";
+        public const string SHOP_CASH_CAMPAIGN_BILLING_DEBIT = @"SHOP_CASH_CAMPAIGN_BILLING_DEBIT";
+        public const string SHOP_CASH_CAMPAIGN_BILLING_DEBIT_REVERSAL = @"SHOP_CASH_CAMPAIGN_BILLING_DEBIT_REVERSAL";
+        public const string SHOP_CASH_CAMPAIGN_BILLING_CREDIT = @"SHOP_CASH_CAMPAIGN_BILLING_CREDIT";
+        public const string SHOP_CASH_CAMPAIGN_BILLING_CREDIT_REVERSAL = @"SHOP_CASH_CAMPAIGN_BILLING_CREDIT_REVERSAL";
+        public const string SELLER_PROTECTION_CREDIT = @"SELLER_PROTECTION_CREDIT";
+        public const string SELLER_PROTECTION_CREDIT_REVERSAL = @"SELLER_PROTECTION_CREDIT_REVERSAL";
+        public const string SHOPIFY_COLLECTIVE_DEBIT = @"SHOPIFY_COLLECTIVE_DEBIT";
+        public const string SHOPIFY_COLLECTIVE_DEBIT_REVERSAL = @"SHOPIFY_COLLECTIVE_DEBIT_REVERSAL";
+        public const string SHOPIFY_COLLECTIVE_CREDIT = @"SHOPIFY_COLLECTIVE_CREDIT";
+        public const string SHOPIFY_COLLECTIVE_CREDIT_REVERSAL = @"SHOPIFY_COLLECTIVE_CREDIT_REVERSAL";
+        public const string BALANCE_TRANSFER_INBOUND = @"BALANCE_TRANSFER_INBOUND";
+        public const string MARKETS_PRO_CREDIT = @"MARKETS_PRO_CREDIT";
+        public const string CUSTOMS_DUTY_ADJUSTMENT = @"CUSTOMS_DUTY_ADJUSTMENT";
+        public const string IMPORT_TAX_ADJUSTMENT = @"IMPORT_TAX_ADJUSTMENT";
+        public const string SHIPPING_LABEL_ADJUSTMENT = @"SHIPPING_LABEL_ADJUSTMENT";
+        public const string SHIPPING_LABEL_ADJUSTMENT_BASE = @"SHIPPING_LABEL_ADJUSTMENT_BASE";
+        public const string SHIPPING_LABEL_ADJUSTMENT_SURCHARGE = @"SHIPPING_LABEL_ADJUSTMENT_SURCHARGE";
+        public const string SHIPPING_RETURN_TO_ORIGIN_ADJUSTMENT = @"SHIPPING_RETURN_TO_ORIGIN_ADJUSTMENT";
+        public const string SHIPPING_OTHER_CARRIER_CHARGE_ADJUSTMENT = @"SHIPPING_OTHER_CARRIER_CHARGE_ADJUSTMENT";
+        public const string CHARGE_ADJUSTMENT = @"CHARGE_ADJUSTMENT";
+        public const string REFUND_ADJUSTMENT = @"REFUND_ADJUSTMENT";
+        public const string CHARGEBACK_FEE = @"CHARGEBACK_FEE";
+        public const string CHARGEBACK_FEE_REFUND = @"CHARGEBACK_FEE_REFUND";
+        public const string TRANSFER = @"TRANSFER";
+        public const string TRANSFER_FAILURE = @"TRANSFER_FAILURE";
+        public const string TRANSFER_CANCEL = @"TRANSFER_CANCEL";
+        public const string RESERVED_FUNDS_WITHDRAWAL = @"RESERVED_FUNDS_WITHDRAWAL";
+        public const string RESERVED_FUNDS_REVERSAL = @"RESERVED_FUNDS_REVERSAL";
+        public const string RISK_REVERSAL = @"RISK_REVERSAL";
+        public const string RISK_WITHDRAWAL = @"RISK_WITHDRAWAL";
+        public const string MERCHANT_TO_MERCHANT_DEBIT = @"MERCHANT_TO_MERCHANT_DEBIT";
+        public const string MERCHANT_TO_MERCHANT_DEBIT_REVERSAL = @"MERCHANT_TO_MERCHANT_DEBIT_REVERSAL";
+        public const string MERCHANT_TO_MERCHANT_CREDIT = @"MERCHANT_TO_MERCHANT_CREDIT";
+        public const string MERCHANT_TO_MERCHANT_CREDIT_REVERSAL = @"MERCHANT_TO_MERCHANT_CREDIT_REVERSAL";
+        public const string SHOPIFY_SOURCE_DEBIT = @"SHOPIFY_SOURCE_DEBIT";
+        public const string SHOPIFY_SOURCE_DEBIT_REVERSAL = @"SHOPIFY_SOURCE_DEBIT_REVERSAL";
+        public const string SHOPIFY_SOURCE_CREDIT = @"SHOPIFY_SOURCE_CREDIT";
+        public const string SHOPIFY_SOURCE_CREDIT_REVERSAL = @"SHOPIFY_SOURCE_CREDIT_REVERSAL";
+        public const string CHARGE = @"CHARGE";
+        public const string REFUND = @"REFUND";
+        public const string REFUND_FAILURE = @"REFUND_FAILURE";
+        public const string APPLICATION_FEE_REFUND = @"APPLICATION_FEE_REFUND";
+        public const string ADJUSTMENT = @"ADJUSTMENT";
+        public const string DISPUTE_WITHDRAWAL = @"DISPUTE_WITHDRAWAL";
+        public const string DISPUTE_REVERSAL = @"DISPUTE_REVERSAL";
+        public const string SHIPPING_LABEL = @"SHIPPING_LABEL";
+        public const string CUSTOMS_DUTY = @"CUSTOMS_DUTY";
+        public const string IMPORT_TAX = @"IMPORT_TAX";
+        public const string CHARGEBACK_HOLD = @"CHARGEBACK_HOLD";
+        public const string CHARGEBACK_HOLD_RELEASE = @"CHARGEBACK_HOLD_RELEASE";
+        public const string RESERVED_FUNDS = @"RESERVED_FUNDS";
+        public const string STRIPE_FEE = @"STRIPE_FEE";
+        public const string TRANSFER_REFUND = @"TRANSFER_REFUND";
+        public const string ADVANCE = @"ADVANCE";
+        public const string ADVANCE_FUNDING = @"ADVANCE_FUNDING";
+        public const string IMPORT_TAX_REFUND = @"IMPORT_TAX_REFUND";
+    }
+
     ///<summary>
     ///Each subject (individual) of an account has a verification object giving
     /// information about the verification state.
@@ -59061,6 +67223,13 @@ namespace ShopifyNet.AdminTypes
         PENDING,
     }
 
+    public static class ShopifyPaymentsVerificationStatusStringValues
+    {
+        public const string VERIFIED = @"VERIFIED";
+        public const string UNVERIFIED = @"UNVERIFIED";
+        public const string PENDING = @"PENDING";
+    }
+
     ///<summary>
     ///The verification subject represents an individual that has to be verified.
     ///</summary>
@@ -59094,6 +67263,13 @@ namespace ShopifyNet.AdminTypes
         ///The order isn't eligible for protection against fraudulent chargebacks.
         ///</summary>
         NOT_ELIGIBLE,
+    }
+
+    public static class ShopifyProtectEligibilityStatusStringValues
+    {
+        public const string PENDING = @"PENDING";
+        public const string ELIGIBLE = @"ELIGIBLE";
+        public const string NOT_ELIGIBLE = @"NOT_ELIGIBLE";
     }
 
     ///<summary>
@@ -59148,6 +67324,15 @@ namespace ShopifyNet.AdminTypes
         ///The order received a chargeback but the order wasn't protected because it didn't meet coverage requirements.
         ///</summary>
         NOT_PROTECTED,
+    }
+
+    public static class ShopifyProtectStatusStringValues
+    {
+        public const string PENDING = @"PENDING";
+        public const string ACTIVE = @"ACTIVE";
+        public const string INACTIVE = @"INACTIVE";
+        public const string PROTECTED = @"PROTECTED";
+        public const string NOT_PROTECTED = @"NOT_PROTECTED";
     }
 
     ///<summary>
@@ -59251,6 +67436,13 @@ namespace ShopifyNet.AdminTypes
         NOT_FOUND,
     }
 
+    public static class StaffMemberDefaultImageStringValues
+    {
+        public const string DEFAULT = @"DEFAULT";
+        public const string TRANSPARENT = @"TRANSPARENT";
+        public const string NOT_FOUND = @"NOT_FOUND";
+    }
+
     ///<summary>
     ///An auto-generated type which holds one StaffMember and a cursor during pagination.
     ///</summary>
@@ -59345,6 +67537,18 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         LOCATIONS,
         ///<summary>
+        ///The staff member can view markets.
+        ///</summary>
+        VIEW_MARKETS,
+        ///<summary>
+        ///The staff member can create and edit markets.
+        ///</summary>
+        CREATE_AND_EDIT_MARKETS,
+        ///<summary>
+        ///The staff member can delete markets.
+        ///</summary>
+        DELETE_MARKETS,
+        ///<summary>
         ///The staff member can view and create discount codes and automatic discounts, and export discounts to a CSV file.
         ///</summary>
         MARKETING,
@@ -59399,6 +67603,46 @@ namespace ShopifyNet.AdminTypes
         TRANSLATIONS,
     }
 
+    public static class StaffMemberPermissionStringValues
+    {
+        public const string APPLICATIONS = @"APPLICATIONS";
+        public const string CHANNELS = @"CHANNELS";
+        public const string CREATE_AND_EDIT_CUSTOMERS = @"CREATE_AND_EDIT_CUSTOMERS";
+        public const string CREATE_AND_EDIT_GIFT_CARDS = @"CREATE_AND_EDIT_GIFT_CARDS";
+        public const string CUSTOMERS = @"CUSTOMERS";
+        public const string DASHBOARD = @"DASHBOARD";
+        public const string DEACTIVATE_GIFT_CARDS = @"DEACTIVATE_GIFT_CARDS";
+        public const string DELETE_CUSTOMERS = @"DELETE_CUSTOMERS";
+        public const string DOMAINS = @"DOMAINS";
+        public const string DRAFT_ORDERS = @"DRAFT_ORDERS";
+        public const string EDIT_ORDERS = @"EDIT_ORDERS";
+        public const string ERASE_CUSTOMER_DATA = @"ERASE_CUSTOMER_DATA";
+        public const string EXPORT_CUSTOMERS = @"EXPORT_CUSTOMERS";
+        public const string EXPORT_GIFT_CARDS = @"EXPORT_GIFT_CARDS";
+        [Obsolete("Use the list of the staff member's explicit permissions returned in the `StaffMember.permissions.userPermissions` field instead of `full` permission.")]
+        public const string FULL = @"FULL";
+        public const string GIFT_CARDS = @"GIFT_CARDS";
+        public const string LINKS = @"LINKS";
+        public const string LOCATIONS = @"LOCATIONS";
+        public const string VIEW_MARKETS = @"VIEW_MARKETS";
+        public const string CREATE_AND_EDIT_MARKETS = @"CREATE_AND_EDIT_MARKETS";
+        public const string DELETE_MARKETS = @"DELETE_MARKETS";
+        public const string MARKETING = @"MARKETING";
+        public const string MARKETING_SECTION = @"MARKETING_SECTION";
+        public const string MERGE_CUSTOMERS = @"MERGE_CUSTOMERS";
+        public const string ORDERS = @"ORDERS";
+        public const string OVERVIEWS = @"OVERVIEWS";
+        public const string PAGES = @"PAGES";
+        public const string PAY_ORDERS_BY_VAULTED_CARD = @"PAY_ORDERS_BY_VAULTED_CARD";
+        public const string PREFERENCES = @"PREFERENCES";
+        public const string PRODUCTS = @"PRODUCTS";
+        public const string REPORTS = @"REPORTS";
+        public const string REQUEST_CUSTOMER_DATA = @"REQUEST_CUSTOMER_DATA";
+        public const string THEMES = @"THEMES";
+        [Obsolete("Unused.")]
+        public const string TRANSLATIONS = @"TRANSLATIONS";
+    }
+
     ///<summary>
     ///Represents the data used to customize the Shopify admin experience for a logged-in staff member.
     ///</summary>
@@ -59441,6 +67685,14 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `last_name` value.
         ///</summary>
         LAST_NAME,
+    }
+
+    public static class StaffMembersSortKeysStringValues
+    {
+        public const string EMAIL = @"EMAIL";
+        public const string FIRST_NAME = @"FIRST_NAME";
+        public const string ID = @"ID";
+        public const string LAST_NAME = @"LAST_NAME";
     }
 
     ///<summary>
@@ -59486,6 +67738,12 @@ namespace ShopifyNet.AdminTypes
         ///The PUT HTTP method.
         ///</summary>
         PUT,
+    }
+
+    public static class StagedUploadHttpMethodTypeStringValues
+    {
+        public const string POST = @"POST";
+        public const string PUT = @"PUT";
     }
 
     ///<summary>
@@ -59632,6 +67890,20 @@ namespace ShopifyNet.AdminTypes
         URL_REDIRECT_IMPORT,
     }
 
+    public static class StagedUploadTargetGenerateUploadResourceStringValues
+    {
+        public const string COLLECTION_IMAGE = @"COLLECTION_IMAGE";
+        public const string FILE = @"FILE";
+        public const string IMAGE = @"IMAGE";
+        public const string MODEL_3D = @"MODEL_3D";
+        public const string PRODUCT_IMAGE = @"PRODUCT_IMAGE";
+        public const string SHOP_IMAGE = @"SHOP_IMAGE";
+        public const string VIDEO = @"VIDEO";
+        public const string BULK_MUTATION_VARIABLES = @"BULK_MUTATION_VARIABLES";
+        public const string RETURN_LABEL = @"RETURN_LABEL";
+        public const string URL_REDIRECT_IMPORT = @"URL_REDIRECT_IMPORT";
+    }
+
     ///<summary>
     ///Return type for `stagedUploadTargetsGenerate` mutation.
     ///</summary>
@@ -59747,6 +68019,21 @@ namespace ShopifyNet.AdminTypes
         INVALID_INPUT_COMBINATION,
     }
 
+    public static class StandardMetafieldDefinitionEnableUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string TAKEN = @"TAKEN";
+        public const string TEMPLATE_NOT_FOUND = @"TEMPLATE_NOT_FOUND";
+        public const string LIMIT_EXCEEDED = @"LIMIT_EXCEEDED";
+        public const string UNSTRUCTURED_ALREADY_EXISTS = @"UNSTRUCTURED_ALREADY_EXISTS";
+        public const string TYPE_NOT_ALLOWED_FOR_CONDITIONS = @"TYPE_NOT_ALLOWED_FOR_CONDITIONS";
+        public const string INVALID_CAPABILITY = @"INVALID_CAPABILITY";
+        public const string CAPABILITY_CANNOT_BE_DISABLED = @"CAPABILITY_CANNOT_BE_DISABLED";
+        public const string UNSUPPORTED_PINNING = @"UNSUPPORTED_PINNING";
+        public const string ADMIN_ACCESS_INPUT_NOT_ALLOWED = @"ADMIN_ACCESS_INPUT_NOT_ALLOWED";
+        public const string INVALID_INPUT_COMBINATION = @"INVALID_INPUT_COMBINATION";
+    }
+
     ///<summary>
     ///Standard metafield definition templates provide preset configurations to create metafield definitions.
     ///Each template has a specific namespace and key that we've reserved to have specific meanings for common use cases.
@@ -59828,6 +68115,17 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///Describes a capability that is enabled on a Metaobject Definition.
+    ///</summary>
+    public class StandardMetaobjectCapabilityTemplate : GraphQLObject<StandardMetaobjectCapabilityTemplate>
+    {
+        ///<summary>
+        ///The type of capability that's enabled for the metaobject definition.
+        ///</summary>
+        public string? capabilityType { get; set; }
+    }
+
+    ///<summary>
     ///Return type for `standardMetaobjectDefinitionEnable` mutation.
     ///</summary>
     public class StandardMetaobjectDefinitionEnablePayload : GraphQLObject<StandardMetaobjectDefinitionEnablePayload>
@@ -59840,6 +68138,72 @@ namespace ShopifyNet.AdminTypes
         ///The list of errors that occurred from executing the mutation.
         ///</summary>
         public IEnumerable<MetaobjectUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///A preset field definition on a standard metaobject definition template.
+    ///</summary>
+    public class StandardMetaobjectDefinitionFieldTemplate : GraphQLObject<StandardMetaobjectDefinitionFieldTemplate>
+    {
+        ///<summary>
+        ///The administrative description.
+        ///</summary>
+        public string? description { get; set; }
+        ///<summary>
+        ///The key owned by the definition after the definition has been enabled.
+        ///</summary>
+        public string? key { get; set; }
+        ///<summary>
+        ///The human-readable name.
+        ///</summary>
+        public string? name { get; set; }
+        ///<summary>
+        ///The required status of the field within the object composition.
+        ///</summary>
+        public bool? required { get; set; }
+        ///<summary>
+        ///The associated [metafield definition type](https://shopify.dev/apps/metafields/definitions/types) that the metafield stores.
+        ///</summary>
+        public MetafieldDefinitionType? type { get; set; }
+        ///<summary>
+        ///The configured validations for the standard metafield definition.
+        ///</summary>
+        public IEnumerable<MetafieldDefinitionValidation>? validations { get; set; }
+        ///<summary>
+        ///Whether metafields for the definition are by default visible using the Storefront API.
+        ///</summary>
+        public bool? visibleToStorefrontApi { get; set; }
+    }
+
+    ///<summary>
+    ///Standard metaobject definition templates provide preset configurations to create metaobject definitions.
+    ///</summary>
+    public class StandardMetaobjectDefinitionTemplate : GraphQLObject<StandardMetaobjectDefinitionTemplate>
+    {
+        ///<summary>
+        ///The administrative description.
+        ///</summary>
+        public string? description { get; set; }
+        ///<summary>
+        ///The key of a field to reference as the display name for each object.
+        ///</summary>
+        public string? displayNameKey { get; set; }
+        ///<summary>
+        ///The capabilities of the metaobject definition.
+        ///</summary>
+        public IEnumerable<StandardMetaobjectCapabilityTemplate>? enabledCapabilities { get; set; }
+        ///<summary>
+        ///Templates for the associated field definitions.
+        ///</summary>
+        public IEnumerable<StandardMetaobjectDefinitionFieldTemplate>? fieldDefinitions { get; set; }
+        ///<summary>
+        ///The human-readable name.
+        ///</summary>
+        public string? name { get; set; }
+        ///<summary>
+        ///The namespace owned by the definition after the definition has been enabled.
+        ///</summary>
+        public string? type { get; set; }
     }
 
     ///<summary>
@@ -59935,6 +68299,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public DateTime? createdAt { get; set; }
         ///<summary>
+        ///The event that caused the store credit account transaction.
+        ///</summary>
+        public string? @event { get; set; }
+        ///<summary>
         ///The time at which the transaction expires.
         ///Debit transactions will always spend the soonest expiring credit first.
         ///</summary>
@@ -59943,6 +68311,10 @@ namespace ShopifyNet.AdminTypes
         ///A globally-unique ID.
         ///</summary>
         public string? id { get; set; }
+        ///<summary>
+        ///The origin of the store credit account transaction.
+        ///</summary>
+        public IStoreCreditAccountTransactionOrigin? origin { get; set; }
         ///<summary>
         ///The remaining amount of the credit.
         ///The remaining amount will decrease when a debit spends this credit. It may also increase if that debit is subsequently reverted.
@@ -60005,6 +68377,17 @@ namespace ShopifyNet.AdminTypes
         UNSUPPORTED_CURRENCY,
     }
 
+    public static class StoreCreditAccountCreditUserErrorCodeStringValues
+    {
+        public const string ACCOUNT_NOT_FOUND = @"ACCOUNT_NOT_FOUND";
+        public const string OWNER_NOT_FOUND = @"OWNER_NOT_FOUND";
+        public const string NEGATIVE_OR_ZERO_AMOUNT = @"NEGATIVE_OR_ZERO_AMOUNT";
+        public const string MISMATCHING_CURRENCY = @"MISMATCHING_CURRENCY";
+        public const string EXPIRES_AT_IN_PAST = @"EXPIRES_AT_IN_PAST";
+        public const string CREDIT_LIMIT_EXCEEDED = @"CREDIT_LIMIT_EXCEEDED";
+        public const string UNSUPPORTED_CURRENCY = @"UNSUPPORTED_CURRENCY";
+    }
+
     ///<summary>
     ///Return type for `storeCreditAccountDebit` mutation.
     ///</summary>
@@ -60050,9 +68433,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public StoreCreditAccountDebitTransaction? debitTransaction { get; set; }
         ///<summary>
+        ///The event that caused the store credit account transaction.
+        ///</summary>
+        public string? @event { get; set; }
+        ///<summary>
         ///A globally-unique ID.
         ///</summary>
         public string? id { get; set; }
+        ///<summary>
+        ///The origin of the store credit account transaction.
+        ///</summary>
+        public IStoreCreditAccountTransactionOrigin? origin { get; set; }
     }
 
     ///<summary>
@@ -60077,9 +68468,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public DateTime? createdAt { get; set; }
         ///<summary>
+        ///The event that caused the store credit account transaction.
+        ///</summary>
+        public string? @event { get; set; }
+        ///<summary>
         ///A globally-unique ID.
         ///</summary>
         public string? id { get; set; }
+        ///<summary>
+        ///The origin of the store credit account transaction.
+        ///</summary>
+        public IStoreCreditAccountTransactionOrigin? origin { get; set; }
     }
 
     ///<summary>
@@ -60122,6 +68521,14 @@ namespace ShopifyNet.AdminTypes
         ///The currency provided does not match the currency of the store credit account.
         ///</summary>
         MISMATCHING_CURRENCY,
+    }
+
+    public static class StoreCreditAccountDebitUserErrorCodeStringValues
+    {
+        public const string ACCOUNT_NOT_FOUND = @"ACCOUNT_NOT_FOUND";
+        public const string NEGATIVE_OR_ZERO_AMOUNT = @"NEGATIVE_OR_ZERO_AMOUNT";
+        public const string INSUFFICIENT_FUNDS = @"INSUFFICIENT_FUNDS";
+        public const string MISMATCHING_CURRENCY = @"MISMATCHING_CURRENCY";
     }
 
     ///<summary>
@@ -60167,6 +68574,14 @@ namespace ShopifyNet.AdminTypes
         ///The credit transaction which expired.
         ///</summary>
         public StoreCreditAccountCreditTransaction? creditTransaction { get; set; }
+        ///<summary>
+        ///The event that caused the store credit account transaction.
+        ///</summary>
+        public string? @event { get; set; }
+        ///<summary>
+        ///The origin of the store credit account transaction.
+        ///</summary>
+        public IStoreCreditAccountTransactionOrigin? origin { get; set; }
     }
 
     ///<summary>
@@ -60199,6 +68614,14 @@ namespace ShopifyNet.AdminTypes
         ///The date and time when the transaction was created.
         ///</summary>
         public DateTime? createdAt { get; }
+        ///<summary>
+        ///The event that caused the store credit account transaction.
+        ///</summary>
+        public string? @event { get; }
+        ///<summary>
+        ///The origin of the store credit account transaction.
+        ///</summary>
+        public IStoreCreditAccountTransactionOrigin? origin { get; }
     }
 
     ///<summary>
@@ -60233,6 +68656,224 @@ namespace ShopifyNet.AdminTypes
         ///The item at the end of StoreCreditAccountTransactionEdge.
         ///</summary>
         public IStoreCreditAccountTransaction? node { get; set; }
+    }
+
+    ///<summary>
+    ///The origin of a store credit account transaction.
+    ///</summary>
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "__typename")]
+    [JsonDerivedType(typeof(OrderTransaction), typeDiscriminator: "OrderTransaction")]
+    public interface IStoreCreditAccountTransactionOrigin : IGraphQLObject
+    {
+        public OrderTransaction? AsOrderTransaction() => this as OrderTransaction;
+        ///<summary>
+        ///The masked account number associated with the payment method.
+        ///</summary>
+        public string? accountNumber { get; set; }
+
+        ///<summary>
+        ///The amount of money.
+        ///</summary>
+        [Obsolete("Use `amountSet` instead.")]
+        public decimal? amount { get; set; }
+        ///<summary>
+        ///The rounding adjustment applied on the cash amount in shop and presentment currencies.
+        ///</summary>
+        public MoneyBag? amountRoundingSet { get; set; }
+        ///<summary>
+        ///The amount and currency of the transaction in shop and presentment currencies.
+        ///</summary>
+        public MoneyBag? amountSet { get; set; }
+
+        ///<summary>
+        ///The amount and currency of the transaction.
+        ///</summary>
+        [Obsolete("Use `amountSet` instead.")]
+        public MoneyV2? amountV2 { get; set; }
+        ///<summary>
+        ///Authorization code associated with the transaction.
+        ///</summary>
+        public string? authorizationCode { get; set; }
+        ///<summary>
+        ///The time when the authorization expires. This field is available only to stores on a Shopify Plus plan.
+        ///</summary>
+        public DateTime? authorizationExpiresAt { get; set; }
+        ///<summary>
+        ///Date and time when the transaction was created.
+        ///</summary>
+        public DateTime? createdAt { get; set; }
+        ///<summary>
+        ///A standardized error code, independent of the payment provider.
+        ///</summary>
+        public string? errorCode { get; set; }
+        ///<summary>
+        ///The transaction fees charged on the order transaction. Only present for Shopify Payments transactions.
+        ///</summary>
+        public IEnumerable<TransactionFee>? fees { get; set; }
+        ///<summary>
+        ///The human-readable payment gateway name used to process the transaction.
+        ///</summary>
+        public string? formattedGateway { get; set; }
+        ///<summary>
+        ///The payment gateway used to process the transaction.
+        ///</summary>
+        public string? gateway { get; set; }
+        ///<summary>
+        ///A globally-unique ID.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The kind of transaction.
+        ///</summary>
+        public string? kind { get; set; }
+        ///<summary>
+        ///Whether the transaction is processed by manual payment gateway.
+        ///</summary>
+        public bool? manualPaymentGateway { get; set; }
+        ///<summary>
+        ///Whether the transaction can be manually captured.
+        ///</summary>
+        public bool? manuallyCapturable { get; set; }
+
+        ///<summary>
+        ///Specifies the available amount to refund on the gateway.
+        ///This value is only available for transactions of type `SuggestedRefund`.
+        ///</summary>
+        [Obsolete("Use `maximumRefundableV2` instead.")]
+        public decimal? maximumRefundable { get; set; }
+        ///<summary>
+        ///Specifies the available amount with currency to refund on the gateway.
+        ///This value is only available for transactions of type `SuggestedRefund`.
+        ///</summary>
+        public MoneyV2? maximumRefundableV2 { get; set; }
+        ///<summary>
+        ///Whether the transaction can be captured multiple times.
+        ///</summary>
+        public bool? multiCapturable { get; set; }
+        ///<summary>
+        ///The associated order.
+        ///</summary>
+        public Order? order { get; set; }
+        ///<summary>
+        ///The associated parent transaction, for example the authorization of a capture.
+        ///</summary>
+        public OrderTransaction? parentTransaction { get; set; }
+        ///<summary>
+        ///The payment details for the transaction.
+        ///</summary>
+        public IPaymentDetails? paymentDetails { get; set; }
+        ///<summary>
+        ///The payment icon to display for the transaction.
+        ///</summary>
+        public Image? paymentIcon { get; set; }
+        ///<summary>
+        ///The payment ID associated with the transaction.
+        ///</summary>
+        public string? paymentId { get; set; }
+
+        ///<summary>
+        ///The payment method used for the transaction. This value is `null` if the payment method is unknown.
+        ///</summary>
+        [Obsolete("Use `paymentIcon` instead.")]
+        public string? paymentMethod { get; set; }
+        ///<summary>
+        ///Date and time when the transaction was processed.
+        ///</summary>
+        public DateTime? processedAt { get; set; }
+        ///<summary>
+        ///The transaction receipt that the payment gateway attaches to the transaction.
+        ///The value of this field depends on which payment gateway processed the transaction.
+        ///</summary>
+        public string? receiptJson { get; set; }
+        ///<summary>
+        ///The settlement currency.
+        ///</summary>
+        public string? settlementCurrency { get; set; }
+        ///<summary>
+        ///The rate used when converting the transaction amount to settlement currency.
+        ///</summary>
+        public decimal? settlementCurrencyRate { get; set; }
+        ///<summary>
+        ///Contains all Shopify Payments information related to an order transaction. This field is available only to stores on a Shopify Plus plan.
+        ///</summary>
+        public ShopifyPaymentsTransactionSet? shopifyPaymentsSet { get; set; }
+        ///<summary>
+        ///The status of this transaction.
+        ///</summary>
+        public string? status { get; set; }
+        ///<summary>
+        ///Whether the transaction is a test transaction.
+        ///</summary>
+        public bool? test { get; set; }
+
+        ///<summary>
+        ///Specifies the available amount to capture on the gateway.
+        ///Only available when an amount is capturable or manually mark as paid.
+        ///</summary>
+        [Obsolete("Use `totalUnsettledSet` instead.")]
+        public decimal? totalUnsettled { get; set; }
+        ///<summary>
+        ///Specifies the available amount with currency to capture on the gateway in shop and presentment currencies.
+        ///Only available when an amount is capturable or manually mark as paid.
+        ///</summary>
+        public MoneyBag? totalUnsettledSet { get; set; }
+
+        ///<summary>
+        ///Specifies the available amount with currency to capture on the gateway.
+        ///Only available when an amount is capturable or manually mark as paid.
+        ///</summary>
+        [Obsolete("Use `totalUnsettledSet` instead.")]
+        public MoneyV2? totalUnsettledV2 { get; set; }
+        ///<summary>
+        ///Staff member who was logged into the Shopify POS device when the transaction was processed.
+        ///</summary>
+        public StaffMember? user { get; set; }
+    }
+
+    ///<summary>
+    ///The event that caused the store credit account transaction.
+    ///</summary>
+    public enum StoreCreditSystemEvent
+    {
+        ///<summary>
+        ///An adjustment was made to the store credit account.
+        ///</summary>
+        ADJUSTMENT,
+        ///<summary>
+        ///Store credit was used as payment for an order.
+        ///</summary>
+        ORDER_PAYMENT,
+        ///<summary>
+        ///Store credit was refunded from an order.
+        ///</summary>
+        ORDER_REFUND,
+        ///<summary>
+        ///A store credit payment was reverted due to another payment method failing.
+        ///</summary>
+        PAYMENT_FAILURE,
+        ///<summary>
+        ///A smaller amount of store credit was captured than was originally authorized.
+        ///</summary>
+        PAYMENT_RETURNED,
+        ///<summary>
+        ///Store credit was returned when an authorized payment was voided.
+        ///</summary>
+        ORDER_CANCELLATION,
+        ///<summary>
+        ///Tax finalization affected the store credit payment.
+        ///</summary>
+        TAX_FINALIZATION,
+    }
+
+    public static class StoreCreditSystemEventStringValues
+    {
+        public const string ADJUSTMENT = @"ADJUSTMENT";
+        public const string ORDER_PAYMENT = @"ORDER_PAYMENT";
+        public const string ORDER_REFUND = @"ORDER_REFUND";
+        public const string PAYMENT_FAILURE = @"PAYMENT_FAILURE";
+        public const string PAYMENT_RETURNED = @"PAYMENT_RETURNED";
+        public const string ORDER_CANCELLATION = @"ORDER_CANCELLATION";
+        public const string TAX_FINALIZATION = @"TAX_FINALIZATION";
     }
 
     ///<summary>
@@ -60343,12 +68984,16 @@ namespace ShopifyNet.AdminTypes
     ///<summary>
     ///An auto-generated type for paginating through multiple Strings.
     ///</summary>
-    public class StringConnection : GraphQLObject<StringConnection>, IConnectionWithEdges<StringEdge, string>
+    public class StringConnection : GraphQLObject<StringConnection>, IConnectionWithNodesAndEdges<StringEdge, string>
     {
         ///<summary>
         ///The connection between the node and its parent. Each edge contains a minimum of the edge's cursor and the node.
         ///</summary>
         public IEnumerable<StringEdge>? edges { get; set; }
+        ///<summary>
+        ///A list of nodes that are contained in StringEdge. You can fetch data about an individual node, or you can follow the edges to fetch data about a collection of related nodes. At each node, you specify the fields that you want to retrieve.
+        ///</summary>
+        public IEnumerable<string>? nodes { get; set; }
         ///<summary>
         ///An object that’s used to retrieve [cursor information](https://shopify.dev/api/usage/pagination-graphql) about the current page.
         ///</summary>
@@ -60447,9 +69092,17 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         public string? paymentSessionId { get; set; }
         ///<summary>
+        ///Error information from processing the billing attempt.
+        ///</summary>
+        public ISubscriptionBillingAttemptProcessingError? processingError { get; set; }
+        ///<summary>
         ///Whether the billing attempt is still processing.
         ///</summary>
         public bool? ready { get; set; }
+        ///<summary>
+        ///Whether the billing attempt respects the merchant's inventory policy.
+        ///</summary>
+        public bool? respectInventoryPolicy { get; set; }
         ///<summary>
         ///The subscription contract.
         ///</summary>
@@ -60611,6 +69264,144 @@ namespace ShopifyNet.AdminTypes
         ///Fraud was suspected.
         ///</summary>
         FRAUD_SUSPECTED,
+        ///<summary>
+        ///Non-test order limit reached. Use a test payment gateway to place another order.
+        ///</summary>
+        NON_TEST_ORDER_LIMIT_REACHED,
+        ///<summary>
+        ///Gift cards must have a price greater than zero.
+        ///</summary>
+        FREE_GIFT_CARD_NOT_ALLOWED,
+    }
+
+    public static class SubscriptionBillingAttemptErrorCodeStringValues
+    {
+        public const string PAYMENT_METHOD_NOT_FOUND = @"PAYMENT_METHOD_NOT_FOUND";
+        public const string PAYMENT_PROVIDER_IS_NOT_ENABLED = @"PAYMENT_PROVIDER_IS_NOT_ENABLED";
+        public const string INVALID_PAYMENT_METHOD = @"INVALID_PAYMENT_METHOD";
+        public const string UNEXPECTED_ERROR = @"UNEXPECTED_ERROR";
+        public const string EXPIRED_PAYMENT_METHOD = @"EXPIRED_PAYMENT_METHOD";
+        public const string PAYMENT_METHOD_DECLINED = @"PAYMENT_METHOD_DECLINED";
+        public const string AUTHENTICATION_ERROR = @"AUTHENTICATION_ERROR";
+        public const string TEST_MODE = @"TEST_MODE";
+        public const string BUYER_CANCELED_PAYMENT_METHOD = @"BUYER_CANCELED_PAYMENT_METHOD";
+        public const string CUSTOMER_NOT_FOUND = @"CUSTOMER_NOT_FOUND";
+        public const string CUSTOMER_INVALID = @"CUSTOMER_INVALID";
+        public const string INVALID_SHIPPING_ADDRESS = @"INVALID_SHIPPING_ADDRESS";
+        public const string INVALID_CUSTOMER_BILLING_AGREEMENT = @"INVALID_CUSTOMER_BILLING_AGREEMENT";
+        public const string INVOICE_ALREADY_PAID = @"INVOICE_ALREADY_PAID";
+        public const string PAYMENT_METHOD_INCOMPATIBLE_WITH_GATEWAY_CONFIG = @"PAYMENT_METHOD_INCOMPATIBLE_WITH_GATEWAY_CONFIG";
+        public const string AMOUNT_TOO_SMALL = @"AMOUNT_TOO_SMALL";
+        public const string INVENTORY_ALLOCATIONS_NOT_FOUND = @"INVENTORY_ALLOCATIONS_NOT_FOUND";
+        public const string INSUFFICIENT_INVENTORY = @"INSUFFICIENT_INVENTORY";
+        public const string TRANSIENT_ERROR = @"TRANSIENT_ERROR";
+        public const string INSUFFICIENT_FUNDS = @"INSUFFICIENT_FUNDS";
+        public const string PURCHASE_TYPE_NOT_SUPPORTED = @"PURCHASE_TYPE_NOT_SUPPORTED";
+        public const string PAYPAL_ERROR_GENERAL = @"PAYPAL_ERROR_GENERAL";
+        public const string CARD_NUMBER_INCORRECT = @"CARD_NUMBER_INCORRECT";
+        public const string FRAUD_SUSPECTED = @"FRAUD_SUSPECTED";
+        public const string NON_TEST_ORDER_LIMIT_REACHED = @"NON_TEST_ORDER_LIMIT_REACHED";
+        public const string FREE_GIFT_CARD_NOT_ALLOWED = @"FREE_GIFT_CARD_NOT_ALLOWED";
+    }
+
+    ///<summary>
+    ///A base error type that applies to all uncategorized error classes.
+    ///</summary>
+    public class SubscriptionBillingAttemptGenericError : GraphQLObject<SubscriptionBillingAttemptGenericError>, ISubscriptionBillingAttemptProcessingError
+    {
+        ///<summary>
+        ///The code for the error.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///An explanation of the error.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///An inventory error caused by an issue with one or more of the contract merchandise lines.
+    ///</summary>
+    public class SubscriptionBillingAttemptInsufficientStockProductVariantsError : GraphQLObject<SubscriptionBillingAttemptInsufficientStockProductVariantsError>, ISubscriptionBillingAttemptProcessingError
+    {
+        ///<summary>
+        ///The code for the error.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///A list of product variants that caused the insufficient inventory error.
+        ///</summary>
+        public ProductVariantConnection? insufficientStockProductVariants { get; set; }
+        ///<summary>
+        ///An explanation of the error.
+        ///</summary>
+        public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///The inventory policy for a billing attempt.
+    ///</summary>
+    public enum SubscriptionBillingAttemptInventoryPolicy
+    {
+        ///<summary>
+        ///Respect the merchant's product variant
+        ///        inventory policy for this billing attempt.
+        ///</summary>
+        PRODUCT_VARIANT_INVENTORY_POLICY,
+        ///<summary>
+        ///Override the merchant's product variant
+        ///         inventory policy and allow overselling for this billing attempt.
+        ///</summary>
+        ALLOW_OVERSELLING,
+    }
+
+    public static class SubscriptionBillingAttemptInventoryPolicyStringValues
+    {
+        public const string PRODUCT_VARIANT_INVENTORY_POLICY = @"PRODUCT_VARIANT_INVENTORY_POLICY";
+        public const string ALLOW_OVERSELLING = @"ALLOW_OVERSELLING";
+    }
+
+    ///<summary>
+    ///An inventory error caused by an issue with one or more of the contract merchandise lines.
+    ///</summary>
+    public class SubscriptionBillingAttemptOutOfStockProductVariantsError : GraphQLObject<SubscriptionBillingAttemptOutOfStockProductVariantsError>, ISubscriptionBillingAttemptProcessingError
+    {
+        ///<summary>
+        ///The code for the error.
+        ///</summary>
+        public string? code { get; set; }
+        ///<summary>
+        ///An explanation of the error.
+        ///</summary>
+        public string? message { get; set; }
+
+        ///<summary>
+        ///A list of responsible product variants.
+        ///</summary>
+        [Obsolete("Use `subscriptionBillingAttemptInsufficientStockProductVariantsError` type instead.")]
+        public ProductVariantConnection? outOfStockProductVariants { get; set; }
+    }
+
+    ///<summary>
+    ///An error that prevented a billing attempt.
+    ///</summary>
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "__typename")]
+    [JsonDerivedType(typeof(SubscriptionBillingAttemptGenericError), typeDiscriminator: "SubscriptionBillingAttemptGenericError")]
+    [JsonDerivedType(typeof(SubscriptionBillingAttemptInsufficientStockProductVariantsError), typeDiscriminator: "SubscriptionBillingAttemptInsufficientStockProductVariantsError")]
+    [JsonDerivedType(typeof(SubscriptionBillingAttemptOutOfStockProductVariantsError), typeDiscriminator: "SubscriptionBillingAttemptOutOfStockProductVariantsError")]
+    public interface ISubscriptionBillingAttemptProcessingError : IGraphQLObject
+    {
+        public SubscriptionBillingAttemptGenericError? AsSubscriptionBillingAttemptGenericError() => this as SubscriptionBillingAttemptGenericError;
+        public SubscriptionBillingAttemptInsufficientStockProductVariantsError? AsSubscriptionBillingAttemptInsufficientStockProductVariantsError() => this as SubscriptionBillingAttemptInsufficientStockProductVariantsError;
+        public SubscriptionBillingAttemptOutOfStockProductVariantsError? AsSubscriptionBillingAttemptOutOfStockProductVariantsError() => this as SubscriptionBillingAttemptOutOfStockProductVariantsError;
+        ///<summary>
+        ///The code for the error.
+        ///</summary>
+        public string? code { get; }
+        ///<summary>
+        ///An explanation of the error.
+        ///</summary>
+        public string? message { get; }
     }
 
     ///<summary>
@@ -60626,11 +69417,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class SubscriptionBillingAttemptsSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -60699,6 +69491,13 @@ namespace ShopifyNet.AdminTypes
         ANY,
     }
 
+    public static class SubscriptionBillingCycleBillingAttemptStatusStringValues
+    {
+        public const string HAS_ATTEMPT = @"HAS_ATTEMPT";
+        public const string NO_ATTEMPT = @"NO_ATTEMPT";
+        public const string ANY = @"ANY";
+    }
+
     ///<summary>
     ///The possible status values of a subscription billing cycle.
     ///</summary>
@@ -60712,6 +69511,12 @@ namespace ShopifyNet.AdminTypes
         ///The billing cycle hasn't been billed.
         ///</summary>
         UNBILLED,
+    }
+
+    public static class SubscriptionBillingCycleBillingCycleStatusStringValues
+    {
+        public const string BILLED = @"BILLED";
+        public const string UNBILLED = @"UNBILLED";
     }
 
     ///<summary>
@@ -60788,6 +69593,15 @@ namespace ShopifyNet.AdminTypes
         ///Start date should be before end date.
         ///</summary>
         START_DATE_BEFORE_END_DATE,
+    }
+
+    public static class SubscriptionBillingCycleBulkUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string END_DATE_IN_THE_FUTURE = @"END_DATE_IN_THE_FUTURE";
+        public const string INVALID_DATE_RANGE = @"INVALID_DATE_RANGE";
+        public const string START_DATE_BEFORE_END_DATE = @"START_DATE_BEFORE_END_DATE";
     }
 
     ///<summary>
@@ -61046,6 +69860,22 @@ namespace ShopifyNet.AdminTypes
         INCOMPLETE_BILLING_ATTEMPTS,
     }
 
+    public static class SubscriptionBillingCycleErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string CYCLE_NOT_FOUND = @"CYCLE_NOT_FOUND";
+        public const string NO_CYCLE_EDITS = @"NO_CYCLE_EDITS";
+        public const string INVALID_CYCLE_INDEX = @"INVALID_CYCLE_INDEX";
+        public const string INVALID_DATE = @"INVALID_DATE";
+        public const string EMPTY_BILLING_CYCLE_EDIT_SCHEDULE_INPUT = @"EMPTY_BILLING_CYCLE_EDIT_SCHEDULE_INPUT";
+        public const string BILLING_DATE_SET_ON_SKIPPED = @"BILLING_DATE_SET_ON_SKIPPED";
+        public const string OUT_OF_BOUNDS = @"OUT_OF_BOUNDS";
+        public const string UPCOMING_CYCLE_LIMIT_EXCEEDED = @"UPCOMING_CYCLE_LIMIT_EXCEEDED";
+        public const string CYCLE_INDEX_OUT_OF_RANGE = @"CYCLE_INDEX_OUT_OF_RANGE";
+        public const string CYCLE_START_DATE_OUT_OF_RANGE = @"CYCLE_START_DATE_OUT_OF_RANGE";
+        public const string INCOMPLETE_BILLING_ATTEMPTS = @"INCOMPLETE_BILLING_ATTEMPTS";
+    }
+
     ///<summary>
     ///The input fields for possible reasons for editing the billing cycle's schedule.
     ///</summary>
@@ -61063,6 +69893,13 @@ namespace ShopifyNet.AdminTypes
         ///Developer initiated the schedule edit.
         ///</summary>
         DEV_INITIATED,
+    }
+
+    public static class SubscriptionBillingCycleScheduleEditInputScheduleEditReasonStringValues
+    {
+        public const string BUYER_INITIATED = @"BUYER_INITIATED";
+        public const string MERCHANT_INITIATED = @"MERCHANT_INITIATED";
+        public const string DEV_INITIATED = @"DEV_INITIATED";
     }
 
     ///<summary>
@@ -61125,6 +69962,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class SubscriptionBillingCycleSkipUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `subscriptionBillingCycleUnskip` mutation.
     ///</summary>
@@ -61170,6 +70012,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class SubscriptionBillingCycleUnskipUserErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///The possible errors for a subscription billing cycle.
     ///</summary>
@@ -61202,11 +70049,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class SubscriptionBillingCyclesSortKeysStringValues
+    {
+        public const string CYCLE_INDEX = @"CYCLE_INDEX";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -61218,6 +70066,11 @@ namespace ShopifyNet.AdminTypes
         ///Target all current and upcoming subscription billing cycles.
         ///</summary>
         ALL,
+    }
+
+    public static class SubscriptionBillingCyclesTargetSelectionStringValues
+    {
+        public const string ALL = @"ALL";
     }
 
     ///<summary>
@@ -61542,6 +70395,11 @@ namespace ShopifyNet.AdminTypes
         INVALID,
     }
 
+    public static class SubscriptionContractErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+    }
+
     ///<summary>
     ///Return type for `subscriptionContractExpire` mutation.
     ///</summary>
@@ -61595,6 +70453,14 @@ namespace ShopifyNet.AdminTypes
         OTHER,
     }
 
+    public static class SubscriptionContractLastBillingErrorTypeStringValues
+    {
+        public const string PAYMENT_ERROR = @"PAYMENT_ERROR";
+        public const string CUSTOMER_ERROR = @"CUSTOMER_ERROR";
+        public const string INVENTORY_ERROR = @"INVENTORY_ERROR";
+        public const string OTHER = @"OTHER";
+    }
+
     ///<summary>
     ///The possible status values of the last payment on a subscription contract.
     ///</summary>
@@ -61608,6 +70474,12 @@ namespace ShopifyNet.AdminTypes
         ///Failed subscription billing attempt.
         ///</summary>
         FAILED,
+    }
+
+    public static class SubscriptionContractLastPaymentStatusStringValues
+    {
+        public const string SUCCEEDED = @"SUCCEEDED";
+        public const string FAILED = @"FAILED";
     }
 
     ///<summary>
@@ -61674,6 +70546,12 @@ namespace ShopifyNet.AdminTypes
         CONTRACT_TERMINATED,
     }
 
+    public static class SubscriptionContractStatusUpdateErrorCodeStringValues
+    {
+        public const string INVALID = @"INVALID";
+        public const string CONTRACT_TERMINATED = @"CONTRACT_TERMINATED";
+    }
+
     ///<summary>
     ///Represents a subscription contract status update error.
     ///</summary>
@@ -61720,6 +70598,15 @@ namespace ShopifyNet.AdminTypes
         FAILED,
     }
 
+    public static class SubscriptionContractSubscriptionStatusStringValues
+    {
+        public const string ACTIVE = @"ACTIVE";
+        public const string PAUSED = @"PAUSED";
+        public const string CANCELLED = @"CANCELLED";
+        public const string EXPIRED = @"EXPIRED";
+        public const string FAILED = @"FAILED";
+    }
+
     ///<summary>
     ///Return type for `subscriptionContractUpdate` mutation.
     ///</summary>
@@ -61752,6 +70639,37 @@ namespace ShopifyNet.AdminTypes
         ///The error message.
         ///</summary>
         public string? message { get; set; }
+    }
+
+    ///<summary>
+    ///The set of valid sort keys for the SubscriptionContracts query.
+    ///</summary>
+    public enum SubscriptionContractsSortKeys
+    {
+        ///<summary>
+        ///Sort by the `created_at` value.
+        ///</summary>
+        CREATED_AT,
+        ///<summary>
+        ///Sort by the `id` value.
+        ///</summary>
+        ID,
+        ///<summary>
+        ///Sort by the `status` value.
+        ///</summary>
+        STATUS,
+        ///<summary>
+        ///Sort by the `updated_at` value.
+        ///</summary>
+        UPDATED_AT,
+    }
+
+    public static class SubscriptionContractsSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
+        public const string STATUS = @"STATUS";
+        public const string UPDATED_AT = @"UPDATED_AT";
     }
 
     ///<summary>
@@ -62173,6 +71091,21 @@ namespace ShopifyNet.AdminTypes
         INTERNAL_ERROR,
     }
 
+    public static class SubscriptionDiscountRejectionReasonStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string NO_ENTITLED_LINE_ITEMS = @"NO_ENTITLED_LINE_ITEMS";
+        public const string QUANTITY_NOT_IN_RANGE = @"QUANTITY_NOT_IN_RANGE";
+        public const string PURCHASE_NOT_IN_RANGE = @"PURCHASE_NOT_IN_RANGE";
+        public const string CUSTOMER_NOT_ELIGIBLE = @"CUSTOMER_NOT_ELIGIBLE";
+        public const string USAGE_LIMIT_REACHED = @"USAGE_LIMIT_REACHED";
+        public const string CUSTOMER_USAGE_LIMIT_REACHED = @"CUSTOMER_USAGE_LIMIT_REACHED";
+        public const string CURRENTLY_INACTIVE = @"CURRENTLY_INACTIVE";
+        public const string NO_ENTITLED_SHIPPING_LINES = @"NO_ENTITLED_SHIPPING_LINES";
+        public const string INCOMPATIBLE_PURCHASE_TYPE = @"INCOMPATIBLE_PURCHASE_TYPE";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
+    }
+
     ///<summary>
     ///The value of the discount and how it will be applied.
     ///</summary>
@@ -62186,7 +71119,34 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
-    ///Represents a Subscription Draft.
+    ///The `SubscriptionDraft` object represents a draft version of a
+    ///[subscription contract](https://shopify.dev/docs/api/admin-graphql/latest/objects/SubscriptionContract)
+    ///before it's committed. It serves as a staging area for making changes to an existing subscription or creating
+    ///a new one. The draft allows you to preview and modify various aspects of a subscription before applying the changes.
+    ///
+    ///Use the `SubscriptionDraft` object to:
+    ///
+    ///- Add, remove, or modify subscription lines and their quantities
+    ///- Manage discounts (add, remove, or update manual and code-based discounts)
+    ///- Configure delivery options and shipping methods
+    ///- Set up billing and delivery policies
+    ///- Manage customer payment methods
+    ///- Add custom attributes and notes to generated orders
+    ///- Configure billing cycles and next billing dates
+    ///- Preview the projected state of the subscription
+    ///
+    ///Each `SubscriptionDraft` object maintains a projected state that shows how the subscription will look after the changes
+    ///are committed. This allows you to preview the impact of your modifications before applying them. The draft can be
+    ///associated with an existing subscription contract (for modifications) or used to create a new subscription.
+    ///
+    ///The draft remains in a draft state until it's committed, at which point the changes are applied to the subscription
+    ///contract and the draft is no longer accessible.
+    ///
+    ///Learn more about
+    ///[how subscription contracts work](https://shopify.dev/docs/apps/build/purchase-options/subscriptions/contracts)
+    ///and how to [build](https://shopify.dev/docs/apps/build/purchase-options/subscriptions/contracts/build-a-subscription-contract),
+    ///[update](https://shopify.dev/docs/apps/build/purchase-options/subscriptions/contracts/update-a-subscription-contract), and
+    ///[combine](https://shopify.dev/docs/apps/build/purchase-options/subscriptions/contracts/combine-subscription-contracts) subscription contracts.
     ///</summary>
     public class SubscriptionDraft : GraphQLObject<SubscriptionDraft>, INode
     {
@@ -62560,6 +71520,53 @@ namespace ShopifyNet.AdminTypes
         TOO_SHORT,
     }
 
+    public static class SubscriptionDraftErrorCodeStringValues
+    {
+        public const string ALREADY_REMOVED = @"ALREADY_REMOVED";
+        public const string PRESENCE = @"PRESENCE";
+        public const string COMMITTED = @"COMMITTED";
+        public const string NOT_IN_RANGE = @"NOT_IN_RANGE";
+        public const string NOT_AN_INTEGER = @"NOT_AN_INTEGER";
+        public const string SELLING_PLAN_MAX_CYCLES_MUST_BE_GREATER_THAN_MIN_CYCLES = @"SELLING_PLAN_MAX_CYCLES_MUST_BE_GREATER_THAN_MIN_CYCLES";
+        public const string DELIVERY_MUST_BE_MULTIPLE_OF_BILLING = @"DELIVERY_MUST_BE_MULTIPLE_OF_BILLING";
+        public const string INVALID_BILLING_DATE = @"INVALID_BILLING_DATE";
+        public const string INVALID_NOTE_LENGTH = @"INVALID_NOTE_LENGTH";
+        public const string INVALID_LINES = @"INVALID_LINES";
+        public const string NO_ENTITLED_LINES = @"NO_ENTITLED_LINES";
+        public const string CUSTOMER_DOES_NOT_EXIST = @"CUSTOMER_DOES_NOT_EXIST";
+        public const string CUSTOMER_MISMATCH = @"CUSTOMER_MISMATCH";
+        public const string DELIVERY_METHOD_REQUIRED = @"DELIVERY_METHOD_REQUIRED";
+        public const string MISSING_LOCAL_DELIVERY_OPTIONS = @"MISSING_LOCAL_DELIVERY_OPTIONS";
+        public const string CYCLE_DISCOUNTS_UNIQUE_AFTER_CYCLE = @"CYCLE_DISCOUNTS_UNIQUE_AFTER_CYCLE";
+        public const string INVALID_ADJUSTMENT_TYPE = @"INVALID_ADJUSTMENT_TYPE";
+        public const string INVALID_ADJUSTMENT_VALUE = @"INVALID_ADJUSTMENT_VALUE";
+        public const string STALE_CONTRACT = @"STALE_CONTRACT";
+        public const string CURRENCY_NOT_ENABLED = @"CURRENCY_NOT_ENABLED";
+        public const string HAS_FUTURE_EDITS = @"HAS_FUTURE_EDITS";
+        public const string BILLING_CYCLE_PRESENT = @"BILLING_CYCLE_PRESENT";
+        public const string BILLING_CYCLE_ABSENT = @"BILLING_CYCLE_ABSENT";
+        public const string BILLING_CYCLE_CONTRACT_DRAFT_DELIVERY_POLICY_INVALID = @"BILLING_CYCLE_CONTRACT_DRAFT_DELIVERY_POLICY_INVALID";
+        public const string BILLING_CYCLE_CONTRACT_DRAFT_BILLING_POLICY_INVALID = @"BILLING_CYCLE_CONTRACT_DRAFT_BILLING_POLICY_INVALID";
+        public const string CONCATENATION_BILLING_CYCLE_CONTRACT_DRAFT_REQUIRED = @"CONCATENATION_BILLING_CYCLE_CONTRACT_DRAFT_REQUIRED";
+        public const string CONCATENATION_UNCOMMITTED_CONTRACT_DRAFT = @"CONCATENATION_UNCOMMITTED_CONTRACT_DRAFT";
+        public const string DUPLICATE_CONCATENATED_CONTRACTS = @"DUPLICATE_CONCATENATED_CONTRACTS";
+        public const string UPCOMING_CYCLE_LIMIT_EXCEEDED = @"UPCOMING_CYCLE_LIMIT_EXCEEDED";
+        public const string CYCLE_INDEX_OUT_OF_RANGE = @"CYCLE_INDEX_OUT_OF_RANGE";
+        public const string CYCLE_START_DATE_OUT_OF_RANGE = @"CYCLE_START_DATE_OUT_OF_RANGE";
+        public const string CYCLE_SELECTOR_VALIDATE_ONE_OF = @"CYCLE_SELECTOR_VALIDATE_ONE_OF";
+        public const string EXCEEDED_MAX_CONCATENATED_CONTRACTS = @"EXCEEDED_MAX_CONCATENATED_CONTRACTS";
+        public const string CUSTOMER_REDACTED = @"CUSTOMER_REDACTED";
+        public const string MISSING_CUSTOMER_PAYMENT_METHOD = @"MISSING_CUSTOMER_PAYMENT_METHOD";
+        public const string INVALID = @"INVALID";
+        public const string BLANK = @"BLANK";
+        public const string GREATER_THAN = @"GREATER_THAN";
+        public const string GREATER_THAN_OR_EQUAL_TO = @"GREATER_THAN_OR_EQUAL_TO";
+        public const string LESS_THAN = @"LESS_THAN";
+        public const string LESS_THAN_OR_EQUAL_TO = @"LESS_THAN_OR_EQUAL_TO";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+    }
+
     ///<summary>
     ///Return type for `subscriptionDraftFreeShippingDiscountAdd` mutation.
     ///</summary>
@@ -62698,6 +71705,10 @@ namespace ShopifyNet.AdminTypes
     ///</summary>
     public class SubscriptionLine : GraphQLObject<SubscriptionLine>
     {
+        ///<summary>
+        ///The origin contract of the line if it was concatenated from another contract.
+        ///</summary>
+        public SubscriptionContract? concatenatedOriginContract { get; set; }
         ///<summary>
         ///The price per unit for the subscription line in the contract's currency.
         ///</summary>
@@ -63175,6 +72186,11 @@ namespace ShopifyNet.AdminTypes
         SUGGESTED_REFUND,
     }
 
+    public static class SuggestedOrderTransactionKindStringValues
+    {
+        public const string SUGGESTED_REFUND = @"SUGGESTED_REFUND";
+    }
+
     ///<summary>
     ///Represents a refund suggested by Shopify based on the items being reimbursed. You can then use the suggested refund object to generate an actual refund.
     ///</summary>
@@ -63388,6 +72404,13 @@ namespace ShopifyNet.AdminTypes
         ///Unable to update already active tax partner.
         ///</summary>
         TAX_PARTNER_ALREADY_ACTIVE,
+    }
+
+    public static class TaxAppConfigureUserErrorCodeStringValues
+    {
+        public const string TAX_PARTNER_NOT_FOUND = @"TAX_PARTNER_NOT_FOUND";
+        public const string TAX_PARTNER_STATE_UPDATE_FAILED = @"TAX_PARTNER_STATE_UPDATE_FAILED";
+        public const string TAX_PARTNER_ALREADY_ACTIVE = @"TAX_PARTNER_ALREADY_ACTIVE";
     }
 
     ///<summary>
@@ -63685,6 +72708,82 @@ namespace ShopifyNet.AdminTypes
         US_DC_RESELLER_EXEMPTION,
     }
 
+    public static class TaxExemptionStringValues
+    {
+        public const string CA_STATUS_CARD_EXEMPTION = @"CA_STATUS_CARD_EXEMPTION";
+        public const string CA_BC_RESELLER_EXEMPTION = @"CA_BC_RESELLER_EXEMPTION";
+        public const string CA_MB_RESELLER_EXEMPTION = @"CA_MB_RESELLER_EXEMPTION";
+        public const string CA_SK_RESELLER_EXEMPTION = @"CA_SK_RESELLER_EXEMPTION";
+        public const string CA_DIPLOMAT_EXEMPTION = @"CA_DIPLOMAT_EXEMPTION";
+        public const string CA_BC_COMMERCIAL_FISHERY_EXEMPTION = @"CA_BC_COMMERCIAL_FISHERY_EXEMPTION";
+        public const string CA_MB_COMMERCIAL_FISHERY_EXEMPTION = @"CA_MB_COMMERCIAL_FISHERY_EXEMPTION";
+        public const string CA_NS_COMMERCIAL_FISHERY_EXEMPTION = @"CA_NS_COMMERCIAL_FISHERY_EXEMPTION";
+        public const string CA_PE_COMMERCIAL_FISHERY_EXEMPTION = @"CA_PE_COMMERCIAL_FISHERY_EXEMPTION";
+        public const string CA_SK_COMMERCIAL_FISHERY_EXEMPTION = @"CA_SK_COMMERCIAL_FISHERY_EXEMPTION";
+        public const string CA_BC_PRODUCTION_AND_MACHINERY_EXEMPTION = @"CA_BC_PRODUCTION_AND_MACHINERY_EXEMPTION";
+        public const string CA_SK_PRODUCTION_AND_MACHINERY_EXEMPTION = @"CA_SK_PRODUCTION_AND_MACHINERY_EXEMPTION";
+        public const string CA_BC_SUB_CONTRACTOR_EXEMPTION = @"CA_BC_SUB_CONTRACTOR_EXEMPTION";
+        public const string CA_SK_SUB_CONTRACTOR_EXEMPTION = @"CA_SK_SUB_CONTRACTOR_EXEMPTION";
+        public const string CA_BC_CONTRACTOR_EXEMPTION = @"CA_BC_CONTRACTOR_EXEMPTION";
+        public const string CA_SK_CONTRACTOR_EXEMPTION = @"CA_SK_CONTRACTOR_EXEMPTION";
+        public const string CA_ON_PURCHASE_EXEMPTION = @"CA_ON_PURCHASE_EXEMPTION";
+        public const string CA_MB_FARMER_EXEMPTION = @"CA_MB_FARMER_EXEMPTION";
+        public const string CA_NS_FARMER_EXEMPTION = @"CA_NS_FARMER_EXEMPTION";
+        public const string CA_SK_FARMER_EXEMPTION = @"CA_SK_FARMER_EXEMPTION";
+        public const string EU_REVERSE_CHARGE_EXEMPTION_RULE = @"EU_REVERSE_CHARGE_EXEMPTION_RULE";
+        public const string US_AL_RESELLER_EXEMPTION = @"US_AL_RESELLER_EXEMPTION";
+        public const string US_AK_RESELLER_EXEMPTION = @"US_AK_RESELLER_EXEMPTION";
+        public const string US_AZ_RESELLER_EXEMPTION = @"US_AZ_RESELLER_EXEMPTION";
+        public const string US_AR_RESELLER_EXEMPTION = @"US_AR_RESELLER_EXEMPTION";
+        public const string US_CA_RESELLER_EXEMPTION = @"US_CA_RESELLER_EXEMPTION";
+        public const string US_CO_RESELLER_EXEMPTION = @"US_CO_RESELLER_EXEMPTION";
+        public const string US_CT_RESELLER_EXEMPTION = @"US_CT_RESELLER_EXEMPTION";
+        public const string US_DE_RESELLER_EXEMPTION = @"US_DE_RESELLER_EXEMPTION";
+        public const string US_FL_RESELLER_EXEMPTION = @"US_FL_RESELLER_EXEMPTION";
+        public const string US_GA_RESELLER_EXEMPTION = @"US_GA_RESELLER_EXEMPTION";
+        public const string US_HI_RESELLER_EXEMPTION = @"US_HI_RESELLER_EXEMPTION";
+        public const string US_ID_RESELLER_EXEMPTION = @"US_ID_RESELLER_EXEMPTION";
+        public const string US_IL_RESELLER_EXEMPTION = @"US_IL_RESELLER_EXEMPTION";
+        public const string US_IN_RESELLER_EXEMPTION = @"US_IN_RESELLER_EXEMPTION";
+        public const string US_IA_RESELLER_EXEMPTION = @"US_IA_RESELLER_EXEMPTION";
+        public const string US_KS_RESELLER_EXEMPTION = @"US_KS_RESELLER_EXEMPTION";
+        public const string US_KY_RESELLER_EXEMPTION = @"US_KY_RESELLER_EXEMPTION";
+        public const string US_LA_RESELLER_EXEMPTION = @"US_LA_RESELLER_EXEMPTION";
+        public const string US_ME_RESELLER_EXEMPTION = @"US_ME_RESELLER_EXEMPTION";
+        public const string US_MD_RESELLER_EXEMPTION = @"US_MD_RESELLER_EXEMPTION";
+        public const string US_MA_RESELLER_EXEMPTION = @"US_MA_RESELLER_EXEMPTION";
+        public const string US_MI_RESELLER_EXEMPTION = @"US_MI_RESELLER_EXEMPTION";
+        public const string US_MN_RESELLER_EXEMPTION = @"US_MN_RESELLER_EXEMPTION";
+        public const string US_MS_RESELLER_EXEMPTION = @"US_MS_RESELLER_EXEMPTION";
+        public const string US_MO_RESELLER_EXEMPTION = @"US_MO_RESELLER_EXEMPTION";
+        public const string US_MT_RESELLER_EXEMPTION = @"US_MT_RESELLER_EXEMPTION";
+        public const string US_NE_RESELLER_EXEMPTION = @"US_NE_RESELLER_EXEMPTION";
+        public const string US_NV_RESELLER_EXEMPTION = @"US_NV_RESELLER_EXEMPTION";
+        public const string US_NH_RESELLER_EXEMPTION = @"US_NH_RESELLER_EXEMPTION";
+        public const string US_NJ_RESELLER_EXEMPTION = @"US_NJ_RESELLER_EXEMPTION";
+        public const string US_NM_RESELLER_EXEMPTION = @"US_NM_RESELLER_EXEMPTION";
+        public const string US_NY_RESELLER_EXEMPTION = @"US_NY_RESELLER_EXEMPTION";
+        public const string US_NC_RESELLER_EXEMPTION = @"US_NC_RESELLER_EXEMPTION";
+        public const string US_ND_RESELLER_EXEMPTION = @"US_ND_RESELLER_EXEMPTION";
+        public const string US_OH_RESELLER_EXEMPTION = @"US_OH_RESELLER_EXEMPTION";
+        public const string US_OK_RESELLER_EXEMPTION = @"US_OK_RESELLER_EXEMPTION";
+        public const string US_OR_RESELLER_EXEMPTION = @"US_OR_RESELLER_EXEMPTION";
+        public const string US_PA_RESELLER_EXEMPTION = @"US_PA_RESELLER_EXEMPTION";
+        public const string US_RI_RESELLER_EXEMPTION = @"US_RI_RESELLER_EXEMPTION";
+        public const string US_SC_RESELLER_EXEMPTION = @"US_SC_RESELLER_EXEMPTION";
+        public const string US_SD_RESELLER_EXEMPTION = @"US_SD_RESELLER_EXEMPTION";
+        public const string US_TN_RESELLER_EXEMPTION = @"US_TN_RESELLER_EXEMPTION";
+        public const string US_TX_RESELLER_EXEMPTION = @"US_TX_RESELLER_EXEMPTION";
+        public const string US_UT_RESELLER_EXEMPTION = @"US_UT_RESELLER_EXEMPTION";
+        public const string US_VT_RESELLER_EXEMPTION = @"US_VT_RESELLER_EXEMPTION";
+        public const string US_VA_RESELLER_EXEMPTION = @"US_VA_RESELLER_EXEMPTION";
+        public const string US_WA_RESELLER_EXEMPTION = @"US_WA_RESELLER_EXEMPTION";
+        public const string US_WV_RESELLER_EXEMPTION = @"US_WV_RESELLER_EXEMPTION";
+        public const string US_WI_RESELLER_EXEMPTION = @"US_WI_RESELLER_EXEMPTION";
+        public const string US_WY_RESELLER_EXEMPTION = @"US_WY_RESELLER_EXEMPTION";
+        public const string US_DC_RESELLER_EXEMPTION = @"US_DC_RESELLER_EXEMPTION";
+    }
+
     ///<summary>
     ///Represents a single tax applied to the associated line item.
     ///</summary>
@@ -63739,6 +72838,13 @@ namespace ShopifyNet.AdminTypes
         ///App is configured and to be used for tax calculations.
         ///</summary>
         ACTIVE,
+    }
+
+    public static class TaxPartnerStateStringValues
+    {
+        public const string PENDING = @"PENDING";
+        public const string READY = @"READY";
+        public const string ACTIVE = @"ACTIVE";
     }
 
     ///<summary>
@@ -64166,6 +73272,15 @@ namespace ShopifyNet.AdminTypes
         INVALID_THEME_ROLE_FOR_THEME_CREATION,
     }
 
+    public static class ThemeCreateUserErrorCodeStringValues
+    {
+        public const string INVALID_ZIP = @"INVALID_ZIP";
+        public const string ZIP_IS_EMPTY = @"ZIP_IS_EMPTY";
+        public const string ZIP_TOO_LARGE = @"ZIP_TOO_LARGE";
+        public const string THEME_CREATION_NOT_ALLOWED_FOR_THEME_LIMITED_PLAN = @"THEME_CREATION_NOT_ALLOWED_FOR_THEME_LIMITED_PLAN";
+        public const string INVALID_THEME_ROLE_FOR_THEME_CREATION = @"INVALID_THEME_ROLE_FOR_THEME_CREATION";
+    }
+
     ///<summary>
     ///Return type for `themeDelete` mutation.
     ///</summary>
@@ -64209,6 +73324,11 @@ namespace ShopifyNet.AdminTypes
         ///The record with the ID used as the input value couldn't be found.
         ///</summary>
         NOT_FOUND,
+    }
+
+    public static class ThemeDeleteUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
     }
 
     ///<summary>
@@ -64313,6 +73433,13 @@ namespace ShopifyNet.AdminTypes
         THEME_PUBLISH_NOT_AVAILABLE_FOR_THEME_LIMITED_PLAN,
     }
 
+    public static class ThemePublishUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string CANNOT_PUBLISH_THEME_DURING_INSTALL = @"CANNOT_PUBLISH_THEME_DURING_INSTALL";
+        public const string THEME_PUBLISH_NOT_AVAILABLE_FOR_THEME_LIMITED_PLAN = @"THEME_PUBLISH_NOT_AVAILABLE_FOR_THEME_LIMITED_PLAN";
+    }
+
     ///<summary>
     ///The role of the theme.
     ///</summary>
@@ -64347,6 +73474,18 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [Obsolete("The feature for this role has been deprecated.")]
         MOBILE,
+    }
+
+    public static class ThemeRoleStringValues
+    {
+        public const string MAIN = @"MAIN";
+        public const string UNPUBLISHED = @"UNPUBLISHED";
+        public const string DEMO = @"DEMO";
+        public const string DEVELOPMENT = @"DEVELOPMENT";
+        public const string ARCHIVED = @"ARCHIVED";
+        public const string LOCKED = @"LOCKED";
+        [Obsolete("The feature for this role has been deprecated.")]
+        public const string MOBILE = @"MOBILE";
     }
 
     ///<summary>
@@ -64400,6 +73539,13 @@ namespace ShopifyNet.AdminTypes
         ///The input value is invalid.
         ///</summary>
         INVALID,
+    }
+
+    public static class ThemeUpdateUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string INVALID = @"INVALID";
     }
 
     ///<summary>
@@ -64503,6 +73649,12 @@ namespace ShopifyNet.AdminTypes
         EXPIRES_AT,
     }
 
+    public static class TransactionSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string EXPIRES_AT = @"EXPIRES_AT";
+    }
+
     ///<summary>
     ///Return type for `transactionVoid` mutation.
     ///</summary>
@@ -64558,6 +73710,14 @@ namespace ShopifyNet.AdminTypes
         ///A generic error occurred while attempting to void the transaction.
         ///</summary>
         GENERIC_ERROR,
+    }
+
+    public static class TransactionVoidUserErrorCodeStringValues
+    {
+        public const string TRANSACTION_NOT_FOUND = @"TRANSACTION_NOT_FOUND";
+        public const string AUTH_NOT_SUCCESSFUL = @"AUTH_NOT_SUCCESSFUL";
+        public const string AUTH_NOT_VOIDABLE = @"AUTH_NOT_VOIDABLE";
+        public const string GENERIC_ERROR = @"GENERIC_ERROR";
     }
 
     ///<summary>
@@ -64760,6 +73920,37 @@ namespace ShopifyNet.AdminTypes
         SHOP_POLICY,
     }
 
+    public static class TranslatableResourceTypeStringValues
+    {
+        public const string ARTICLE = @"ARTICLE";
+        public const string BLOG = @"BLOG";
+        public const string COLLECTION = @"COLLECTION";
+        public const string DELIVERY_METHOD_DEFINITION = @"DELIVERY_METHOD_DEFINITION";
+        public const string EMAIL_TEMPLATE = @"EMAIL_TEMPLATE";
+        public const string FILTER = @"FILTER";
+        public const string LINK = @"LINK";
+        public const string MENU = @"MENU";
+        public const string METAFIELD = @"METAFIELD";
+        public const string METAOBJECT = @"METAOBJECT";
+        public const string ONLINE_STORE_THEME = @"ONLINE_STORE_THEME";
+        public const string ONLINE_STORE_THEME_APP_EMBED = @"ONLINE_STORE_THEME_APP_EMBED";
+        public const string ONLINE_STORE_THEME_JSON_TEMPLATE = @"ONLINE_STORE_THEME_JSON_TEMPLATE";
+        public const string ONLINE_STORE_THEME_LOCALE_CONTENT = @"ONLINE_STORE_THEME_LOCALE_CONTENT";
+        public const string ONLINE_STORE_THEME_SECTION_GROUP = @"ONLINE_STORE_THEME_SECTION_GROUP";
+        public const string ONLINE_STORE_THEME_SETTINGS_CATEGORY = @"ONLINE_STORE_THEME_SETTINGS_CATEGORY";
+        public const string ONLINE_STORE_THEME_SETTINGS_DATA_SECTIONS = @"ONLINE_STORE_THEME_SETTINGS_DATA_SECTIONS";
+        public const string PACKING_SLIP_TEMPLATE = @"PACKING_SLIP_TEMPLATE";
+        public const string PAGE = @"PAGE";
+        public const string PAYMENT_GATEWAY = @"PAYMENT_GATEWAY";
+        public const string PRODUCT = @"PRODUCT";
+        public const string PRODUCT_OPTION = @"PRODUCT_OPTION";
+        public const string PRODUCT_OPTION_VALUE = @"PRODUCT_OPTION_VALUE";
+        public const string SELLING_PLAN = @"SELLING_PLAN";
+        public const string SELLING_PLAN_GROUP = @"SELLING_PLAN_GROUP";
+        public const string SHOP = @"SHOP";
+        public const string SHOP_POLICY = @"SHOP_POLICY";
+    }
+
     ///<summary>
     ///Translation of a field of a resource.
     ///</summary>
@@ -64869,6 +74060,29 @@ namespace ShopifyNet.AdminTypes
         ///The handle is already taken for this resource.
         ///</summary>
         INVALID_VALUE_FOR_HANDLE_TRANSLATION,
+    }
+
+    public static class TranslationErrorCodeStringValues
+    {
+        public const string BLANK = @"BLANK";
+        public const string INVALID = @"INVALID";
+        public const string RESOURCE_NOT_FOUND = @"RESOURCE_NOT_FOUND";
+        public const string RESOURCE_NOT_TRANSLATABLE = @"RESOURCE_NOT_TRANSLATABLE";
+        public const string TOO_MANY_KEYS_FOR_RESOURCE = @"TOO_MANY_KEYS_FOR_RESOURCE";
+        public const string INVALID_KEY_FOR_MODEL = @"INVALID_KEY_FOR_MODEL";
+        public const string FAILS_RESOURCE_VALIDATION = @"FAILS_RESOURCE_VALIDATION";
+        public const string INVALID_TRANSLATABLE_CONTENT = @"INVALID_TRANSLATABLE_CONTENT";
+        public const string INVALID_MARKET_LOCALIZABLE_CONTENT = @"INVALID_MARKET_LOCALIZABLE_CONTENT";
+        public const string INVALID_LOCALE_FOR_SHOP = @"INVALID_LOCALE_FOR_SHOP";
+        public const string INVALID_CODE = @"INVALID_CODE";
+        public const string INVALID_FORMAT = @"INVALID_FORMAT";
+        public const string MARKET_CUSTOM_CONTENT_NOT_ALLOWED = @"MARKET_CUSTOM_CONTENT_NOT_ALLOWED";
+        public const string MARKET_DOES_NOT_EXIST = @"MARKET_DOES_NOT_EXIST";
+        public const string MARKET_LOCALE_CREATION_FAILED = @"MARKET_LOCALE_CREATION_FAILED";
+        public const string RESOURCE_NOT_MARKET_CUSTOMIZABLE = @"RESOURCE_NOT_MARKET_CUSTOMIZABLE";
+        [Obsolete("`invalid_locale_for_market` is deprecated because the creation of a locale that's specific to a market no longer needs to be tied to that market's URL.")]
+        public const string INVALID_LOCALE_FOR_MARKET = @"INVALID_LOCALE_FOR_MARKET";
+        public const string INVALID_VALUE_FOR_HANDLE_TRANSLATION = @"INVALID_VALUE_FOR_HANDLE_TRANSLATION";
     }
 
     ///<summary>
@@ -65012,6 +74226,14 @@ namespace ShopifyNet.AdminTypes
         AREA,
     }
 
+    public static class UnitPriceMeasurementMeasuredTypeStringValues
+    {
+        public const string VOLUME = @"VOLUME";
+        public const string WEIGHT = @"WEIGHT";
+        public const string LENGTH = @"LENGTH";
+        public const string AREA = @"AREA";
+    }
+
     ///<summary>
     ///The valid units of measurement for a unit price measurement.
     ///</summary>
@@ -65063,6 +74285,21 @@ namespace ShopifyNet.AdminTypes
         M2,
     }
 
+    public static class UnitPriceMeasurementMeasuredUnitStringValues
+    {
+        public const string ML = @"ML";
+        public const string CL = @"CL";
+        public const string L = @"L";
+        public const string M3 = @"M3";
+        public const string MG = @"MG";
+        public const string G = @"G";
+        public const string KG = @"KG";
+        public const string MM = @"MM";
+        public const string CM = @"CM";
+        public const string M = @"M";
+        public const string M2 = @"M2";
+    }
+
     ///<summary>
     ///Systems of weights and measures.
     ///</summary>
@@ -65076,6 +74313,12 @@ namespace ShopifyNet.AdminTypes
         ///Metric system of weights and measures.
         ///</summary>
         METRIC_SYSTEM,
+    }
+
+    public static class UnitSystemStringValues
+    {
+        public const string IMPERIAL_SYSTEM = @"IMPERIAL_SYSTEM";
+        public const string METRIC_SYSTEM = @"METRIC_SYSTEM";
     }
 
     ///<summary>
@@ -65241,6 +74484,11 @@ namespace ShopifyNet.AdminTypes
         IDS_EMPTY,
     }
 
+    public static class UrlRedirectBulkDeleteByIdsUserErrorCodeStringValues
+    {
+        public const string IDS_EMPTY = @"IDS_EMPTY";
+    }
+
     ///<summary>
     ///Return type for `urlRedirectBulkDeleteBySavedSearch` mutation.
     ///</summary>
@@ -65290,6 +74538,12 @@ namespace ShopifyNet.AdminTypes
         INVALID_SAVED_SEARCH_QUERY,
     }
 
+    public static class UrlRedirectBulkDeleteBySavedSearchUserErrorCodeStringValues
+    {
+        public const string SAVED_SEARCH_NOT_FOUND = @"SAVED_SEARCH_NOT_FOUND";
+        public const string INVALID_SAVED_SEARCH_QUERY = @"INVALID_SAVED_SEARCH_QUERY";
+    }
+
     ///<summary>
     ///Return type for `urlRedirectBulkDeleteBySearch` mutation.
     ///</summary>
@@ -65333,6 +74587,11 @@ namespace ShopifyNet.AdminTypes
         ///Invalid search string.
         ///</summary>
         INVALID_SEARCH_ARGUMENT,
+    }
+
+    public static class UrlRedirectBulkDeleteBySearchUserErrorCodeStringValues
+    {
+        public const string INVALID_SEARCH_ARGUMENT = @"INVALID_SEARCH_ARGUMENT";
     }
 
     ///<summary>
@@ -65422,6 +74681,14 @@ namespace ShopifyNet.AdminTypes
         DELETE_FAILED,
     }
 
+    public static class UrlRedirectErrorCodeStringValues
+    {
+        public const string DOES_NOT_EXIST = @"DOES_NOT_EXIST";
+        public const string CREATE_FAILED = @"CREATE_FAILED";
+        public const string UPDATE_FAILED = @"UPDATE_FAILED";
+        public const string DELETE_FAILED = @"DELETE_FAILED";
+    }
+
     ///<summary>
     ///A request to import a [`URLRedirect`](https://shopify.dev/api/admin-graphql/latest/objects/UrlRedirect) object
     ///into the Online Store channel. Apps can use this to query the state of an `UrlRedirectImport` request.
@@ -65503,6 +74770,15 @@ namespace ShopifyNet.AdminTypes
         IN_PROGRESS,
     }
 
+    public static class UrlRedirectImportErrorCodeStringValues
+    {
+        [Obsolete("This error code is never returned")]
+        public const string FILE_DOES_NOT_EXIST = @"FILE_DOES_NOT_EXIST";
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string ALREADY_IMPORTED = @"ALREADY_IMPORTED";
+        public const string IN_PROGRESS = @"IN_PROGRESS";
+    }
+
     ///<summary>
     ///A preview of a URL redirect import row.
     ///</summary>
@@ -65570,6 +74846,13 @@ namespace ShopifyNet.AdminTypes
         ///Don't use this sort key when no search query is specified.
         ///</summary>
         RELEVANCE,
+    }
+
+    public static class UrlRedirectSortKeysStringValues
+    {
+        public const string ID = @"ID";
+        public const string PATH = @"PATH";
+        public const string RELEVANCE = @"RELEVANCE";
     }
 
     ///<summary>
@@ -65659,18 +74942,6 @@ namespace ShopifyNet.AdminTypes
         ///that a merchant associates with a Shopify resource.
         ///</summary>
         public MetafieldConnection? metafields { get; set; }
-
-        ///<summary>
-        ///Returns a private metafield by namespace and key that belongs to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafield? privateMetafield { get; set; }
-
-        ///<summary>
-        ///List of private metafields that belong to the resource.
-        ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public PrivateMetafieldConnection? privateMetafields { get; set; }
         ///<summary>
         ///The Shopify Function implementing the validation.
         ///</summary>
@@ -65754,11 +75025,11 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class ValidationSortKeysStringValues
+    {
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -65825,7 +75096,7 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         FUNCTION_PENDING_DELETION,
         ///<summary>
-        ///Cannot have more than 5 active validation functions.
+        ///Cannot have more than 25 active validation functions.
         ///</summary>
         MAX_VALIDATIONS_ACTIVATED,
         ///<summary>
@@ -65880,6 +75151,30 @@ namespace ShopifyNet.AdminTypes
         ///An internal error occurred.
         ///</summary>
         INTERNAL_ERROR,
+    }
+
+    public static class ValidationUserErrorCodeStringValues
+    {
+        public const string NOT_FOUND = @"NOT_FOUND";
+        public const string FUNCTION_NOT_FOUND = @"FUNCTION_NOT_FOUND";
+        public const string CUSTOM_APP_FUNCTION_NOT_ELIGIBLE = @"CUSTOM_APP_FUNCTION_NOT_ELIGIBLE";
+        public const string FUNCTION_DOES_NOT_IMPLEMENT = @"FUNCTION_DOES_NOT_IMPLEMENT";
+        public const string PUBLIC_APP_NOT_ALLOWED = @"PUBLIC_APP_NOT_ALLOWED";
+        public const string FUNCTION_PENDING_DELETION = @"FUNCTION_PENDING_DELETION";
+        public const string MAX_VALIDATIONS_ACTIVATED = @"MAX_VALIDATIONS_ACTIVATED";
+        public const string INVALID_TYPE = @"INVALID_TYPE";
+        public const string INVALID_VALUE = @"INVALID_VALUE";
+        public const string APP_NOT_AUTHORIZED = @"APP_NOT_AUTHORIZED";
+        public const string UNSTRUCTURED_RESERVED_NAMESPACE = @"UNSTRUCTURED_RESERVED_NAMESPACE";
+        public const string DISALLOWED_OWNER_TYPE = @"DISALLOWED_OWNER_TYPE";
+        public const string INCLUSION = @"INCLUSION";
+        public const string TAKEN = @"TAKEN";
+        public const string PRESENT = @"PRESENT";
+        public const string BLANK = @"BLANK";
+        public const string TOO_LONG = @"TOO_LONG";
+        public const string TOO_SHORT = @"TOO_SHORT";
+        public const string CAPABILITY_VIOLATION = @"CAPABILITY_VIOLATION";
+        public const string INTERNAL_ERROR = @"INTERNAL_ERROR";
     }
 
     ///<summary>
@@ -66135,6 +75430,117 @@ namespace ShopifyNet.AdminTypes
     }
 
     ///<summary>
+    ///This can be a domain (e.g. `example.ca`), subdomain (e.g. `ca.example.com`), or subfolders of the primary
+    ///domain (e.g. `example.com/en-ca`). Each web presence comprises one or more language
+    ///variants.
+    ///
+    ///Note: while the domain/subfolders defined by a web presence are not applicable to
+    ///custom storefronts, which must manage their own domains and routing, the languages chosen
+    ///here do govern [the languages available on the Storefront
+    ///API](https://shopify.dev/custom-storefronts/internationalization/multiple-languages) for the countries
+    ///using this web presence.
+    ///</summary>
+    public class WebPresence : GraphQLObject<WebPresence>, INode
+    {
+        ///<summary>
+        ///The ShopLocale object for the alternate locales. When a domain is used, these locales will be
+        ///available as language-specific subfolders. For example, if English is an
+        ///alternate locale, and `example.ca` is the domain, then
+        ///`example.ca/en` will load in English.
+        ///</summary>
+        public IEnumerable<ShopLocale>? alternateLocales { get; set; }
+        ///<summary>
+        ///The ShopLocale object for the default locale. When a domain is used, this is the locale that will
+        ///be used when the domain root is accessed. For example, if French is the default locale,
+        ///and `example.ca` is the domain, then `example.ca` will load in French.
+        ///</summary>
+        public ShopLocale? defaultLocale { get; set; }
+        ///<summary>
+        ///The web presence’s domain. This field will be null if `subfolderSuffix` is present.
+        ///</summary>
+        public Domain? domain { get; set; }
+        ///<summary>
+        ///A globally-unique ID.
+        ///</summary>
+        public string? id { get; set; }
+        ///<summary>
+        ///The associated markets for this web presence.
+        ///</summary>
+        public MarketConnection? markets { get; set; }
+        ///<summary>
+        ///The list of root URLs for each of the web presence’s locales.
+        ///</summary>
+        public IEnumerable<WebPresenceRootUrl>? rootUrls { get; set; }
+        ///<summary>
+        ///The suffix of the subfolders defined by the web presence.
+        ///Example: in `/en-us` the subfolder suffix is `us`.
+        ///This field will be null if `domain` isn't null.
+        ///</summary>
+        public string? subfolderSuffix { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `webPresenceCreate` mutation.
+    ///</summary>
+    public class WebPresenceCreatePayload : GraphQLObject<WebPresenceCreatePayload>
+    {
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<MarketUserError>? userErrors { get; set; }
+        ///<summary>
+        ///The created web presence object.
+        ///</summary>
+        public MarketWebPresence? webPresence { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `webPresenceDelete` mutation.
+    ///</summary>
+    public class WebPresenceDeletePayload : GraphQLObject<WebPresenceDeletePayload>
+    {
+        ///<summary>
+        ///The ID of the deleted web presence.
+        ///</summary>
+        public string? deletedId { get; set; }
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<MarketUserError>? userErrors { get; set; }
+    }
+
+    ///<summary>
+    ///The URL for the homepage of the online store in the context of the web presence and a
+    ///particular locale.
+    ///</summary>
+    public class WebPresenceRootUrl : GraphQLObject<WebPresenceRootUrl>
+    {
+        ///<summary>
+        ///The locale that the storefront loads in.
+        ///</summary>
+        public string? locale { get; set; }
+        ///<summary>
+        ///The URL.
+        ///</summary>
+        public string? url { get; set; }
+    }
+
+    ///<summary>
+    ///Return type for `webPresenceUpdate` mutation.
+    ///</summary>
+    public class WebPresenceUpdatePayload : GraphQLObject<WebPresenceUpdatePayload>
+    {
+        ///<summary>
+        ///The list of errors that occurred from executing the mutation.
+        ///</summary>
+        public IEnumerable<MarketUserError>? userErrors { get; set; }
+        ///<summary>
+        ///The web presence object.
+        ///</summary>
+        public MarketWebPresence? webPresence { get; set; }
+    }
+
+    ///<summary>
     ///An Amazon EventBridge partner event source to which webhook subscriptions publish events.
     ///</summary>
     public class WebhookEventBridgeEndpoint : GraphQLObject<WebhookEventBridgeEndpoint>, IWebhookSubscriptionEndpoint
@@ -66221,12 +75627,10 @@ namespace ShopifyNet.AdminTypes
         ///The list of namespaces for any metafields that should be included in the webhook subscription.
         ///</summary>
         public IEnumerable<string>? metafieldNamespaces { get; set; }
-
         ///<summary>
-        ///The list of namespaces for private metafields that should be included in the webhook subscription.
+        ///The list of identifiers specifying metafields to include in the webhook subscription.
         ///</summary>
-        [Obsolete("Metafields created using a reserved namespace are private by default. See our guide for\n[migrating private metafields](https://shopify.dev/docs/apps/custom-data/metafields/migrate-private-metafields).")]
-        public IEnumerable<string>? privateMetafieldNamespaces { get; set; }
+        public IEnumerable<WebhookSubscriptionMetafieldIdentifier>? metafields { get; set; }
         ///<summary>
         ///The type of event that triggers the webhook. The topic determines when the webhook subscription sends a webhook, as well as what class of data object that webhook contains.
         ///</summary>
@@ -66324,6 +75728,27 @@ namespace ShopifyNet.AdminTypes
         XML,
     }
 
+    public static class WebhookSubscriptionFormatStringValues
+    {
+        public const string JSON = @"JSON";
+        public const string XML = @"XML";
+    }
+
+    ///<summary>
+    ///Identifies metafields by their namespace, and key.
+    ///</summary>
+    public class WebhookSubscriptionMetafieldIdentifier : GraphQLObject<WebhookSubscriptionMetafieldIdentifier>
+    {
+        ///<summary>
+        ///The unique identifier for the metafield definition within its namespace.
+        ///</summary>
+        public string? key { get; set; }
+        ///<summary>
+        ///The container for a group of metafields that the metafield definition is associated with.
+        ///</summary>
+        public string? @namespace { get; set; }
+    }
+
     ///<summary>
     ///The set of valid sort keys for the WebhookSubscription query.
     ///</summary>
@@ -66337,11 +75762,12 @@ namespace ShopifyNet.AdminTypes
         ///Sort by the `id` value.
         ///</summary>
         ID,
-        ///<summary>
-        ///Sort by relevance to the search terms when the `query` parameter is specified on the connection.
-        ///Don't use this sort key when no search query is specified.
-        ///</summary>
-        RELEVANCE,
+    }
+
+    public static class WebhookSubscriptionSortKeysStringValues
+    {
+        public const string CREATED_AT = @"CREATED_AT";
+        public const string ID = @"ID";
     }
 
     ///<summary>
@@ -66470,6 +75896,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         CUSTOMERS_UPDATE,
         ///<summary>
+        ///The webhook topic for `customers/purchasing_summary` events. Occurs when a customer sales history change. Requires the `read_customers` scope.
+        ///</summary>
+        CUSTOMERS_PURCHASING_SUMMARY,
+        ///<summary>
         ///The webhook topic for `customers_marketing_consent/update` events. Occurs whenever a customer's SMS marketing consent is updated. Requires the `read_customers` scope.
         ///</summary>
         CUSTOMERS_MARKETING_CONSENT_UPDATE,
@@ -66593,6 +76023,12 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         FULFILLMENT_ORDERS_SCHEDULED_FULFILLMENT_ORDER_READY,
         ///<summary>
+        ///The webhook topic for `fulfillment_holds/released` events. Occurs each time that a hold is released from a fulfillment order.
+        ///For cases where multiple holds are released from a fulfillment order a the same time, this webhook will trigger for each released hold.
+        /// Requires at least one of the following scopes: read_merchant_managed_fulfillment_orders, read_assigned_fulfillment_orders, read_third_party_fulfillment_orders, read_marketplace_fulfillment_orders.
+        ///</summary>
+        FULFILLMENT_HOLDS_RELEASED,
+        ///<summary>
         ///The webhook topic for `fulfillment_orders/order_routing_complete` events. Occurs when an order has finished being routed and it's fulfillment orders assigned to a fulfillment service's location. Requires at least one of the following scopes: read_merchant_managed_fulfillment_orders, read_assigned_fulfillment_orders, read_third_party_fulfillment_orders, read_buyer_membership_orders, read_marketplace_fulfillment_orders.
         ///</summary>
         FULFILLMENT_ORDERS_ORDER_ROUTING_COMPLETE,
@@ -66628,6 +76064,13 @@ namespace ShopifyNet.AdminTypes
         ///The webhook topic for `fulfillment_orders/fulfillment_request_accepted` events. Occurs when a fulfillment service accepts a request to fulfill a fulfillment order. Requires at least one of the following scopes: read_merchant_managed_fulfillment_orders, read_assigned_fulfillment_orders, read_third_party_fulfillment_orders, read_marketplace_fulfillment_orders.
         ///</summary>
         FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_ACCEPTED,
+        ///<summary>
+        ///The webhook topic for `fulfillment_holds/added` events. Occurs each time that a hold is added to a fulfillment order.
+        ///
+        ///For cases where multiple holds are applied to a fulfillment order, this webhook will trigger after each hold is applied.
+        /// Requires at least one of the following scopes: read_merchant_managed_fulfillment_orders, read_assigned_fulfillment_orders, read_third_party_fulfillment_orders, read_marketplace_fulfillment_orders.
+        ///</summary>
+        FULFILLMENT_HOLDS_ADDED,
         ///<summary>
         ///The webhook topic for `fulfillment_orders/line_items_prepared_for_local_delivery` events. Occurs whenever a fulfillment order's line items are prepared for local delivery. Requires at least one of the following scopes: read_merchant_managed_fulfillment_orders, read_assigned_fulfillment_orders, read_third_party_fulfillment_orders, read_marketplace_fulfillment_orders.
         ///</summary>
@@ -67004,6 +76447,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         ORDERS_SHOPIFY_PROTECT_ELIGIBILITY_CHANGED,
         ///<summary>
+        ///The webhook topic for `finance_kyc_information/update` events. Occurs whenever shop's finance KYC information was updated Requires the `read_financial_kyc_information` scope.
+        ///</summary>
+        FINANCE_KYC_INFORMATION_UPDATE,
+        ///<summary>
         ///The webhook topic for `fulfillment_orders/rescheduled` events. Triggers when a fulfillment order is rescheduled.
         ///
         ///Fulfillment orders may be merged if they have the same `fulfillAt` datetime.
@@ -67069,6 +76516,14 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         CUSTOMER_ACCOUNT_SETTINGS_UPDATE,
         ///<summary>
+        ///The webhook topic for `customer.joined_segment` events. Triggers when a customer joins a segment. Requires the `read_customers` scope.
+        ///</summary>
+        CUSTOMER_JOINED_SEGMENT,
+        ///<summary>
+        ///The webhook topic for `customer.left_segment` events. Triggers when a customer leaves a segment. Requires the `read_customers` scope.
+        ///</summary>
+        CUSTOMER_LEFT_SEGMENT,
+        ///<summary>
         ///The webhook topic for `company_contact_roles/assign` events. Occurs whenever a role is assigned to a contact at a location. Requires at least one of the following scopes: read_customers, read_companies.
         ///</summary>
         COMPANY_CONTACT_ROLES_ASSIGN,
@@ -67117,6 +76572,22 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         METAOBJECTS_DELETE,
         ///<summary>
+        ///The webhook topic for `finance_app_staff_member/grant` events. Triggers when a staff is granted access to all or some finance app. Requires the `read_financial_kyc_information` scope.
+        ///</summary>
+        FINANCE_APP_STAFF_MEMBER_GRANT,
+        ///<summary>
+        ///The webhook topic for `finance_app_staff_member/revoke` events. Triggers when a staff's access to all or some finance app has been revoked. Requires the `read_financial_kyc_information` scope.
+        ///</summary>
+        FINANCE_APP_STAFF_MEMBER_REVOKE,
+        ///<summary>
+        ///The webhook topic for `finance_app_staff_member/delete` events. Triggers when a staff with access to all or some finance app has been removed. Requires the `read_financial_kyc_information` scope.
+        ///</summary>
+        FINANCE_APP_STAFF_MEMBER_DELETE,
+        ///<summary>
+        ///The webhook topic for `finance_app_staff_member/update` events. Triggers when a staff's information has been updated. Requires the `read_financial_kyc_information` scope.
+        ///</summary>
+        FINANCE_APP_STAFF_MEMBER_UPDATE,
+        ///<summary>
         ///The webhook topic for `discounts/create` events. Occurs whenever a discount is created. Requires the `read_discounts` scope.
         ///</summary>
         DISCOUNTS_CREATE,
@@ -67148,6 +76619,224 @@ namespace ShopifyNet.AdminTypes
         ///The webhook topic for `metafield_definitions/delete` events. Occurs when a metafield definition is deleted. Requires the `read_content` scope.
         ///</summary>
         METAFIELD_DEFINITIONS_DELETE,
+        ///<summary>
+        ///The webhook topic for `delivery_promise_settings/update` events. Occurs when a promise setting is updated. Requires the `read_shipping` scope.
+        ///</summary>
+        DELIVERY_PROMISE_SETTINGS_UPDATE,
+        ///<summary>
+        ///The webhook topic for `markets_backup_region/update` events. Occurs when a backup region is updated. Requires the `read_markets` scope.
+        ///</summary>
+        MARKETS_BACKUP_REGION_UPDATE,
+        ///<summary>
+        ///The webhook topic for `checkout_and_accounts_configurations/update` events. The event occurs whenever a published checkout and account configuration is updated.
+        ///</summary>
+        CHECKOUT_AND_ACCOUNTS_CONFIGURATIONS_UPDATE,
+    }
+
+    public static class WebhookSubscriptionTopicStringValues
+    {
+        public const string APP_UNINSTALLED = @"APP_UNINSTALLED";
+        public const string APP_SCOPES_UPDATE = @"APP_SCOPES_UPDATE";
+        public const string CARTS_CREATE = @"CARTS_CREATE";
+        public const string CARTS_UPDATE = @"CARTS_UPDATE";
+        public const string CHANNELS_DELETE = @"CHANNELS_DELETE";
+        public const string CHECKOUTS_CREATE = @"CHECKOUTS_CREATE";
+        public const string CHECKOUTS_DELETE = @"CHECKOUTS_DELETE";
+        public const string CHECKOUTS_UPDATE = @"CHECKOUTS_UPDATE";
+        public const string CUSTOMER_PAYMENT_METHODS_CREATE = @"CUSTOMER_PAYMENT_METHODS_CREATE";
+        public const string CUSTOMER_PAYMENT_METHODS_UPDATE = @"CUSTOMER_PAYMENT_METHODS_UPDATE";
+        public const string CUSTOMER_PAYMENT_METHODS_REVOKE = @"CUSTOMER_PAYMENT_METHODS_REVOKE";
+        public const string COLLECTION_LISTINGS_ADD = @"COLLECTION_LISTINGS_ADD";
+        public const string COLLECTION_LISTINGS_REMOVE = @"COLLECTION_LISTINGS_REMOVE";
+        public const string COLLECTION_LISTINGS_UPDATE = @"COLLECTION_LISTINGS_UPDATE";
+        public const string COLLECTION_PUBLICATIONS_CREATE = @"COLLECTION_PUBLICATIONS_CREATE";
+        public const string COLLECTION_PUBLICATIONS_DELETE = @"COLLECTION_PUBLICATIONS_DELETE";
+        public const string COLLECTION_PUBLICATIONS_UPDATE = @"COLLECTION_PUBLICATIONS_UPDATE";
+        public const string COLLECTIONS_CREATE = @"COLLECTIONS_CREATE";
+        public const string COLLECTIONS_DELETE = @"COLLECTIONS_DELETE";
+        public const string COLLECTIONS_UPDATE = @"COLLECTIONS_UPDATE";
+        public const string CUSTOMER_GROUPS_CREATE = @"CUSTOMER_GROUPS_CREATE";
+        public const string CUSTOMER_GROUPS_DELETE = @"CUSTOMER_GROUPS_DELETE";
+        public const string CUSTOMER_GROUPS_UPDATE = @"CUSTOMER_GROUPS_UPDATE";
+        public const string CUSTOMERS_CREATE = @"CUSTOMERS_CREATE";
+        public const string CUSTOMERS_DELETE = @"CUSTOMERS_DELETE";
+        public const string CUSTOMERS_DISABLE = @"CUSTOMERS_DISABLE";
+        public const string CUSTOMERS_ENABLE = @"CUSTOMERS_ENABLE";
+        public const string CUSTOMERS_UPDATE = @"CUSTOMERS_UPDATE";
+        public const string CUSTOMERS_PURCHASING_SUMMARY = @"CUSTOMERS_PURCHASING_SUMMARY";
+        public const string CUSTOMERS_MARKETING_CONSENT_UPDATE = @"CUSTOMERS_MARKETING_CONSENT_UPDATE";
+        public const string CUSTOMER_TAGS_ADDED = @"CUSTOMER_TAGS_ADDED";
+        public const string CUSTOMER_TAGS_REMOVED = @"CUSTOMER_TAGS_REMOVED";
+        public const string CUSTOMERS_EMAIL_MARKETING_CONSENT_UPDATE = @"CUSTOMERS_EMAIL_MARKETING_CONSENT_UPDATE";
+        public const string DISPUTES_CREATE = @"DISPUTES_CREATE";
+        public const string DISPUTES_UPDATE = @"DISPUTES_UPDATE";
+        public const string DRAFT_ORDERS_CREATE = @"DRAFT_ORDERS_CREATE";
+        public const string DRAFT_ORDERS_DELETE = @"DRAFT_ORDERS_DELETE";
+        public const string DRAFT_ORDERS_UPDATE = @"DRAFT_ORDERS_UPDATE";
+        public const string FULFILLMENT_EVENTS_CREATE = @"FULFILLMENT_EVENTS_CREATE";
+        public const string FULFILLMENT_EVENTS_DELETE = @"FULFILLMENT_EVENTS_DELETE";
+        public const string FULFILLMENTS_CREATE = @"FULFILLMENTS_CREATE";
+        public const string FULFILLMENTS_UPDATE = @"FULFILLMENTS_UPDATE";
+        public const string ATTRIBUTED_SESSIONS_FIRST = @"ATTRIBUTED_SESSIONS_FIRST";
+        public const string ATTRIBUTED_SESSIONS_LAST = @"ATTRIBUTED_SESSIONS_LAST";
+        public const string ORDER_TRANSACTIONS_CREATE = @"ORDER_TRANSACTIONS_CREATE";
+        public const string ORDERS_CANCELLED = @"ORDERS_CANCELLED";
+        public const string ORDERS_CREATE = @"ORDERS_CREATE";
+        public const string ORDERS_DELETE = @"ORDERS_DELETE";
+        public const string ORDERS_EDITED = @"ORDERS_EDITED";
+        public const string ORDERS_FULFILLED = @"ORDERS_FULFILLED";
+        public const string ORDERS_PAID = @"ORDERS_PAID";
+        public const string ORDERS_PARTIALLY_FULFILLED = @"ORDERS_PARTIALLY_FULFILLED";
+        public const string ORDERS_UPDATED = @"ORDERS_UPDATED";
+        public const string FULFILLMENT_ORDERS_MOVED = @"FULFILLMENT_ORDERS_MOVED";
+        public const string FULFILLMENT_ORDERS_HOLD_RELEASED = @"FULFILLMENT_ORDERS_HOLD_RELEASED";
+        public const string FULFILLMENT_ORDERS_SCHEDULED_FULFILLMENT_ORDER_READY = @"FULFILLMENT_ORDERS_SCHEDULED_FULFILLMENT_ORDER_READY";
+        public const string FULFILLMENT_HOLDS_RELEASED = @"FULFILLMENT_HOLDS_RELEASED";
+        public const string FULFILLMENT_ORDERS_ORDER_ROUTING_COMPLETE = @"FULFILLMENT_ORDERS_ORDER_ROUTING_COMPLETE";
+        public const string FULFILLMENT_ORDERS_CANCELLED = @"FULFILLMENT_ORDERS_CANCELLED";
+        public const string FULFILLMENT_ORDERS_FULFILLMENT_SERVICE_FAILED_TO_COMPLETE = @"FULFILLMENT_ORDERS_FULFILLMENT_SERVICE_FAILED_TO_COMPLETE";
+        public const string FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_REJECTED = @"FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_REJECTED";
+        public const string FULFILLMENT_ORDERS_CANCELLATION_REQUEST_SUBMITTED = @"FULFILLMENT_ORDERS_CANCELLATION_REQUEST_SUBMITTED";
+        public const string FULFILLMENT_ORDERS_CANCELLATION_REQUEST_ACCEPTED = @"FULFILLMENT_ORDERS_CANCELLATION_REQUEST_ACCEPTED";
+        public const string FULFILLMENT_ORDERS_CANCELLATION_REQUEST_REJECTED = @"FULFILLMENT_ORDERS_CANCELLATION_REQUEST_REJECTED";
+        public const string FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_SUBMITTED = @"FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_SUBMITTED";
+        public const string FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_ACCEPTED = @"FULFILLMENT_ORDERS_FULFILLMENT_REQUEST_ACCEPTED";
+        public const string FULFILLMENT_HOLDS_ADDED = @"FULFILLMENT_HOLDS_ADDED";
+        public const string FULFILLMENT_ORDERS_LINE_ITEMS_PREPARED_FOR_LOCAL_DELIVERY = @"FULFILLMENT_ORDERS_LINE_ITEMS_PREPARED_FOR_LOCAL_DELIVERY";
+        public const string FULFILLMENT_ORDERS_PLACED_ON_HOLD = @"FULFILLMENT_ORDERS_PLACED_ON_HOLD";
+        public const string FULFILLMENT_ORDERS_MERGED = @"FULFILLMENT_ORDERS_MERGED";
+        public const string FULFILLMENT_ORDERS_SPLIT = @"FULFILLMENT_ORDERS_SPLIT";
+        public const string PRODUCT_LISTINGS_ADD = @"PRODUCT_LISTINGS_ADD";
+        public const string PRODUCT_LISTINGS_REMOVE = @"PRODUCT_LISTINGS_REMOVE";
+        public const string PRODUCT_LISTINGS_UPDATE = @"PRODUCT_LISTINGS_UPDATE";
+        public const string SCHEDULED_PRODUCT_LISTINGS_ADD = @"SCHEDULED_PRODUCT_LISTINGS_ADD";
+        public const string SCHEDULED_PRODUCT_LISTINGS_UPDATE = @"SCHEDULED_PRODUCT_LISTINGS_UPDATE";
+        public const string SCHEDULED_PRODUCT_LISTINGS_REMOVE = @"SCHEDULED_PRODUCT_LISTINGS_REMOVE";
+        public const string PRODUCT_PUBLICATIONS_CREATE = @"PRODUCT_PUBLICATIONS_CREATE";
+        public const string PRODUCT_PUBLICATIONS_DELETE = @"PRODUCT_PUBLICATIONS_DELETE";
+        public const string PRODUCT_PUBLICATIONS_UPDATE = @"PRODUCT_PUBLICATIONS_UPDATE";
+        public const string PRODUCTS_CREATE = @"PRODUCTS_CREATE";
+        public const string PRODUCTS_DELETE = @"PRODUCTS_DELETE";
+        public const string PRODUCTS_UPDATE = @"PRODUCTS_UPDATE";
+        public const string REFUNDS_CREATE = @"REFUNDS_CREATE";
+        public const string SEGMENTS_CREATE = @"SEGMENTS_CREATE";
+        public const string SEGMENTS_DELETE = @"SEGMENTS_DELETE";
+        public const string SEGMENTS_UPDATE = @"SEGMENTS_UPDATE";
+        public const string SHIPPING_ADDRESSES_CREATE = @"SHIPPING_ADDRESSES_CREATE";
+        public const string SHIPPING_ADDRESSES_UPDATE = @"SHIPPING_ADDRESSES_UPDATE";
+        public const string SHOP_UPDATE = @"SHOP_UPDATE";
+        public const string TAX_PARTNERS_UPDATE = @"TAX_PARTNERS_UPDATE";
+        public const string TAX_SERVICES_CREATE = @"TAX_SERVICES_CREATE";
+        public const string TAX_SERVICES_UPDATE = @"TAX_SERVICES_UPDATE";
+        public const string THEMES_CREATE = @"THEMES_CREATE";
+        public const string THEMES_DELETE = @"THEMES_DELETE";
+        public const string THEMES_PUBLISH = @"THEMES_PUBLISH";
+        public const string THEMES_UPDATE = @"THEMES_UPDATE";
+        public const string VARIANTS_IN_STOCK = @"VARIANTS_IN_STOCK";
+        public const string VARIANTS_OUT_OF_STOCK = @"VARIANTS_OUT_OF_STOCK";
+        public const string INVENTORY_LEVELS_CONNECT = @"INVENTORY_LEVELS_CONNECT";
+        public const string INVENTORY_LEVELS_UPDATE = @"INVENTORY_LEVELS_UPDATE";
+        public const string INVENTORY_LEVELS_DISCONNECT = @"INVENTORY_LEVELS_DISCONNECT";
+        public const string INVENTORY_ITEMS_CREATE = @"INVENTORY_ITEMS_CREATE";
+        public const string INVENTORY_ITEMS_UPDATE = @"INVENTORY_ITEMS_UPDATE";
+        public const string INVENTORY_ITEMS_DELETE = @"INVENTORY_ITEMS_DELETE";
+        public const string LOCATIONS_ACTIVATE = @"LOCATIONS_ACTIVATE";
+        public const string LOCATIONS_DEACTIVATE = @"LOCATIONS_DEACTIVATE";
+        public const string LOCATIONS_CREATE = @"LOCATIONS_CREATE";
+        public const string LOCATIONS_UPDATE = @"LOCATIONS_UPDATE";
+        public const string LOCATIONS_DELETE = @"LOCATIONS_DELETE";
+        public const string TENDER_TRANSACTIONS_CREATE = @"TENDER_TRANSACTIONS_CREATE";
+        public const string APP_PURCHASES_ONE_TIME_UPDATE = @"APP_PURCHASES_ONE_TIME_UPDATE";
+        public const string APP_SUBSCRIPTIONS_APPROACHING_CAPPED_AMOUNT = @"APP_SUBSCRIPTIONS_APPROACHING_CAPPED_AMOUNT";
+        public const string APP_SUBSCRIPTIONS_UPDATE = @"APP_SUBSCRIPTIONS_UPDATE";
+        public const string LOCALES_CREATE = @"LOCALES_CREATE";
+        public const string LOCALES_UPDATE = @"LOCALES_UPDATE";
+        public const string DOMAINS_CREATE = @"DOMAINS_CREATE";
+        public const string DOMAINS_UPDATE = @"DOMAINS_UPDATE";
+        public const string DOMAINS_DESTROY = @"DOMAINS_DESTROY";
+        public const string SUBSCRIPTION_CONTRACTS_CREATE = @"SUBSCRIPTION_CONTRACTS_CREATE";
+        public const string SUBSCRIPTION_CONTRACTS_UPDATE = @"SUBSCRIPTION_CONTRACTS_UPDATE";
+        public const string SUBSCRIPTION_BILLING_CYCLE_EDITS_CREATE = @"SUBSCRIPTION_BILLING_CYCLE_EDITS_CREATE";
+        public const string SUBSCRIPTION_BILLING_CYCLE_EDITS_UPDATE = @"SUBSCRIPTION_BILLING_CYCLE_EDITS_UPDATE";
+        public const string SUBSCRIPTION_BILLING_CYCLE_EDITS_DELETE = @"SUBSCRIPTION_BILLING_CYCLE_EDITS_DELETE";
+        public const string PROFILES_CREATE = @"PROFILES_CREATE";
+        public const string PROFILES_UPDATE = @"PROFILES_UPDATE";
+        public const string PROFILES_DELETE = @"PROFILES_DELETE";
+        public const string SUBSCRIPTION_BILLING_ATTEMPTS_SUCCESS = @"SUBSCRIPTION_BILLING_ATTEMPTS_SUCCESS";
+        public const string SUBSCRIPTION_BILLING_ATTEMPTS_FAILURE = @"SUBSCRIPTION_BILLING_ATTEMPTS_FAILURE";
+        public const string SUBSCRIPTION_BILLING_ATTEMPTS_CHALLENGED = @"SUBSCRIPTION_BILLING_ATTEMPTS_CHALLENGED";
+        public const string RETURNS_CANCEL = @"RETURNS_CANCEL";
+        public const string RETURNS_CLOSE = @"RETURNS_CLOSE";
+        public const string RETURNS_REOPEN = @"RETURNS_REOPEN";
+        public const string RETURNS_REQUEST = @"RETURNS_REQUEST";
+        public const string RETURNS_APPROVE = @"RETURNS_APPROVE";
+        public const string RETURNS_UPDATE = @"RETURNS_UPDATE";
+        public const string RETURNS_DECLINE = @"RETURNS_DECLINE";
+        public const string REVERSE_DELIVERIES_ATTACH_DELIVERABLE = @"REVERSE_DELIVERIES_ATTACH_DELIVERABLE";
+        public const string REVERSE_FULFILLMENT_ORDERS_DISPOSE = @"REVERSE_FULFILLMENT_ORDERS_DISPOSE";
+        public const string PAYMENT_TERMS_CREATE = @"PAYMENT_TERMS_CREATE";
+        public const string PAYMENT_TERMS_DELETE = @"PAYMENT_TERMS_DELETE";
+        public const string PAYMENT_TERMS_UPDATE = @"PAYMENT_TERMS_UPDATE";
+        public const string PAYMENT_SCHEDULES_DUE = @"PAYMENT_SCHEDULES_DUE";
+        public const string SELLING_PLAN_GROUPS_CREATE = @"SELLING_PLAN_GROUPS_CREATE";
+        public const string SELLING_PLAN_GROUPS_UPDATE = @"SELLING_PLAN_GROUPS_UPDATE";
+        public const string SELLING_PLAN_GROUPS_DELETE = @"SELLING_PLAN_GROUPS_DELETE";
+        public const string BULK_OPERATIONS_FINISH = @"BULK_OPERATIONS_FINISH";
+        public const string PRODUCT_FEEDS_CREATE = @"PRODUCT_FEEDS_CREATE";
+        public const string PRODUCT_FEEDS_UPDATE = @"PRODUCT_FEEDS_UPDATE";
+        public const string PRODUCT_FEEDS_INCREMENTAL_SYNC = @"PRODUCT_FEEDS_INCREMENTAL_SYNC";
+        public const string PRODUCT_FEEDS_FULL_SYNC = @"PRODUCT_FEEDS_FULL_SYNC";
+        public const string PRODUCT_FEEDS_FULL_SYNC_FINISH = @"PRODUCT_FEEDS_FULL_SYNC_FINISH";
+        public const string MARKETS_CREATE = @"MARKETS_CREATE";
+        public const string MARKETS_UPDATE = @"MARKETS_UPDATE";
+        public const string MARKETS_DELETE = @"MARKETS_DELETE";
+        public const string ORDERS_RISK_ASSESSMENT_CHANGED = @"ORDERS_RISK_ASSESSMENT_CHANGED";
+        public const string ORDERS_SHOPIFY_PROTECT_ELIGIBILITY_CHANGED = @"ORDERS_SHOPIFY_PROTECT_ELIGIBILITY_CHANGED";
+        public const string FINANCE_KYC_INFORMATION_UPDATE = @"FINANCE_KYC_INFORMATION_UPDATE";
+        public const string FULFILLMENT_ORDERS_RESCHEDULED = @"FULFILLMENT_ORDERS_RESCHEDULED";
+        public const string PUBLICATIONS_DELETE = @"PUBLICATIONS_DELETE";
+        public const string AUDIT_EVENTS_ADMIN_API_ACTIVITY = @"AUDIT_EVENTS_ADMIN_API_ACTIVITY";
+        public const string FULFILLMENT_ORDERS_LINE_ITEMS_PREPARED_FOR_PICKUP = @"FULFILLMENT_ORDERS_LINE_ITEMS_PREPARED_FOR_PICKUP";
+        public const string COMPANIES_CREATE = @"COMPANIES_CREATE";
+        public const string COMPANIES_UPDATE = @"COMPANIES_UPDATE";
+        public const string COMPANIES_DELETE = @"COMPANIES_DELETE";
+        public const string COMPANY_LOCATIONS_CREATE = @"COMPANY_LOCATIONS_CREATE";
+        public const string COMPANY_LOCATIONS_UPDATE = @"COMPANY_LOCATIONS_UPDATE";
+        public const string COMPANY_LOCATIONS_DELETE = @"COMPANY_LOCATIONS_DELETE";
+        public const string COMPANY_CONTACTS_CREATE = @"COMPANY_CONTACTS_CREATE";
+        public const string COMPANY_CONTACTS_UPDATE = @"COMPANY_CONTACTS_UPDATE";
+        public const string COMPANY_CONTACTS_DELETE = @"COMPANY_CONTACTS_DELETE";
+        public const string CUSTOMERS_MERGE = @"CUSTOMERS_MERGE";
+        public const string CUSTOMER_ACCOUNT_SETTINGS_UPDATE = @"CUSTOMER_ACCOUNT_SETTINGS_UPDATE";
+        public const string CUSTOMER_JOINED_SEGMENT = @"CUSTOMER_JOINED_SEGMENT";
+        public const string CUSTOMER_LEFT_SEGMENT = @"CUSTOMER_LEFT_SEGMENT";
+        public const string COMPANY_CONTACT_ROLES_ASSIGN = @"COMPANY_CONTACT_ROLES_ASSIGN";
+        public const string COMPANY_CONTACT_ROLES_REVOKE = @"COMPANY_CONTACT_ROLES_REVOKE";
+        public const string SUBSCRIPTION_CONTRACTS_ACTIVATE = @"SUBSCRIPTION_CONTRACTS_ACTIVATE";
+        public const string SUBSCRIPTION_CONTRACTS_PAUSE = @"SUBSCRIPTION_CONTRACTS_PAUSE";
+        public const string SUBSCRIPTION_CONTRACTS_CANCEL = @"SUBSCRIPTION_CONTRACTS_CANCEL";
+        public const string SUBSCRIPTION_CONTRACTS_FAIL = @"SUBSCRIPTION_CONTRACTS_FAIL";
+        public const string SUBSCRIPTION_CONTRACTS_EXPIRE = @"SUBSCRIPTION_CONTRACTS_EXPIRE";
+        public const string SUBSCRIPTION_BILLING_CYCLES_SKIP = @"SUBSCRIPTION_BILLING_CYCLES_SKIP";
+        public const string SUBSCRIPTION_BILLING_CYCLES_UNSKIP = @"SUBSCRIPTION_BILLING_CYCLES_UNSKIP";
+        public const string METAOBJECTS_CREATE = @"METAOBJECTS_CREATE";
+        public const string METAOBJECTS_UPDATE = @"METAOBJECTS_UPDATE";
+        public const string METAOBJECTS_DELETE = @"METAOBJECTS_DELETE";
+        public const string FINANCE_APP_STAFF_MEMBER_GRANT = @"FINANCE_APP_STAFF_MEMBER_GRANT";
+        public const string FINANCE_APP_STAFF_MEMBER_REVOKE = @"FINANCE_APP_STAFF_MEMBER_REVOKE";
+        public const string FINANCE_APP_STAFF_MEMBER_DELETE = @"FINANCE_APP_STAFF_MEMBER_DELETE";
+        public const string FINANCE_APP_STAFF_MEMBER_UPDATE = @"FINANCE_APP_STAFF_MEMBER_UPDATE";
+        public const string DISCOUNTS_CREATE = @"DISCOUNTS_CREATE";
+        public const string DISCOUNTS_UPDATE = @"DISCOUNTS_UPDATE";
+        public const string DISCOUNTS_DELETE = @"DISCOUNTS_DELETE";
+        public const string DISCOUNTS_REDEEMCODE_ADDED = @"DISCOUNTS_REDEEMCODE_ADDED";
+        public const string DISCOUNTS_REDEEMCODE_REMOVED = @"DISCOUNTS_REDEEMCODE_REMOVED";
+        public const string METAFIELD_DEFINITIONS_CREATE = @"METAFIELD_DEFINITIONS_CREATE";
+        public const string METAFIELD_DEFINITIONS_UPDATE = @"METAFIELD_DEFINITIONS_UPDATE";
+        public const string METAFIELD_DEFINITIONS_DELETE = @"METAFIELD_DEFINITIONS_DELETE";
+        public const string DELIVERY_PROMISE_SETTINGS_UPDATE = @"DELIVERY_PROMISE_SETTINGS_UPDATE";
+        public const string MARKETS_BACKUP_REGION_UPDATE = @"MARKETS_BACKUP_REGION_UPDATE";
+        public const string CHECKOUT_AND_ACCOUNTS_CONFIGURATIONS_UPDATE = @"CHECKOUT_AND_ACCOUNTS_CONFIGURATIONS_UPDATE";
     }
 
     ///<summary>
@@ -67201,6 +76890,14 @@ namespace ShopifyNet.AdminTypes
         ///Imperial system unit of mass.
         ///</summary>
         OUNCES,
+    }
+
+    public static class WeightUnitStringValues
+    {
+        public const string KILOGRAMS = @"KILOGRAMS";
+        public const string GRAMS = @"GRAMS";
+        public const string POUNDS = @"POUNDS";
+        public const string OUNCES = @"OUNCES";
     }
 
     ///<summary>
@@ -67307,6 +77004,29 @@ namespace ShopifyNet.AdminTypes
         ///Location adjacent to a variable definition.
         ///</summary>
         VARIABLE_DEFINITION,
+    }
+
+    public static class __DirectiveLocationStringValues
+    {
+        public const string QUERY = @"QUERY";
+        public const string MUTATION = @"MUTATION";
+        public const string SUBSCRIPTION = @"SUBSCRIPTION";
+        public const string FIELD = @"FIELD";
+        public const string FRAGMENT_DEFINITION = @"FRAGMENT_DEFINITION";
+        public const string FRAGMENT_SPREAD = @"FRAGMENT_SPREAD";
+        public const string INLINE_FRAGMENT = @"INLINE_FRAGMENT";
+        public const string SCHEMA = @"SCHEMA";
+        public const string SCALAR = @"SCALAR";
+        public const string OBJECT = @"OBJECT";
+        public const string FIELD_DEFINITION = @"FIELD_DEFINITION";
+        public const string ARGUMENT_DEFINITION = @"ARGUMENT_DEFINITION";
+        public const string INTERFACE = @"INTERFACE";
+        public const string UNION = @"UNION";
+        public const string ENUM = @"ENUM";
+        public const string ENUM_VALUE = @"ENUM_VALUE";
+        public const string INPUT_OBJECT = @"INPUT_OBJECT";
+        public const string INPUT_FIELD_DEFINITION = @"INPUT_FIELD_DEFINITION";
+        public const string VARIABLE_DEFINITION = @"VARIABLE_DEFINITION";
     }
 
     ///<summary>
@@ -67450,5 +77170,17 @@ namespace ShopifyNet.AdminTypes
         ///Indicates this type is a non-null. `ofType` is a valid field.
         ///</summary>
         NON_NULL,
+    }
+
+    public static class __TypeKindStringValues
+    {
+        public const string SCALAR = @"SCALAR";
+        public const string OBJECT = @"OBJECT";
+        public const string INTERFACE = @"INTERFACE";
+        public const string UNION = @"UNION";
+        public const string ENUM = @"ENUM";
+        public const string INPUT_OBJECT = @"INPUT_OBJECT";
+        public const string LIST = @"LIST";
+        public const string NON_NULL = @"NON_NULL";
     }
 }
