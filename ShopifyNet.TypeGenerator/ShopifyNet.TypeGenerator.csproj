@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GraphQLSharp" Version="2.2.0" />
+    <PackageReference Include="GraphQLSharp" Version="2.3.0" />
     <PackageReference Include="ShopifySharp" Version="6.22.0-b221" />
   </ItemGroup>
 </Project>
