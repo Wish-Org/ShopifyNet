@@ -6,7 +6,7 @@
 	  <PackageProjectUrl>https://github.com/Wish-Org/ShopifyNet</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/Wish-Org/ShopifyNet</RepositoryUrl>
 	  <Description>.NET utilities for Shopify GraphQL</Description>
-	  <Version>1.2.0</Version>
+	  <Version>1.3.0</Version>
 	  <PackageTags>shopify graphql types classes schema generator strongly typed</PackageTags>
   </PropertyGroup>
 

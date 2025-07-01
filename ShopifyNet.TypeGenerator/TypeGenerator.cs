@@ -37,7 +37,7 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
-    var res = await new GraphService(shopId, token, "2025-04").SendAsync(query);
+    var res = await new GraphService(shopId, token, "2025-07").SendAsync(query);
     var doc = JsonDocument.Parse(res.ToString());
     return doc;
 });
