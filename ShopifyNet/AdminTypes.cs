@@ -28682,6 +28682,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         [NonNull]
         public int? unprocessedQuantity { get; set; }
+        ///<summary>
+        ///The ID of the variant at time of return creation.
+        ///</summary>
+        public string? variantId { get; set; }
     }
 
     ///<summary>
@@ -42494,6 +42498,10 @@ namespace ShopifyNet.AdminTypes
         ///</summary>
         SUBFOLDER_SUFFIX_MUST_CONTAIN_ONLY_LETTERS,
         ///<summary>
+        ///The subfolder suffix must be at least 2 letters.
+        ///</summary>
+        SUBFOLDER_SUFFIX_MUST_BE_AT_LEAST_2_LETTERS,
+        ///<summary>
         ///The subfolder suffix is invalid, please provide a different value.
         ///</summary>
         SUBFOLDER_SUFFIX_CANNOT_BE_SCRIPT_CODE,
@@ -42741,6 +42749,7 @@ namespace ShopifyNet.AdminTypes
         public const string EXCEEDS_MAX_MULTI_CONTEXT_MARKETS = @"EXCEEDS_MAX_MULTI_CONTEXT_MARKETS";
         public const string DOMAIN_NOT_FOUND = @"DOMAIN_NOT_FOUND";
         public const string SUBFOLDER_SUFFIX_MUST_CONTAIN_ONLY_LETTERS = @"SUBFOLDER_SUFFIX_MUST_CONTAIN_ONLY_LETTERS";
+        public const string SUBFOLDER_SUFFIX_MUST_BE_AT_LEAST_2_LETTERS = @"SUBFOLDER_SUFFIX_MUST_BE_AT_LEAST_2_LETTERS";
         public const string SUBFOLDER_SUFFIX_CANNOT_BE_SCRIPT_CODE = @"SUBFOLDER_SUFFIX_CANNOT_BE_SCRIPT_CODE";
         public const string NO_LANGUAGES = @"NO_LANGUAGES";
         public const string NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET = @"NO_LOCAL_CURRENCIES_ON_SINGLE_COUNTRY_MARKET";
