@@ -1,11 +1,11 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using System.Text.Json;
 using GraphQLSharp;
 using ShopifyNet;
 
 var options = new GraphQLTypeGeneratorOptions
 {
-    Namespace = "ShopifyNet.AdminTypes",
+    NamespaceClient = "ShopifyNet",
+    NamespaceTypes = "ShopifyNet.Types",
     ScalarTypeNameToDotNetTypeName = new Dictionary<string, string>
                 {
                     { "UnsignedInt64", "ulong" },
@@ -52,4 +52,4 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     return doc;
 });
 
-File.WriteAllText(@"../ShopifyNet/AdminTypes.cs", csharpCode);
+File.WriteAllText(@"../ShopifyNet/Generated.cs", csharpCode);
