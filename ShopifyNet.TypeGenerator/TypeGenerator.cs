@@ -1,11 +1,12 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using GraphQLSharp;
-using ShopifySharp;
+using ShopifyNet;
 
 var options = new GraphQLTypeGeneratorOptions
 {
     Namespace = "ShopifyNet.AdminTypes",
-    ScalarNameTypeToTypeName = new Dictionary<string, string>
+    ScalarTypeNameToDotNetTypeName = new Dictionary<string, string>
                 {
                     { "UnsignedInt64", "ulong" },
                     { "Money", "decimal" },
@@ -29,7 +30,9 @@ var options = new GraphQLTypeGeneratorOptions
                     { ("ShopifyPaymentsDispute", "evidenceSentOn"), "DateTime" },
                     { ("ShopifyPaymentsDispute", "finalizedOn"), "DateTime" },
                 },
-    EnumMembersAsString = true
+    EnumMembersAsString = true,
+    GenerateMemberNames = true,
+    ClientOptionsType = typeof(AdminClientOptions),
 };
 
 var generator = new GraphQLTypeGenerator();
@@ -37,8 +40,15 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
-    var res = await new GraphService(shopId, token, "2025-04").SendAsync(query);
-    var doc = JsonDocument.Parse(res.ToString());
+
+    var options = new AdminClientOptions
+    {
+        MyShopifyDomain = shopId,
+        AccessToken = token,
+    };
+
+    var res = await new GraphQLCLient(options).ExecuteAsync(query);
+    var doc = JsonDocument.Parse(res.data.GetRawText());
     return doc;
 });
 
