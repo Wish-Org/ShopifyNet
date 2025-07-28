@@ -33,6 +33,7 @@ var options = new GraphQLTypeGeneratorOptions
     EnumMembersAsString = true,
     GenerateMemberNames = true,
     ClientOptionsType = typeof(AdminClientOptions),
+    GraphQLRequestType = typeof(GraphQLRequest),
 };
 
 var generator = new GraphQLTypeGenerator();
