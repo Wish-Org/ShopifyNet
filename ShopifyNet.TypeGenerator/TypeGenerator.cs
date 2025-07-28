@@ -32,8 +32,8 @@ var options = new GraphQLTypeGeneratorOptions
                 },
     EnumMembersAsString = true,
     GenerateMemberNames = true,
-    ClientOptionsType = typeof(AdminClientOptions),
-    GraphQLRequestType = typeof(GraphQLRequest),
+    ClientOptionsType = typeof(ShopifyClientOptions),
+    GraphQLRequestType = typeof(ShopifyGraphQLRequest),
 };
 
 var generator = new GraphQLTypeGenerator();
@@ -42,7 +42,7 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
 
-    var options = new AdminClientOptions
+    var options = new ShopifyClientOptions
     {
         MyShopifyDomain = shopId,
         AccessToken = token,
