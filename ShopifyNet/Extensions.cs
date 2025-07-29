@@ -2,11 +2,16 @@ using GraphQLSharp;
 
 namespace ShopifyNet;
 
-public static class GraphQLCostExtension
+public static class Extensions
 {
     public static Cost GetCost<T>(this GraphQLResponse<T> response)
     {
         return response.GetExtension<Cost>("cost");
+    }
+
+    public static string GetCode(this GraphQLError error)
+    {
+        return error.GetExtension<string>("code");
     }
 }
 public class Cost
