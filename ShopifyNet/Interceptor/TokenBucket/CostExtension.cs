@@ -11,7 +11,7 @@ public static class GraphQLCostExtension
 }
 public class Cost
 {
-    public int? requestedQueryCost { get; set; }
+    public int requestedQueryCost { get; set; }
 
     //main be null if query was throttled
     public int? actualQueryCost { get; set; }
@@ -23,9 +23,9 @@ public class Cost
     public class ThrottleStatus
     {
         //not sure why but API returns decimals instead of int
-        public decimal? maximumAvailable { get; set; }
-        public decimal? currentlyAvailable { get; set; }
-        public decimal? restoreRate { get; set; }
+        public decimal maximumAvailable { get; set; }
+        public decimal currentlyAvailable { get; set; }
+        public decimal restoreRate { get; set; }
     }
 
     public class CostField
