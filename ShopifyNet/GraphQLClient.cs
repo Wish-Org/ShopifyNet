@@ -7,7 +7,7 @@ public partial class GraphQLClient
     private readonly Func<int> _getRequestPriority;
     private readonly IInterceptor _tokenBucketWithRetryInterceptor;
 
-    public GraphQLClient(ShopifyClientOptions defaultOptions = null, Func<int> getRequestPriority = null)
+    public GraphQLClient(ShopifyClientOptions defaultOptions, Func<int> getRequestPriority = null)
         : this(defaultOptions)
     {
         _getRequestPriority = getRequestPriority;

@@ -13,11 +13,11 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
     /// Optional API version to use for the Shopify API.
     /// Defaults to AdminClientOptions.DEFAULT_API_VERSION if not set.
     /// </summary>
-    public string APIVersion { get; init; }
+    public string APIVersion { get; }
 
-    public string MyShopifyDomain { get; init; }
+    public string MyShopifyDomain { get; }
 
-    public string AccessToken { get; init; }
+    public string AccessToken { get; }
 
     private Uri _uri;
 
