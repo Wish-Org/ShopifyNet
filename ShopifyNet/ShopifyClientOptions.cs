@@ -9,6 +9,9 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
 
     private static readonly ProductInfoHeaderValue _userAgent = new(typeof(ShopifyClientOptions).Assembly.GetName().Name!, typeof(ShopifyClientOptions).Assembly.GetName().Version!.ToString());
 
+    private static readonly IInterceptor _tokenBucketWithRetryInterceptor =
+                            new ChainedInterceptor(new TokenBucketInterceptor(), new RetryInterceptor());
+
     /// <summary>
     /// Optional API version to use for the Shopify API.
     /// Defaults to AdminClientOptions.DEFAULT_API_VERSION if not set.
@@ -38,5 +41,6 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
         AccessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
         APIVersion = apiVersion;
         _uri = new Uri($"https://{MyShopifyDomain}/admin/api/{APIVersion}/graphql.json");
+        Interceptor = _tokenBucketWithRetryInterceptor;//default interceptor for rate limiting and retry logic
     }
 }

@@ -6,6 +6,7 @@ var options = new GraphQLTypeGeneratorOptions
 {
     NamespaceClient = "ShopifyNet",
     NamespaceTypes = "ShopifyNet.Types",
+    ClientClassName = "ShopifyClient",
     ScalarTypeNameToDotNetTypeName = new Dictionary<string, string>
                 {
                     { "UnsignedInt64", "ulong" },
