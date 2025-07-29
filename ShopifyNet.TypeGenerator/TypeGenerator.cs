@@ -40,8 +40,8 @@ var options = new GraphQLTypeGeneratorOptions
 var generator = new GraphQLTypeGenerator();
 string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
-    string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
-    string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
+    string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User)!;
+    string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User)!;
 
     var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions;
     var options = new GraphQLClientOptions(shopifyOptions.Uri)
