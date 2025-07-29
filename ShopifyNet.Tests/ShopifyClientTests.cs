@@ -45,6 +45,13 @@ public class ShopifyClientTests
         //response is strongly typed
         var response = await _client.ExecuteQueryAsync(query);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
+        var cost = response.GetCost();
+        Assert.IsNotNull(cost);
+        Assert.IsTrue(cost.requestedQueryCost > 0);
+        Assert.IsTrue(cost.actualQueryCost > 0);
+        Assert.IsTrue(cost.throttleStatus.maximumAvailable > 0);
+        Assert.IsTrue(cost.throttleStatus.currentlyAvailable >= 0);
+        Assert.IsTrue(cost.throttleStatus.restoreRate > 0);
     }
 
     [TestMethod]
@@ -171,8 +178,18 @@ public class ShopifyClientTests
             }
         };
 
-        var response = await _client.ExecuteQueryAsync(request);
+        var options = GetClientOptions();
+        options.RequestDetailedQueryCost = true;
+        var response = await _client.ExecuteQueryAsync(request, options);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
+        var cost = response.GetCost();
+        Assert.IsNotNull(cost);
+        Assert.IsTrue(cost.requestedQueryCost > 0);
+        Assert.IsTrue(cost.fields.Length > 0);
+        Assert.IsTrue(cost.fields.First().path.Length > 0);
+        Assert.IsTrue(cost.fields.Any(f => f.requestedTotalCost > 0));
+        Assert.IsTrue(cost.fields.Any(f => f.requestedChildrenCost > 0));
+        Assert.IsTrue(cost.fields.Any(f => f.definedCost > 0));
     }
 
     [TestMethod]
