@@ -17,10 +17,4 @@ public partial class GraphQLClient
 
 
     protected override IInterceptor DefaultInterceptor => _tokenBucketWithRetryInterceptor;
-
-    protected override void ValidateOptions(ShopifyClientOptions defaultOptions, ShopifyClientOptions options)
-    {
-        _ = defaultOptions?.MyShopifyDomain ?? options?.MyShopifyDomain ?? throw new ArgumentNullException(nameof(options.MyShopifyDomain));
-        _ = defaultOptions?.AccessToken ?? options?.AccessToken ?? throw new ArgumentNullException(nameof(options.AccessToken));
-    }
 }
