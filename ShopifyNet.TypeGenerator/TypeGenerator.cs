@@ -42,12 +42,11 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOPID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_TOKEN", EnvironmentVariableTarget.User)!;
 
-    var options = new ShopifyClientOptions
+    var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions;
+    var options = new GraphQLClientOptions(shopifyOptions.Uri)
     {
-        MyShopifyDomain = shopId,
-        AccessToken = token,
+        ConfigureHttpRequestHeaders = shopifyOptions.ConfigureHttpRequestHeaders,
     };
-
     var res = await new GraphQLCLient(options).ExecuteAsync(query);
     var doc = JsonDocument.Parse(res.data.GetRawText());
     return doc;
