@@ -22,14 +22,19 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
 
     public string AccessToken { get; }
 
+    public bool RequestDetailedQueryCost { get; set; }
+
     private Uri _uri;
 
     Uri IGraphQLClientOptions.Uri => _uri;
+
     Action<HttpRequestHeaders> IGraphQLClientOptions.ConfigureHttpRequestHeaders => headers =>
         {
             headers.UserAgent.Add(_userAgent);
             if (AccessToken != null)
                 headers.Add("X-Shopify-Access-Token", AccessToken);
+            if (RequestDetailedQueryCost)
+                headers.Add("Shopify-GraphQL-Cost-Debug", "1");
         };
 
     /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
