@@ -20,8 +20,8 @@ public class ShopifyClientTests
     {
         string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User) ??
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
-        string token = Environment.GetEnvironmentVariable("SHOPIFNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
-                            Environment.GetEnvironmentVariable("SHOPIFNET_SHOP_TOKEN");
+        string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
+                            Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
         return new ShopifyClientOptions(shopId, token)
         {
             Interceptor = null
