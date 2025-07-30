@@ -6,8 +6,6 @@ internal class TokenBucketRequest(int cost, CancellationToken cancellationToken)
 
     public readonly CancellationToken CancellationToken = cancellationToken;
 
-    public bool IsScheduled { get; set; }
-
     private bool _IsDisposed;
 
     private readonly SemaphoreSlim _Semaphore = new(0, 1);

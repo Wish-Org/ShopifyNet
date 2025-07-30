@@ -3,6 +3,8 @@ namespace ShopifyNet;
 internal class TokenBucket
 {
     private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(5);
+    private readonly AsyncManualResetEvent _processSignal = new();
+    private readonly PriorityQueue<TokenBucketRequest, int> _queue = new();
 
     private readonly IStopwatch _sinceTouched;
 
@@ -45,14 +47,12 @@ internal class TokenBucket
             {
                 return EstimatedCurrentlyAvailable == MaximumAllowed &&
                                     _sinceTouched.Elapsed > IdleTimeout &&
-                                    _waitingRequests.Count == 0;
+                                    _queue.Count == 0;
             }
         }
     }
 
     private readonly Func<int> _getCurrentPriority;
-    private readonly PriorityQueue<TokenBucketRequest, int> _waitingRequests = new();
-
     private readonly Lock _lock = new();
 
     internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, Func<int> getCurrentPriority)
@@ -66,6 +66,7 @@ internal class TokenBucket
         _sinceUpdated = sinceUpdated ?? throw new ArgumentNullException(nameof(sinceUpdated));
         _getCurrentPriority = getCurrentPriority;
         SetState(maximumAvailable, restoreRatePerSecond, maximumAvailable);
+        _ = ThrottleQueue();
     }
 
     internal void Touch()
@@ -96,15 +97,7 @@ internal class TokenBucket
             RestoreRatePerSecond = restoreRatePerSecond;
             LastCurrentlyAvailable = currentlyAvailable;
         }
-        ReleaseRequests();
-    }
-
-    private void ConsumeTokens(int cost)
-    {
-        lock (_lock)
-        {
-            LastCurrentlyAvailable = Math.Max(0, this.EstimatedCurrentlyAvailable - cost);
-        }
+        _processSignal.Set();
     }
 
     public async Task WaitForAvailableAsync(int requestCost, CancellationToken cancellationToken = default)
@@ -114,88 +107,49 @@ internal class TokenBucket
         if (requestCost > MaximumAllowed)
             throw new ArgumentOutOfRangeException($"Requested query cost of {requestCost} is larger than maximum available {MaximumAllowed}");
 
-        Touch();
-
         using var r = new TokenBucketRequest(requestCost, cancellationToken);
-
         lock (_lock)
         {
-            if (EstimatedCurrentlyAvailable >= requestCost && _waitingRequests.Count == 0)
-            {
-                //there is enough capacity to proceed immediately
-                ConsumeTokens(r.Cost);
-                return;
-            }
-
-            //otherwise, we queue the request
-            _waitingRequests.Enqueue(r, _getCurrentPriority());
-
-            //if it's the first queued request, we schedule it to be released
-            if (_waitingRequests.Count == 1)
-                _ = ScheduleRequest(r);
+            Touch();
+            _queue.Enqueue(r, _getCurrentPriority());
         }
-
-        //TaskCanceledException can bubble up
-        //The request will be dequeued when the semaphore is released
+        _processSignal.Set();
         await r.WaitAsync(cancellationToken);
         Touch();
     }
 
-    private async Task ScheduleRequest(TokenBucketRequest r)
+    private async Task ThrottleQueue()
     {
-        using var sub = r.CancellationToken.Register(ReleaseRequests);
+        TokenBucketRequest req;
         TimeSpan waitFor;
-        lock (_lock)
-        {
-            waitFor = TimeSpan.FromSeconds((double)Math.Max(0, (r.Cost - EstimatedCurrentlyAvailable) / RestoreRatePerSecond));
-        }
-        try
-        {
-            r.IsScheduled = true;
-            await Task.Delay(waitFor, r.CancellationToken);
-            ReleaseRequests();
-        }
-        finally
-        {
-            //note that because the queue is a priority queue so the request may not be at the front anymore
-            //and might need to be rescheduled
-            r.IsScheduled = false;
-        }
-    }
 
-    private void ReleaseRequests()
-    {
-        lock (_lock)
+        while (true)
         {
-            while (_waitingRequests.Count > 0)
+            lock (_lock)
             {
-                var req = _waitingRequests.Peek();
-
-                if (req.CancellationToken.IsCancellationRequested)
+                if (!_queue.TryPeek(out req, out _))
+                    waitFor = TimeSpan.MaxValue;
+                else if (req.CancellationToken.IsCancellationRequested)
                 {
-                    _waitingRequests.Dequeue();
+                    // Release cancelled request without consuming tokens
+                    _queue.Dequeue();
                     req.Release();
+                    continue;
                 }
                 else if (EstimatedCurrentlyAvailable >= req.Cost)
                 {
-                    // Release the request
-                    _waitingRequests.Dequeue();
+                    // Release the request for processing
+                    _queue.Dequeue();
+                    LastCurrentlyAvailable = Math.Max(0, this.EstimatedCurrentlyAvailable - req.Cost);
                     req.Release();
-                    ConsumeTokens(req.Cost);
+                    continue;
                 }
                 else
-                {
-                    // Not enough capacity, exit the loop
-                    break;
-                }
+                    waitFor = TimeSpan.FromSeconds((double)Math.Max(0, (req.Cost - EstimatedCurrentlyAvailable) / RestoreRatePerSecond));
             }
-
-            if (_waitingRequests.Count > 0)
-            {
-                var nextRequest = _waitingRequests.Peek();
-                if (!nextRequest.IsScheduled)
-                    _ = ScheduleRequest(nextRequest);
-            }
+            using var sub = req?.CancellationToken.Register(_processSignal.Set);
+            await Task.WhenAny(Task.Delay(waitFor), _processSignal.WaitAsync());
+            _processSignal.Reset();
         }
     }
 }
