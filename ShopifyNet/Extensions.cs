@@ -13,6 +13,11 @@ public static class Extensions
     {
         return error.GetExtension<string>("code");
     }
+
+    public static bool IsThrottled<T>(this GraphQLResponse<T> response)
+    {
+        return response.errors.Any(e => e.GetCode() == "THROTTLED");
+    }
 }
 public class Cost
 {

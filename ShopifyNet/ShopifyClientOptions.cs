@@ -9,7 +9,11 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
 
     private static readonly ProductInfoHeaderValue _userAgent = new(typeof(ShopifyClientOptions).Assembly.GetName().Name!, typeof(ShopifyClientOptions).Assembly.GetName().Version!.ToString());
 
-    private static readonly IInterceptor _tokenBucketWithRetryInterceptor =
+    /// <summary>
+    /// The default interceptor used if non is specified in the options.
+    /// It is a ChainedInterceptor that includes a TokenBucketInterceptor for rate limiting and a RetryInterceptor for handling retries.
+    /// </summary>
+    public static readonly IInterceptor DefaultIntercetpor =
                             new ChainedInterceptor(new TokenBucketInterceptor(), new RetryInterceptor());
 
     /// <summary>
@@ -46,6 +50,6 @@ public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOpti
         AccessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
         APIVersion = apiVersion;
         _uri = new Uri($"https://{MyShopifyDomain}/admin/api/{APIVersion}/graphql.json");
-        Interceptor = _tokenBucketWithRetryInterceptor;//default interceptor for rate limiting and retry logic
+        Interceptor = DefaultIntercetpor;
     }
 }
