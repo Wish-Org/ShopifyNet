@@ -10,7 +10,7 @@ internal class TokenBucket
 
     private readonly IStopwatch _sinceUpdated;
 
-    private int MaximumAllowed { get; set; }
+    internal int MaximumAllowed { get; set; }
 
     private int RestoreRatePerSecond { get; set; }
 
@@ -52,19 +52,17 @@ internal class TokenBucket
         }
     }
 
-    private readonly Func<int> _getCurrentPriority;
     private readonly Lock _lock = new();
 
-    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, Func<int> getCurrentPriority)
-                         : this(maximumAvailable, restoreRatePerSecond, getCurrentPriority, new Stopwatch(), new Stopwatch())
+    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond)
+                         : this(maximumAvailable, restoreRatePerSecond, new Stopwatch(), new Stopwatch())
     {
     }
 
-    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, Func<int> getCurrentPriority, IStopwatch sinceTouched, IStopwatch sinceUpdated)
+    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, IStopwatch sinceTouched, IStopwatch sinceUpdated)
     {
         _sinceTouched = sinceTouched ?? throw new ArgumentNullException(nameof(sinceTouched));
         _sinceUpdated = sinceUpdated ?? throw new ArgumentNullException(nameof(sinceUpdated));
-        _getCurrentPriority = getCurrentPriority;
         SetState(maximumAvailable, restoreRatePerSecond, maximumAvailable);
         _ = ThrottleQueue();
     }
@@ -100,7 +98,11 @@ internal class TokenBucket
         _processSignal.Set();
     }
 
-    public async Task WaitForAvailableAsync(int requestCost, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Waits for available tokens in the bucket.
+    /// </summary>
+    /// <param name="priority">Priority of the request. Lower values are processed first</param>
+    public async Task WaitForAvailableAsync(int requestCost, int priority = int.MaxValue, CancellationToken cancellationToken = default)
     {
         if (requestCost <= 0)
             throw new ArgumentOutOfRangeException($"{nameof(requestCost)} must be greater than zero");
@@ -111,7 +113,7 @@ internal class TokenBucket
         lock (_lock)
         {
             Touch();
-            _queue.Enqueue(r, _getCurrentPriority());
+            _queue.Enqueue(r, priority);
         }
         _processSignal.Set();
         await r.WaitAsync(cancellationToken);
@@ -128,7 +130,7 @@ internal class TokenBucket
             lock (_lock)
             {
                 if (!_queue.TryPeek(out req, out _))
-                    waitFor = TimeSpan.MaxValue;
+                    waitFor = Timeout.InfiniteTimeSpan;
                 else if (req.CancellationToken.IsCancellationRequested)
                 {
                     // Release cancelled request without consuming tokens

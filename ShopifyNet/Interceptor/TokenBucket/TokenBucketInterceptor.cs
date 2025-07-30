@@ -12,15 +12,15 @@ public class TokenBucketInterceptor : IInterceptor
     private static readonly TimeSpan THROTTLED_RETRY_DELAY = TimeSpan.FromSeconds(1);
     private static readonly int MAX_ATTEMPTS = 3;
     private readonly ConcurrentDictionary<string, TokenBucket> _tokenToBucket = new();
-    private readonly Stopwatch _timeSinceLastIdleBucketCheck = new Stopwatch();
-    private readonly Func<int> _getRequestPriority;
+    private readonly IStopwatch _timeSinceLastIdleBucketCheck = new Stopwatch();
+    private readonly Func<ShopifyGraphQLRequest, int> _getRequestPriority;
     private const int DEFAULT_GRAPHQL_MAX_AVAILABLE = 1_000;
     private const int DEFAULT_GRAPHQL_RESTORE_RATE = 50;
     private const int DEFAULT_GRAPHQL_UNKNOWN_COST = 50;
 
-    public TokenBucketInterceptor(Func<int> getRequestPriority = null)
+    public TokenBucketInterceptor(Func<ShopifyGraphQLRequest, int> getRequestPriority = null)
     {
-        _getRequestPriority = getRequestPriority ?? (() => 0);
+        _getRequestPriority = getRequestPriority ?? (r => 0);
         _timeSinceLastIdleBucketCheck.Start();
     }
 
@@ -58,7 +58,7 @@ public class TokenBucketInterceptor : IInterceptor
         TokenBucket bucket = null;
         lock (_tokenToBucket)
         {
-            bucket = _tokenToBucket.GetOrAdd(token, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE, _getRequestPriority));
+            bucket = _tokenToBucket.GetOrAdd(token, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE));
             bucket.Touch();
         }
 
@@ -69,7 +69,7 @@ public class TokenBucketInterceptor : IInterceptor
         while (true) //try up to 3 times if throttled
         {
             attempt++;
-            await bucket.WaitForAvailableAsync(requestQueryCost, cancellationToken);
+            await bucket.WaitForAvailableAsync(requestQueryCost, _getRequestPriority(r), cancellationToken);
 
             GraphQLResponse<TData> res = null;
             try

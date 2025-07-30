@@ -8,7 +8,6 @@ public class TokenBucketTests
     private TokenBucket _tokenBucket;
     private TestStopwatch _sinceTouched;
     private TestStopwatch _sinceLastUpdated;
-    private int _currentPriority = 0;
 
     [TestInitialize]
     public void Initialize()
@@ -18,7 +17,6 @@ public class TokenBucketTests
         _tokenBucket = new TokenBucket(
             100, // maximum tokens
             10,  // restore rate
-            () => _currentPriority,
             _sinceTouched,
             _sinceLastUpdated
         );
@@ -39,9 +37,71 @@ public class TokenBucketTests
     public void SufficientTokensCompleteImmediately()
     {
         var waitTasks = Enumerable.Range(0, 10)
-                                 .Select(_ => _tokenBucket.WaitForAvailableAsync(100))
+                                 .Select(_ => _tokenBucket.WaitForAvailableAsync(10))
                                  .ToList();
         Thread.Sleep(100);
         Assert.IsTrue(waitTasks.All(t => t.IsCompletedSuccessfully));
+        var task = _tokenBucket.WaitForAvailableAsync(20);
+        Assert.IsFalse(task.IsCompletedSuccessfully);
+        _sinceLastUpdated.AdvanceSeconds(2);
+        Thread.Sleep(2000 + 200);// add buffer time
+        Assert.IsTrue(task.IsCompletedSuccessfully);
+    }
+
+    [TestMethod]
+    public void SufficientTokensCompleteImmediatelyCancelled()
+    {
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var waitTasks = Enumerable.Range(0, 10)
+                                 .Select(_ => _tokenBucket.WaitForAvailableAsync(_tokenBucket.MaximumAllowed, 0, cts.Token))
+                                 .ToList();
+        Thread.Sleep(100);
+        Assert.IsTrue(waitTasks.All(t => t.IsCanceled));
+    }
+
+    [TestMethod]
+    public void IsIdleAfterAWhile()
+    {
+        _sinceTouched.Advance(TimeSpan.FromHours(1));
+        Assert.IsTrue(_tokenBucket.IsIdle);
+
+        _tokenBucket.SetState(100, 10, 100);
+        Assert.IsFalse(_tokenBucket.IsIdle);
+
+        _sinceTouched.Advance(TimeSpan.FromHours(1));
+        Assert.IsTrue(_tokenBucket.IsIdle);
+
+        _tokenBucket.WaitForAvailableAsync(10).Wait();
+        Assert.IsFalse(_tokenBucket.IsIdle);
+    }
+
+    [TestMethod]
+    public void CompletesInPriorityOrder()
+    {
+        //set available tokens to 0
+        _tokenBucket.SetState(100, 100, 0);
+
+        var list = new List<int>();
+        //queue 10 requests with different priorities
+        var waitTasks = Enumerable.Range(0, 10)
+                                 .Select(async i =>
+                                 {
+                                     await _tokenBucket.WaitForAvailableAsync(10, -i);
+                                     lock (list)
+                                     {
+                                         list.Add(i);
+                                     }
+                                 })
+                                 .ToList();
+
+        Assert.IsTrue(waitTasks.All(t => !t.IsCompleted));
+        Enumerable.Range(0, 10).ForEach(i =>
+        {
+            _sinceLastUpdated.AdvanceSeconds(0.1);
+            Thread.Sleep(150); // add buffer time
+        });
+        Assert.IsTrue(waitTasks.All(t => t.IsCompletedSuccessfully));
+        Assert.IsTrue(list.SequenceEqual(Enumerable.Range(0, 10).OrderDescending()));
     }
 }
