@@ -26,7 +26,7 @@ public class ShopifyClientTests
         {
             MyShopifyDomain = shopId,
             AccessToken = token,
-            Interceptor = null
+            Interceptor = NoOpInterceptor.Instance
         };
     }
 
