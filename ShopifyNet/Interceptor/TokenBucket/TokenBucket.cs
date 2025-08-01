@@ -2,7 +2,6 @@ namespace ShopifyNet;
 
 internal class TokenBucket
 {
-    private static readonly TimeSpan IdleTimeout = TimeSpan.FromMinutes(5);
     private readonly AsyncManualResetEvent _processSignal = new();
     private readonly PriorityQueue<TokenBucketRequest, int> _queue = new();
 
