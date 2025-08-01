@@ -44,17 +44,11 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User)!;
 
-    var shopifyOptions = new ShopifyClientOptions(shopId, token);
+    var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions;
 
-    static Uri GetUri<TOptions>(TOptions options, TOptions defaultOptions) where TOptions : GraphQLClientOptionsBase, IGraphQLClientOptions<TOptions>
-                        => TOptions.GetUri(defaultOptions, options);
-    static Action<HttpRequestHeaders> GetConfigureHttpRequestHeaders<TOptions>(TOptions options, TOptions defaultOptions) where TOptions : GraphQLClientOptionsBase, IGraphQLClientOptions<TOptions>
-                        => TOptions.GetConfigureHttpRequestHeaders(defaultOptions, options);
-
-    var uri = GetUri(shopifyOptions, null!);
-    var options = new GraphQLClientOptions(uri)
+    var options = new GraphQLClientOptions(shopifyOptions.Uri)
     {
-        ConfigureHttpRequestHeaders = GetConfigureHttpRequestHeaders(shopifyOptions, null!),
+        ConfigureHttpRequestHeaders = shopifyOptions.ConfigureHttpRequestHeaders,
     };
     var res = await new GraphQLCLient(options).ExecuteAsync(query);
     var doc = JsonDocument.Parse(res.data.GetRawText());

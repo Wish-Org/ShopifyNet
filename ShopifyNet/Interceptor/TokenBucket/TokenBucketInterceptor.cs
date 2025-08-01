@@ -51,15 +51,14 @@ public class TokenBucketInterceptor : IInterceptor
 
     public async Task<GraphQLResponse<TData>> InterceptRequestAsync<TGraphQLRequest, TClientOptions, TData>(
         TGraphQLRequest request,
-        TClientOptions defaultOptions,
         TClientOptions options,
         CancellationToken cancellationToken,
         Func<TGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
-        where TGraphQLRequest : GraphQLRequest, new()
-        where TClientOptions : GraphQLClientOptionsBase, IGraphQLClientOptions<TClientOptions>
+        where TGraphQLRequest : GraphQLRequest
+        where TClientOptions : IGraphQLClientOptions
     {
         var r = request as ShopifyGraphQLRequest;
-        var token = (options as ShopifyClientOptions)?.AccessToken ?? (defaultOptions as ShopifyClientOptions)?.AccessToken ?? throw new ArgumentNullException(nameof(ShopifyClientOptions.AccessToken));
+        var token = (options as ShopifyClientOptions).AccessToken ?? throw new ArgumentNullException(nameof(ShopifyClientOptions.AccessToken));
         TokenBucket bucket = null;
         lock (_tokenToBucket)
         {

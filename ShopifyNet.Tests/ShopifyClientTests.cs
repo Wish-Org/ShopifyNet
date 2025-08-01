@@ -182,7 +182,8 @@ public class ShopifyClientTests
 
         var options = GetClientOptions();
         options.RequestDetailedQueryCost = true;
-        var response = await _client.QueryAsync(request, options);
+        var client = new ShopifyClient(options);
+        var response = await client.QueryAsync(request);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
         var cost = response.GetCost();
         Assert.IsNotNull(cost);
@@ -275,7 +276,8 @@ public class ShopifyClientTests
 
         var options = GetClientOptions();
         options.ThrowOnGraphQLErrors = false;
-        var response = await _client.QueryAsync(query, options: options);
+        var client = new ShopifyClient(options);
+        var response = await client.QueryAsync(query);
         Assert.IsNotNull(response.errors);
         Assert.IsTrue(response.errors.Count > 0);
     }
