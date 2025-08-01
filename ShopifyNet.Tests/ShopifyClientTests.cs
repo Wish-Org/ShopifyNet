@@ -22,10 +22,8 @@ public class ShopifyClientTests
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
         string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
-        return new ShopifyClientOptions
+        return new ShopifyClientOptions(shopId, token)
         {
-            MyShopifyDomain = shopId,
-            AccessToken = token,
             Interceptor = NoOpInterceptor.Instance
         };
     }
