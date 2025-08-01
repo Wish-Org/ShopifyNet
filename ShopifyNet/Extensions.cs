@@ -16,7 +16,7 @@ public static class Extensions
 
     public static bool IsThrottled<T>(this GraphQLResponse<T> response)
     {
-        return response.errors.Any(e => e.GetCode() == "THROTTLED");
+        return response.errors != null && response.errors.Any(e => e.GetCode() == "THROTTLED");
     }
 }
 public class Cost

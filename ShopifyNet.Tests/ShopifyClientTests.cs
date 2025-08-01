@@ -22,8 +22,10 @@ public class ShopifyClientTests
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
         string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
-        return new ShopifyClientOptions(shopId, token)
+        return new ShopifyClientOptions
         {
+            MyShopifyDomain = shopId,
+            AccessToken = token,
             Interceptor = null
         };
     }
@@ -45,7 +47,7 @@ public class ShopifyClientTests
             """;
 
         //response is strongly typed
-        var response = await _client.ExecuteQueryAsync(query);
+        var response = await _client.QueryAsync(query);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
         var cost = response.GetCost();
         Assert.IsNotNull(cost);
@@ -75,7 +77,7 @@ public class ShopifyClientTests
             """;
 
         //response is strongly typed
-        var response = await _client.ExecuteQueryAsync(query);
+        var response = await _client.QueryAsync(query);
     }
 
     [TestMethod]
@@ -91,7 +93,7 @@ public class ShopifyClientTests
                 }
             """;
 
-        var response = await _client.ExecuteMutationAsync(query);
+        var response = await _client.MutationAsync(query);
         Assert.IsTrue(response.data.appSubscriptionTrialExtend.userErrors.Any());
     }
 
@@ -111,7 +113,7 @@ public class ShopifyClientTests
             }
             """;
 
-        var response = await _client.ExecuteMutationAsync(query);
+        var response = await _client.MutationAsync(query);
     }
 
     [TestMethod]
@@ -140,7 +142,7 @@ public class ShopifyClientTests
         };
 
         //response is strongly typed
-        var response = await _client.ExecuteQueryAsync(request);
+        var response = await _client.QueryAsync(request);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
     }
 
@@ -182,7 +184,7 @@ public class ShopifyClientTests
 
         var options = GetClientOptions();
         options.RequestDetailedQueryCost = true;
-        var response = await _client.ExecuteQueryAsync(request, options);
+        var response = await _client.QueryAsync(request, options);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
         var cost = response.GetCost();
         Assert.IsNotNull(cost);
@@ -254,12 +256,7 @@ public class ShopifyClientTests
             }
             """;
 
-        var request = new ShopifyGraphQLRequest
-        {
-            query = query
-        };
-
-        var response = await _client.ExecuteQueryAsync(request);
+        var response = await _client.QueryAsync(query);
     }
 
     [TestMethod]
@@ -278,14 +275,9 @@ public class ShopifyClientTests
             }
             """;
 
-        var request = new ShopifyGraphQLRequest
-        {
-            query = query
-        };
-
         var options = GetClientOptions();
         options.ThrowOnGraphQLErrors = false;
-        var response = await _client.ExecuteQueryAsync(request, options);
+        var response = await _client.QueryAsync(query, options: options);
         Assert.IsNotNull(response.errors);
         Assert.IsTrue(response.errors.Count > 0);
     }
