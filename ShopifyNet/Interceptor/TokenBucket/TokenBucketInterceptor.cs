@@ -12,7 +12,7 @@ public class TokenBucketInterceptor : IInterceptor
     private static readonly TimeSpan THROTTLED_RETRY_DELAY = TimeSpan.FromSeconds(1);
     private static readonly int MAX_ATTEMPTS = 3;
     private readonly ConcurrentDictionary<string, TokenBucket> _tokenToBucket = new();
-    private readonly IStopwatch _timeSinceLastIdleBucketCheck = new Stopwatch();
+    private readonly IStopwatch _timeSinceLastIdleCheck = new Stopwatch();
     private readonly Func<ShopifyGraphQLRequest, int> _getRequestPriority;
     private const int DEFAULT_GRAPHQL_MAX_AVAILABLE = 1_000;
     private const int DEFAULT_GRAPHQL_RESTORE_RATE = 50;
@@ -21,14 +21,14 @@ public class TokenBucketInterceptor : IInterceptor
     public TokenBucketInterceptor(Func<ShopifyGraphQLRequest, int> getRequestPriority = null)
     {
         _getRequestPriority = getRequestPriority ?? (r => 0);
-        _timeSinceLastIdleBucketCheck.Start();
+        _timeSinceLastIdleCheck.Start();
     }
 
     private void RemoveIdleBucketsAsync()
     {
-        if (_timeSinceLastIdleBucketCheck.Elapsed.TotalMinutes > 5)
+        if (_timeSinceLastIdleCheck.Elapsed.TotalMinutes > 5)
         {
-            _timeSinceLastIdleBucketCheck.Restart();
+            _timeSinceLastIdleCheck.Restart();
             _ = Task.Run(() =>
             {
                 var idleBuckets = _tokenToBucket.Where(kv => kv.Value.IsIdle).ToArray();
@@ -39,7 +39,7 @@ public class TokenBucketInterceptor : IInterceptor
                         //lock to ensure another thread doesn't pull one of the idle token at the same time as we remove it
                         foreach (var t in idleBuckets)
                         {
-                            //the token may have turned non-idle just befor the lock was taken
+                            //the token may have turned non-idle just before the lock was taken
                             if (t.Value.IsIdle)
                                 _tokenToBucket.TryRemove(t);
                         }
@@ -58,7 +58,7 @@ public class TokenBucketInterceptor : IInterceptor
         where TClientOptions : IGraphQLClientOptions
     {
         var r = request as ShopifyGraphQLRequest;
-        var token = (options as ShopifyClientOptions).AccessToken ?? throw new ArgumentNullException(nameof(ShopifyClientOptions.AccessToken));
+        var token = (options as ShopifyClientOptions).AccessToken;
         TokenBucket bucket = null;
         lock (_tokenToBucket)
         {
