@@ -46,7 +46,7 @@ public class ShopifyClientOptions : IGraphQLClientOptions
 
     private Uri _uri;
 
-    Uri IGraphQLClientOptions.Uri => _uri;
+    public Uri Uri => _uri;
 
     Action<HttpRequestHeaders> IGraphQLClientOptions.ConfigureHttpRequestHeaders => this.ConfigureHttpRequestHeaders;
 
