@@ -6,8 +6,6 @@ internal class TokenBucket
     private readonly AsyncManualResetEvent _processSignal = new();
     private readonly PriorityQueue<TokenBucketRequest, int> _queue = new();
 
-    private readonly IStopwatch _sinceTouched;
-
     private readonly IStopwatch _sinceUpdated;
 
     internal int MaximumAllowed { get; set; }
@@ -22,7 +20,6 @@ internal class TokenBucket
         {
             _lastCurrentlyAvailable = value;
             _sinceUpdated.Restart();
-            _sinceTouched.Restart();
         }
     }
 
@@ -46,7 +43,6 @@ internal class TokenBucket
             lock (_lock)
             {
                 return EstimatedCurrentlyAvailable == MaximumAllowed &&
-                                    _sinceTouched.Elapsed > IdleTimeout &&
                                     _queue.Count == 0;
             }
         }
@@ -55,24 +51,15 @@ internal class TokenBucket
     private readonly Lock _lock = new();
 
     internal TokenBucket(int maximumAvailable, int restoreRatePerSecond)
-                         : this(maximumAvailable, restoreRatePerSecond, new Stopwatch(), new Stopwatch())
+                         : this(maximumAvailable, restoreRatePerSecond, new Stopwatch())
     {
     }
 
-    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, IStopwatch sinceTouched, IStopwatch sinceUpdated)
+    internal TokenBucket(int maximumAvailable, int restoreRatePerSecond, IStopwatch sinceUpdated)
     {
-        _sinceTouched = sinceTouched ?? throw new ArgumentNullException(nameof(sinceTouched));
         _sinceUpdated = sinceUpdated ?? throw new ArgumentNullException(nameof(sinceUpdated));
         SetState(maximumAvailable, restoreRatePerSecond, maximumAvailable);
         _ = ThrottleQueue();
-    }
-
-    internal void Touch()
-    {
-        lock (_lock)
-        {
-            _sinceTouched.Restart();
-        }
     }
 
     public void SetState(int maximumAvailable, int restoreRatePerSecond, decimal currentlyAvailable)
@@ -112,12 +99,13 @@ internal class TokenBucket
         using var r = new TokenBucketRequest(requestCost, cancellationToken);
         lock (_lock)
         {
-            Touch();
             _queue.Enqueue(r, priority);
+
+            //if the queued request is the first in the queue, signal to process it
+            if (_queue.Peek() == r)
+                _processSignal.Set();
         }
-        _processSignal.Set();
         await r.WaitAsync(cancellationToken);
-        Touch();
     }
 
     private async Task ThrottleQueue()

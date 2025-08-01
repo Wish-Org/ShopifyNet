@@ -6,18 +6,15 @@ namespace ShopifyNet.Tests;
 public class TokenBucketTests
 {
     private TokenBucket _tokenBucket;
-    private TestStopwatch _sinceTouched;
     private TestStopwatch _sinceLastUpdated;
 
     [TestInitialize]
     public void Initialize()
     {
-        _sinceTouched = new TestStopwatch();
         _sinceLastUpdated = new TestStopwatch();
         _tokenBucket = new TokenBucket(
             100, // maximum tokens
             10,  // restore rate
-            _sinceTouched,
             _sinceLastUpdated
         );
     }
@@ -61,18 +58,18 @@ public class TokenBucketTests
     }
 
     [TestMethod]
-    public void IsIdleAfterAWhile()
+    public async Task IsIdleAfterAWhile()
     {
-        _sinceTouched.Advance(TimeSpan.FromHours(1));
+        _sinceLastUpdated.Advance(TimeSpan.FromHours(1));
         Assert.IsTrue(_tokenBucket.IsIdle);
 
-        _tokenBucket.SetState(100, 10, 100);
+        await _tokenBucket.WaitForAvailableAsync(1);
         Assert.IsFalse(_tokenBucket.IsIdle);
 
-        _sinceTouched.Advance(TimeSpan.FromHours(1));
+        _sinceLastUpdated.Advance(TimeSpan.FromHours(1));
         Assert.IsTrue(_tokenBucket.IsIdle);
 
-        _tokenBucket.WaitForAvailableAsync(10).Wait();
+        await _tokenBucket.WaitForAvailableAsync(1);
         Assert.IsFalse(_tokenBucket.IsIdle);
     }
 

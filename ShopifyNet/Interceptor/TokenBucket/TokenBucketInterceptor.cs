@@ -56,7 +56,7 @@ public class TokenBucketInterceptor : IInterceptor
         CancellationToken cancellationToken,
         Func<TGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
         where TGraphQLRequest : GraphQLRequest, new()
-        where TClientOptions : GraphQLClientOptionsBase, IGraphQLClientOptions
+        where TClientOptions : GraphQLClientOptionsBase, IGraphQLClientOptions<TClientOptions>
     {
         var r = request as ShopifyGraphQLRequest;
         var token = (options as ShopifyClientOptions)?.AccessToken ?? (defaultOptions as ShopifyClientOptions)?.AccessToken ?? throw new ArgumentNullException(nameof(ShopifyClientOptions.AccessToken));
