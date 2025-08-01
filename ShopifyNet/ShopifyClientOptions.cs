@@ -6,50 +6,31 @@ namespace ShopifyNet;
 public class ShopifyClientOptions : GraphQLClientOptionsBase, IGraphQLClientOptions
 {
     public const string DEFAULT_API_VERSION = "2025-07";
-
     private static readonly ProductInfoHeaderValue _userAgent = new(typeof(ShopifyClientOptions).Assembly.GetName().Name!, typeof(ShopifyClientOptions).Assembly.GetName().Version!.ToString());
-
-    /// <summary>
-    /// The default interceptor used if non is specified in the options.
-    /// It is a ChainedInterceptor that includes a TokenBucketInterceptor for rate limiting and a RetryInterceptor for handling retries.
-    /// </summary>
-    public static readonly IInterceptor DefaultIntercetpor =
-                            new ChainedInterceptor(new TokenBucketInterceptor(), new RetryInterceptor());
 
     /// <summary>
     /// Optional API version to use for the Shopify API.
     /// Defaults to AdminClientOptions.DEFAULT_API_VERSION if not set.
     /// </summary>
-    public string APIVersion { get; }
+    public string APIVersion { get; set; }
 
-    public string MyShopifyDomain { get; }
+    /// <summary>
+    /// The MyShopify domain of the store, such as "myshop.myshopify.com".
+    /// </summary>
+    public string MyShopifyDomain { get; set; }
 
-    public string AccessToken { get; }
+    public string AccessToken { get; set; }
 
-    public bool RequestDetailedQueryCost { get; set; }
+    public bool? RequestDetailedQueryCost { get; set; }
 
-    private Uri _uri;
-
-    Uri IGraphQLClientOptions.Uri => _uri;
+    Uri IGraphQLClientOptions.Uri => MyShopifyDomain == null ? null : new Uri($"https://{MyShopifyDomain}/admin/api/{APIVersion}/graphql.json");
 
     Action<HttpRequestHeaders> IGraphQLClientOptions.ConfigureHttpRequestHeaders => headers =>
         {
             headers.UserAgent.Add(_userAgent);
             if (AccessToken != null)
                 headers.Add("X-Shopify-Access-Token", AccessToken);
-            if (RequestDetailedQueryCost)
+            if (RequestDetailedQueryCost == true)
                 headers.Add("Shopify-GraphQL-Cost-Debug", "1");
         };
-
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="accessToken"></param>
-    /// <param name="apiVersion">Optional API version to use for the Shopify API. Defaults to ShopifyClientOptions.DEFAULT_API_VERSION if not set.</param>
-    public ShopifyClientOptions(string myShopifyDomain, string accessToken, string apiVersion = DEFAULT_API_VERSION)
-    {
-        MyShopifyDomain = myShopifyDomain ?? throw new ArgumentNullException(nameof(myShopifyDomain));
-        AccessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
-        APIVersion = apiVersion;
-        _uri = new Uri($"https://{MyShopifyDomain}/admin/api/{APIVersion}/graphql.json");
-        Interceptor = DefaultIntercetpor;
-    }
 }
