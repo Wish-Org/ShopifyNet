@@ -16,7 +16,7 @@ public class ShopifyClientTests
         _client = new(GetClientOptions());
     }
 
-    private static ShopifyClientOptions GetClientOptions()
+    private static ShopifyClientOptions GetClientOptions(bool throwOnGraphQLErrors = true, bool requestDetailedQueryCost = false)
     {
         string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User) ??
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
@@ -24,7 +24,9 @@ public class ShopifyClientTests
                             Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
         return new ShopifyClientOptions(shopId, token)
         {
-            Interceptor = NoOpInterceptor.Instance
+            Interceptor = NoOpInterceptor.Instance,
+            ThrowOnGraphQLErrors = throwOnGraphQLErrors,
+            RequestDetailedQueryCost = requestDetailedQueryCost,
         };
     }
 
@@ -180,8 +182,7 @@ public class ShopifyClientTests
             }
         };
 
-        var options = GetClientOptions();
-        options.RequestDetailedQueryCost = true;
+        var options = GetClientOptions(requestDetailedQueryCost: true);
         var client = new ShopifyClient(options);
         var response = await client.QueryAsync(request);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
@@ -274,8 +275,7 @@ public class ShopifyClientTests
             }
             """;
 
-        var options = GetClientOptions();
-        options.ThrowOnGraphQLErrors = false;
+        var options = GetClientOptions(throwOnGraphQLErrors: false);
         var client = new ShopifyClient(options);
         var response = await client.QueryAsync(query);
         Assert.IsNotNull(response.errors);
