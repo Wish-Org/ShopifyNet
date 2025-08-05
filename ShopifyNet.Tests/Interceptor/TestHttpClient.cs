@@ -1,3 +1,5 @@
+namespace ShopifyNet.Tests;
+
 public class TestHttpClient : HttpClient
 {
     public TestHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)

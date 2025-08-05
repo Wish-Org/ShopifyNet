@@ -18,11 +18,7 @@ public class ShopifyClientTests
 
     private static ShopifyClientOptions GetClientOptions(bool throwOnGraphQLErrors = true, bool requestDetailedQueryCost = false)
     {
-        string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User) ??
-                            Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
-        string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
-                            Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
-        return new ShopifyClientOptions(shopId, token)
+        return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
         {
             Interceptor = NoOpInterceptor.Instance,
             ThrowOnGraphQLErrors = throwOnGraphQLErrors,

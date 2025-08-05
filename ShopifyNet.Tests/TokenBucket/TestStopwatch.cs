@@ -1,4 +1,4 @@
-namespace ShopifyNet;
+namespace ShopifyNet.Tests;
 
 internal class TestStopwatch : IStopwatch
 {
