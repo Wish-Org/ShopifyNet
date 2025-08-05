@@ -53,7 +53,7 @@ public class ShopifyClientOptions : IGraphQLClientOptions
     /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
     /// <param name="accessToken"></param>
     /// <param name="apiVersion">Optional API version to use for the Shopify API. Defaults to AdminClientOptions.DEFAULT_API_VERSION if unspecified.</param>
-    /// <param name="useSmartInterceptor">Whether to use the built-in smart interceptor for rate limiting and retries.
+    /// <param name="useSmartInterceptor">Whether to use the built-in smart interceptor for rate limiting and retries.</param>
     public ShopifyClientOptions(string myShopifyDomain,
                                 string accessToken,
                                 string apiVersion = DEFAULT_API_VERSION,

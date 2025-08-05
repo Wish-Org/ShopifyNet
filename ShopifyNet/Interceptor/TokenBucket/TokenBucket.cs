@@ -87,6 +87,8 @@ internal class TokenBucket
     /// <summary>
     /// Waits for available tokens in the bucket.
     /// </summary>
+    /// <param name="requestCost">Cost of the request in tokens</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     /// <param name="priority">Priority of the request. Lower values are processed first</param>
     public async Task WaitForAvailableAsync(int requestCost, int priority = int.MaxValue, CancellationToken cancellationToken = default)
     {
