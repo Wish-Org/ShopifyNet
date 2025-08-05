@@ -7,10 +7,19 @@
 	  <Description>.NET utilities for Shopify GraphQL</Description>
 	  <Version>2.0.0</Version>
 	  <PackageTags>shopify graphql types classes schema generator strongly typed</PackageTags>
+
+	  <!-- Ensure the XML doc file is generated -->
+      <GenerateDocumentationFile>true</GenerateDocumentationFile>
+		
+	   <!-- This prevents the warning about missing XML documentation on public members -->
+		<NoWarn>$(NoWarn);1591</NoWarn>
+
+		<!-- Embed PDBs in DLL -->
+	    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GraphQLSharp" Version="2.10.5" />
+    <PackageReference Include="GraphQLSharp" Version="2.10.6" />
   </ItemGroup>
 
 </Project>
