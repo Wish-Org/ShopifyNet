@@ -45,6 +45,7 @@ public class ShopifyClientTests
         //response is strongly typed
         var response = await _client.QueryAsync(query);
         Assert.IsNotNull(response.data.products.nodes.FirstOrDefault()?.id);
+        Assert.IsNull(response.errors);
         var cost = response.GetCost();
         Assert.IsNotNull(cost);
         Assert.IsTrue(cost.requestedQueryCost > 0);
