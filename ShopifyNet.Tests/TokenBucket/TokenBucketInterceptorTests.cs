@@ -10,13 +10,7 @@ namespace ShopifyNet.Tests;
 [TestClass]
 public class TokenBucketInterceptorTests
 {
-    private TokenBucketInterceptor _interceptor;
-
-    [TestInitialize]
-    public void Initialize()
-    {
-        _interceptor = new TokenBucketInterceptor();
-    }
+    private TokenBucketInterceptor CreateTokenBucketInterceptor() => new TokenBucketInterceptor();
 
     private ShopifyClientOptions CreateClientOptions(HttpStatusCode status, object response, IInterceptor interceptor, bool throwOnGraphQLErrors = true)
     {
@@ -100,7 +94,7 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldNotRetryOnHttpError()
     {
-        var testInterceptor = new TestInterceptor(_interceptor);
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var options = CreateClientOptions(HttpStatusCode.InternalServerError, "Internal Server Error", testInterceptor);
 
         bool caughtException = false;
@@ -119,7 +113,7 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldNotRetryOnGraphQLError()
     {
-        var testInterceptor = new TestInterceptor(_interceptor);
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var options = CreateClientOptions(HttpStatusCode.OK, CreateGraphQLErrorResponse(), testInterceptor);
 
         bool caughtException = false;
@@ -138,7 +132,7 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldNotRetryOnGraphQLErrorNoThrow()
     {
-        var testInterceptor = new TestInterceptor(_interceptor);
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var cost = new Cost
         {
             requestedQueryCost = 100,
@@ -168,7 +162,7 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldRetryTwiceWhenThrottled()
     {
-        var testInterceptor = new TestInterceptor(_interceptor);
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var cost = new Cost
         {
             requestedQueryCost = 100,
@@ -190,7 +184,7 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldRetryThrottledResponse()
     {
-        var testInterceptor = new TestInterceptor(_interceptor);
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var cost = new Cost
         {
             requestedQueryCost = 500,
@@ -217,5 +211,55 @@ public class TokenBucketInterceptorTests
         Assert.IsFalse(response.IsThrottled());
         Assert.IsTrue(sw.Elapsed.TotalSeconds > expectedWaitSeconds * 0.9);
         Assert.IsTrue(sw.Elapsed.TotalSeconds < expectedWaitSeconds * 1.1);
+    }
+
+    [TestMethod]
+    public async Task ShouldProcessInPriorityOrder()
+    {
+        var query = """
+            {
+                products(first: 70) {
+                    nodes {
+                    id
+                    title
+                    variants(first: 130) {
+                        nodes {
+                        id
+                        title
+                        metafields(first: 200) {
+                            nodes {
+                            value
+                            }
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+            """;
+        int cost = 962;
+        int priority = 0;
+        var interceptor = new TokenBucketInterceptor(r => priority);
+        var options = new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
+        {
+            Interceptor = interceptor,
+        };
+        var client = new ShopifyClient(options);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var responses = await Task.WhenAll(Enumerable.Range(0, 10).Select(async i =>
+                                {
+                                    var reqPriority = Random.Shared.Next(int.MinValue, int.MaxValue);
+                                    priority = reqPriority;
+                                    var res = await client.QueryAsync($"""
+                                        # Priority: {reqPriority}
+                                        {query}
+                                    """, cost);
+                                    return (res, reqPriority, sw.Elapsed);
+                                }).ToArray());
+        Assert.IsTrue(responses.All(r => r.res.data != null));
+        responses = responses.Skip(1).ToArray();//skip the first query, which might have been fired immediately even if higher priority requests came right after it
+        var responsesByElapsed = responses.OrderBy(i => i.Elapsed).ToArray();
+        var responsesByPriority = responses.OrderBy(i => i.reqPriority).ToArray();
+        Assert.IsTrue(responsesByPriority.SequenceEqual(responsesByElapsed));
     }
 }
