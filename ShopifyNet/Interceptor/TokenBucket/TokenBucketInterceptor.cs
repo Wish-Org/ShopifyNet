@@ -82,6 +82,7 @@ public class TokenBucketInterceptor : IInterceptor
             }
             catch (GraphQLErrorsException ex) when (attempt < MAX_ATTEMPTS && ex.response.IsThrottled())
             {
+                res = (GraphQLResponse<TData>)ex.response;
             }
 
             var cost = res.GetCost();

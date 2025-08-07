@@ -162,7 +162,6 @@ public class TokenBucketInterceptorTests
     [TestMethod]
     public async Task ShouldRetryTwiceWhenThrottled()
     {
-        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
         var cost = new Cost
         {
             requestedQueryCost = 100,
@@ -174,11 +173,22 @@ public class TokenBucketInterceptorTests
                 restoreRate = 50
             }
         };
-        var options = CreateClientOptions(HttpStatusCode.OK, CreateGraphQLThrottledResponse(cost), testInterceptor, throwOnGraphQLErrors: false);
+        foreach (var throwOnGraphQLErrors in new[] { true, false })
+        {
+            var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
+            var options = CreateClientOptions(HttpStatusCode.OK, CreateGraphQLThrottledResponse(cost), testInterceptor, throwOnGraphQLErrors: throwOnGraphQLErrors);
 
-        var response = await QueryProductsAsync(options);
-        Assert.AreEqual(3, testInterceptor.CallCount);
-        Assert.IsTrue(response.IsThrottled());
+            try
+            {
+                var response = await QueryProductsAsync(options);
+                Assert.IsTrue(response.IsThrottled());
+            }
+            catch (GraphQLErrorsException ex)
+            {
+                Assert.IsTrue(ex.response.IsThrottled());
+            }
+            Assert.AreEqual(3, testInterceptor.CallCount);
+        }
     }
 
     [TestMethod]
