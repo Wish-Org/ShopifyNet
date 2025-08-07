@@ -7,7 +7,7 @@ namespace ShopifyNet;
 //because it doesn't support any priority aware queue and it is not suited to updated the options dynamically
 //based on the response from the API
 //It is designed for cases where we own the bucket but in our case the bucket is owned by Shopify
-public class TokenBucketInterceptor : IInterceptor
+public class TokenBucketInterceptor : IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>
 {
     private static readonly TimeSpan THROTTLED_RETRY_DELAY = TimeSpan.FromSeconds(1);
     private static readonly int MAX_ATTEMPTS = 3;
@@ -49,20 +49,12 @@ public class TokenBucketInterceptor : IInterceptor
         }
     }
 
-    public async Task<GraphQLResponse<TData>> InterceptRequestAsync<TGraphQLRequest, TClientOptions, TData>(
-        TGraphQLRequest request,
-        TClientOptions options,
-        CancellationToken cancellationToken,
-        Func<TGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
-        where TGraphQLRequest : GraphQLRequest
-        where TClientOptions : IGraphQLClientOptions
+    public async Task<GraphQLResponse<TData>> InterceptRequestAsync<TData>(ShopifyGraphQLRequest r, ShopifyClientOptions options, CancellationToken cancellationToken, Func<ShopifyGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
     {
-        var r = request as ShopifyGraphQLRequest;
-        var token = (options as ShopifyClientOptions).AccessToken;
         TokenBucket bucket = null;
         lock (_tokenToBucket)
         {
-            bucket = _tokenToBucket.GetOrAdd(token, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE));
+            bucket = _tokenToBucket.GetOrAdd(options.AccessToken, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE));
         }
 
         this.RemoveIdleBucketsAsync();
@@ -78,7 +70,7 @@ public class TokenBucketInterceptor : IInterceptor
             try
             {
                 //may throw GraphQLErrorsException if options.ThrowOnGraphQLErrors is true
-                res = await executeAsync(request, cancellationToken);
+                res = await executeAsync(r, cancellationToken);
             }
             catch (GraphQLErrorsException ex) when (attempt < MAX_ATTEMPTS && ex.response.IsThrottled())
             {

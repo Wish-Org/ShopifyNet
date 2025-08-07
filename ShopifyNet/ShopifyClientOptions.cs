@@ -4,7 +4,7 @@ using GraphQLSharp;
 
 namespace ShopifyNet;
 
-public class ShopifyClientOptions : IGraphQLClientOptions
+public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>
 {
     public const string DEFAULT_API_VERSION = "2025-07";
     private static readonly ProductInfoHeaderValue _userAgent = new(
@@ -14,8 +14,8 @@ public class ShopifyClientOptions : IGraphQLClientOptions
     /// <summary>
     /// A ChainedInterceptor with a TokenBucketInterceptor for rate limiting and a RetryInterceptor for handling retries.
     /// </summary>
-    public static readonly IInterceptor SMART_INTERCEPTOR =
-                            new ChainedInterceptor(new TokenBucketInterceptor(), new RetryInterceptor());
+    public static readonly IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> SMART_INTERCEPTOR =
+                            new ChainedInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>(new TokenBucketInterceptor(), new RetryInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>());
 
     /// <summary>
     /// The MyShopify domain of the store, such as "myshop.myshopify.com".
@@ -42,13 +42,13 @@ public class ShopifyClientOptions : IGraphQLClientOptions
 
     public JsonSerializerOptions JsonSerializerOptions { get; init; }
 
-    public IInterceptor Interceptor { get; init; }
+    public IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> Interceptor { get; init; }
 
     private Uri _uri;
 
     public Uri Uri => _uri;
 
-    Action<HttpRequestHeaders> IGraphQLClientOptions.ConfigureHttpRequestHeaders => this.ConfigureHttpRequestHeaders;
+    Action<HttpRequestHeaders> IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>.ConfigureHttpRequestHeaders => this.ConfigureHttpRequestHeaders;
 
     /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
     /// <param name="accessToken"></param>

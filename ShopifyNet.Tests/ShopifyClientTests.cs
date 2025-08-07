@@ -20,7 +20,7 @@ public class ShopifyClientTests
     {
         return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
         {
-            Interceptor = NoOpInterceptor.Instance,
+            Interceptor = NoOpInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>.Instance,
             ThrowOnGraphQLErrors = throwOnGraphQLErrors,
             RequestDetailedQueryCost = requestDetailedQueryCost,
         };

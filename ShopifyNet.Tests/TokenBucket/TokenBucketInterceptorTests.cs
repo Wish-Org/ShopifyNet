@@ -12,7 +12,7 @@ public class TokenBucketInterceptorTests
 {
     private TokenBucketInterceptor CreateTokenBucketInterceptor() => new TokenBucketInterceptor();
 
-    private ShopifyClientOptions CreateClientOptions(HttpStatusCode status, object response, IInterceptor interceptor, bool throwOnGraphQLErrors = true)
+    private ShopifyClientOptions CreateClientOptions(HttpStatusCode status, object response, IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> interceptor, bool throwOnGraphQLErrors = true)
     {
         return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
         {
@@ -26,7 +26,7 @@ public class TokenBucketInterceptorTests
         };
     }
 
-    private ShopifyClientOptions CreateClientOptions(HttpClient httpClient, IInterceptor interceptor, bool throwOnGraphQLErrors = true)
+    private ShopifyClientOptions CreateClientOptions(HttpClient httpClient, IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> interceptor, bool throwOnGraphQLErrors = true)
     {
         return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
         {

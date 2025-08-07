@@ -2,22 +2,17 @@ using GraphQLSharp;
 
 namespace ShopifyNet.Tests;
 
-internal class TestInterceptor : IInterceptor
+internal class TestInterceptor : IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>
 {
-    private readonly IInterceptor _interceptor;
+    private readonly IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> _interceptor;
     public int CallCount { get; private set; }
 
-    public TestInterceptor(IInterceptor interceptor)
+    public TestInterceptor(IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> interceptor)
     {
         this._interceptor = interceptor;
     }
 
-    public Task<GraphQLResponse<TData>> InterceptRequestAsync<TGraphQLRequest, TClientOptions, TData>(TGraphQLRequest request,
-        TClientOptions options,
-        CancellationToken cancellationToken,
-        Func<TGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
-        where TGraphQLRequest : GraphQLRequest
-        where TClientOptions : IGraphQLClientOptions
+    public Task<GraphQLResponse<TData>> InterceptRequestAsync<TData>(ShopifyGraphQLRequest request, ShopifyClientOptions options, CancellationToken cancellationToken, Func<ShopifyGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
     {
         return _interceptor.InterceptRequestAsync(request, options, cancellationToken, async (r, ct) =>
         {

@@ -7,6 +7,10 @@ var options = new GraphQLTypeGeneratorOptions
     NamespaceClient = "ShopifyNet",
     NamespaceTypes = "ShopifyNet.Types",
     ClientClassName = "ShopifyClient",
+    GraphQLRequestType = typeof(ShopifyGraphQLRequest),
+    ClientOptionsType = typeof(ShopifyClientOptions),
+    GenerateMemberNames = true,
+    EnumMembersAsString = true,
     ScalarTypeNameToDotNetTypeName = new Dictionary<string, string>
                 {
                     { "UnsignedInt64", "ulong" },
@@ -31,10 +35,6 @@ var options = new GraphQLTypeGeneratorOptions
                     { ("ShopifyPaymentsDispute", "evidenceSentOn"), "DateTime" },
                     { ("ShopifyPaymentsDispute", "finalizedOn"), "DateTime" },
                 },
-    EnumMembersAsString = true,
-    GenerateMemberNames = true,
-    ClientOptionsType = typeof(ShopifyClientOptions),
-    GraphQLRequestType = typeof(ShopifyGraphQLRequest),
 };
 
 var generator = new GraphQLTypeGenerator();
@@ -43,7 +43,7 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User)!;
     string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User)!;
 
-    var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions;
+    var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>;
 
     var options = new GraphQLClientOptions(shopifyOptions.Uri)
     {
