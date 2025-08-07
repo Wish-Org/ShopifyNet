@@ -80,7 +80,7 @@ public class TokenBucketInterceptor : IInterceptor
                 //may throw GraphQLErrorsException if options.ThrowOnGraphQLErrors is true
                 res = await executeAsync(request, cancellationToken);
             }
-            catch (GraphQLErrorsException ex) when (attempt < MAX_ATTEMPTS && (ex.response as GraphQLResponse<TData>).IsThrottled())
+            catch (GraphQLErrorsException ex) when (attempt < MAX_ATTEMPTS && ex.response.IsThrottled())
             {
             }
 
