@@ -53,6 +53,7 @@ public class ShopifyClientTests
         Assert.IsTrue(cost.throttleStatus.maximumAvailable > 0);
         Assert.IsTrue(cost.throttleStatus.currentlyAvailable >= 0);
         Assert.IsTrue(cost.throttleStatus.restoreRate > 0);
+        Assert.IsNotNull(response.GetRequestId());
     }
 
     [TestMethod]

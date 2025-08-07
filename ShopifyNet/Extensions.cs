@@ -9,12 +9,17 @@ public static class Extensions
         return response.GetExtension<Cost>("cost");
     }
 
+    public static string GetRequestId<T>(this GraphQLResponse<T> response)
+    {
+        return response.HttpResponse.Headers.TryGetValues("X-Request-Id", out var headerValues) ? headerValues.First() : null;
+    }
+
     public static string GetCode(this GraphQLError error)
     {
         return error.GetExtension<string>("code");
     }
 
-    public static bool IsThrottled<T>(this GraphQLResponse<T> response)
+    public static bool IsThrottled(this GraphQLResponse response)
     {
         return response.errors != null && response.errors.Any(e => e.GetCode() == "THROTTLED");
     }
