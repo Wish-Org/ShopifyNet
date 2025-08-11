@@ -14,6 +14,11 @@ public static class Extensions
         return response.HttpResponse.GetRequestId();
     }
 
+    public static string GetRequestId(this GraphQLException ex)
+    {
+        return ex.HttpResponse?.GetRequestId();
+    }
+
     public static string GetRequestId(this HttpResponse response)
     {
         return response.Headers.TryGetValues("X-Request-Id", out var headerValues) ? headerValues.First() : null;
