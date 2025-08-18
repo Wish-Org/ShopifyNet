@@ -50,7 +50,7 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
         ConfigureHttpRequestHeaders = shopifyOptions.ConfigureHttpRequestHeaders,
     };
     var res = await new GraphQLCLient(options).ExecuteAsync(query);
-    var doc = JsonDocument.Parse(res.data.GetRawText());
+    var doc = JsonDocument.Parse(res.data!.Value.GetRawText());
     return doc;
 });
 
