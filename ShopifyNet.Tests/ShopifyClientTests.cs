@@ -79,6 +79,28 @@ public class ShopifyClientTests
     }
 
     [TestMethod]
+    [ExpectedException(typeof(GraphQLErrorsException))]
+    public async Task QuerySimpleWithTypoError()
+    {
+        //size parameter is not valid for products query
+        var query = """
+            query {
+                products(first: 10)
+                {
+                    nodes
+                    {
+                        id
+                        titleeee
+                    }
+                }
+            }
+            """;
+
+        //response is strongly typed
+        var response = await _client.QueryAsync(query);
+    }
+
+    [TestMethod]
     public async Task MutationSimple()
     {
         var query = """

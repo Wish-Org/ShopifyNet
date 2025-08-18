@@ -78,6 +78,11 @@ public class TokenBucketInterceptor : IInterceptor<ShopifyGraphQLRequest, Shopif
             }
 
             var cost = res.GetCost();
+
+            //cost may be null if the query had errors, such as a misspelt field
+            if (cost == null)
+                return res;
+
             //cost.actualQueryCost may be null if the query was throttled
             var actualQueryCost = cost.actualQueryCost ?? requestQueryCost;
             var refund = requestQueryCost - actualQueryCost;//may be negative if user supplied wrong or null cost

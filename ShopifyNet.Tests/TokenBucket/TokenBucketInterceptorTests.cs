@@ -159,6 +159,26 @@ public class TokenBucketInterceptorTests
         Assert.AreEqual(1, testInterceptor.CallCount);
     }
 
+
+    [TestMethod]
+    public async Task ShouldNotRetryOnGraphQLErrorNoThrowWithoutCostExtensionInResponse()
+    {
+        var testInterceptor = new TestInterceptor(CreateTokenBucketInterceptor());
+        var options = CreateClientOptions(HttpStatusCode.OK, CreateGraphQLErrorResponse(), testInterceptor, throwOnGraphQLErrors: false);
+
+        bool caughtException = false;
+        try
+        {
+            var response = await QueryProductsAsync(options);
+        }
+        catch (GraphQLErrorsException)
+        {
+            caughtException = true;
+        }
+        Assert.IsFalse(caughtException);
+        Assert.AreEqual(1, testInterceptor.CallCount);
+    }
+
     [TestMethod]
     public async Task ShouldRetryTwiceWhenThrottled()
     {
