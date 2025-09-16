@@ -9,7 +9,6 @@ var options = new GraphQLTypeGeneratorOptions
     ClientClassName = "ShopifyClient",
     GraphQLRequestType = typeof(ShopifyGraphQLRequest),
     ClientOptionsType = typeof(ShopifyClientOptions),
-    GenerateMemberNames = true,
     EnumMembersAsString = true,
     ScalarTypeNameToDotNetTypeName = new Dictionary<string, string>
                 {
