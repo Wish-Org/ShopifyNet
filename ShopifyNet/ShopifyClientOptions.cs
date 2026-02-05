@@ -6,7 +6,7 @@ namespace ShopifyNet;
 
 public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>
 {
-    public const string DEFAULT_API_VERSION = "2025-10";
+    public const string DEFAULT_API_VERSION = "2026-01";
     private static readonly ProductInfoHeaderValue _userAgent = new(
         typeof(ShopifyClientOptions).Assembly.GetName().Name!,
         typeof(ShopifyClientOptions).Assembly.GetName().Version!.ToString());
