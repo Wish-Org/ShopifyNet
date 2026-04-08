@@ -57,7 +57,7 @@ public class TokenBucketInterceptorTests
     {
         return new Dictionary<string, JsonElement>
         {
-            { "cost", JsonSerializer.SerializeToElement(cost, Serializer.Options) }
+            { "cost", JsonSerializer.SerializeToElement(cost, Serializer.GetOptions()) }
         };
     }
 
@@ -83,7 +83,7 @@ public class TokenBucketInterceptorTests
                     message = error,
                     extensions = !throttled ? new () : new ()
                         {
-                            { "code", JsonSerializer.SerializeToElement("THROTTLED", Serializer.Options) }
+                            { "code", JsonSerializer.SerializeToElement("THROTTLED", Serializer.GetOptions()) }
                         }
                  }
         },
