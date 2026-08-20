@@ -1,25 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup> 
-	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-	  <PackageProjectUrl>https://github.com/Wish-Org/ShopifyNet</PackageProjectUrl>
-	  <RepositoryUrl>https://github.com/Wish-Org/ShopifyNet</RepositoryUrl>
-	  <Description>.NET utilities for Shopify GraphQL</Description>
-	  <Version>2.16.0</Version>
-	  <PackageTags>shopify graphql types classes schema generator strongly typed</PackageTags>
+	<PropertyGroup>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageProjectUrl>https://github.com/Wish-Org/ShopifyNet</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/Wish-Org/ShopifyNet</RepositoryUrl>
+		<Description>.NET utilities for Shopify GraphQL</Description>
+		<Version>2.17.0</Version>
+		<PackageTags>shopify graphql types classes schema generator strongly typed</PackageTags>
 
-	  <!-- Ensure the XML doc file is generated -->
-      <GenerateDocumentationFile>true</GenerateDocumentationFile>
-		
-	   <!-- This prevents the warning about missing XML documentation on public members -->
+		<!-- Ensure the XML doc file is generated -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+		<!-- This prevents the warning about missing XML documentation on public members -->
 		<NoWarn>$(NoWarn);1591</NoWarn>
 
 		<!-- Embed PDBs in DLL -->
-	    <DebugType>embedded</DebugType>
-  </PropertyGroup>
+		<DebugType>embedded</DebugType>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="GraphQLSharp" Version="2.22.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="GraphQLSharp" Version="2.23.0" />
+	</ItemGroup>
 
 </Project>
