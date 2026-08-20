@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Runtime.CompilerServices;
+using System.Text.Json;
 using GraphQLSharp;
 using ShopifyNet;
 
@@ -53,4 +54,7 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
     return doc;
 });
 
-File.WriteAllText(@"../ShopifyNet/Generated.cs", csharpCode);
+
+File.WriteAllText($@"{GetDir()}/../ShopifyNet/Generated.cs", csharpCode);
+
+static string GetDir([CallerFilePath] string filePath = "") => Path.GetDirectoryName(filePath)!;
