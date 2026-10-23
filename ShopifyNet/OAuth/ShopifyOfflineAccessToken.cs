@@ -1,8 +1,8 @@
 namespace ShopifyNet;
 
 /// <summary>
-/// An expiring offline access token, as returned by Shopify when migrating a non-expiring offline access token,
-/// refreshing an expiring offline access token, or exchanging an ID token for an offline access token.
+/// An offline access token, as returned by Shopify when migrating a non-expiring offline access token,
+/// refreshing an expiring offline access token, or exchanging an ID token or authorization code for an offline access token.
 /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#offline-access-tokens
 /// </summary>
 public sealed record ShopifyOfflineAccessToken
@@ -18,32 +18,35 @@ public sealed record ShopifyOfflineAccessToken
     public string scope { get; init; }
 
     /// <summary>
-    /// The number of seconds until the access token expires.
+    /// The number of seconds until the access token expires, or null for a non-expiring token.
     /// </summary>
-    public int expires_in { get; init; }
+    public int? expires_in { get; init; }
 
     /// <summary>
     /// The refresh token, used to get a new access token before this one expires.
     /// Shopify rotates the refresh token: always use the one returned by the latest refresh.
+    /// Null for a non-expiring token.
     /// </summary>
     public string refresh_token { get; init; }
 
     /// <summary>
-    /// The number of seconds until the refresh token expires.
+    /// The number of seconds until the refresh token expires, or null for a non-expiring token.
     /// </summary>
-    public int refresh_token_expires_in { get; init; }
+    public int? refresh_token_expires_in { get; init; }
 
     /// <summary>
     /// When the access token expires, computed from <see cref="expires_in"/> when the response was received.
     /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
+    /// Null for a non-expiring token.
     /// </summary>
-    public DateTimeOffset ExpiresAt { get; init; }
+    public DateTimeOffset? ExpiresAt { get; init; }
 
     /// <summary>
     /// When the refresh token expires, computed from <see cref="refresh_token_expires_in"/> when the response was received.
     /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
+    /// Null for a non-expiring token.
     /// </summary>
-    public DateTimeOffset RefreshTokenExpiresAt { get; init; }
+    public DateTimeOffset? RefreshTokenExpiresAt { get; init; }
 
     //avoid leaking secrets into logs
     public override string ToString()

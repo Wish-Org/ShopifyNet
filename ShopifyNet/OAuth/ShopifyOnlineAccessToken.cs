@@ -1,8 +1,8 @@
 namespace ShopifyNet;
 
 /// <summary>
-/// An online access token, tied to the staff member who opened the app, as returned by Shopify when exchanging an ID token for an online access token.
-/// Online access tokens can't be refreshed: request a new one with a fresh ID token instead.
+/// An online access token, tied to the authorizing staff member, as returned by Shopify when exchanging an ID token or authorization code.
+/// Online access tokens can't be refreshed: request a new one with a fresh ID token or repeat the authorization code flow.
 /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#online-access-tokens
 /// </summary>
 public sealed record ShopifyOnlineAccessToken
