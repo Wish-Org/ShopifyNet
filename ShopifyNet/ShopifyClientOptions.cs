@@ -22,7 +22,7 @@ public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, 
     /// </summary>
     public string MyShopifyDomain { get; private set; }
 
-    public string AccessToken { get; private set; }
+    public string AccessToken { get; set; }
 
     /// <summary>
     /// Optional API version to use for the Shopify API.
