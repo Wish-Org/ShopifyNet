@@ -1,0 +1,49 @@
+namespace ShopifyNet;
+
+/// <summary>
+/// An online access token, tied to the staff member who opened the app, as returned by Shopify when exchanging an ID token for an online access token.
+/// Online access tokens can't be refreshed: request a new one with a fresh ID token instead.
+/// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#online-access-tokens
+/// </summary>
+public sealed record ShopifyOnlineAccessToken
+{
+    /// <summary>
+    /// The access token, sent in the X-Shopify-Access-Token header.
+    /// </summary>
+    public string access_token { get; init; }
+
+    /// <summary>
+    /// The comma separated list of access scopes granted to the app.
+    /// </summary>
+    public string scope { get; init; }
+
+    /// <summary>
+    /// The number of seconds until the access token expires.
+    /// The token also expires when the user logs out of the Shopify admin.
+    /// </summary>
+    public int expires_in { get; init; }
+
+    /// <summary>
+    /// The comma separated list of access scopes available to the token:
+    /// the intersection of the app's scopes and the permissions of <see cref="associated_user"/>.
+    /// </summary>
+    public string associated_user_scope { get; init; }
+
+    /// <summary>
+    /// The staff member who authorized the token.
+    /// </summary>
+    public ShopifyAssociatedUser associated_user { get; init; }
+
+    /// <summary>
+    /// When the access token expires, computed from <see cref="expires_in"/> when the response was received.
+    /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
+    /// The token also expires earlier if the user logs out of the Shopify admin.
+    /// </summary>
+    public DateTimeOffset ExpiresAt { get; init; }
+
+    //avoid leaking secrets and personal information into logs
+    public override string ToString()
+    {
+        return $"{nameof(ShopifyOnlineAccessToken)} {{ {nameof(scope)} = {scope}, {nameof(expires_in)} = {expires_in}, {nameof(ExpiresAt)} = {ExpiresAt:O}, {nameof(associated_user_scope)} = {associated_user_scope}, associated_user_id = {associated_user?.id} }}";
+    }
+}
