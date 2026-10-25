@@ -324,7 +324,44 @@ public class ShopifyOAuthClient
         var token = TryDeserialize<T>(body, out var deserializationException);
         if (token == null)
             throw new ShopifyOAuthException("Failed to deserialize the Shopify access token response.", response.StatusCode, innerException: deserializationException);
+
+        switch (token)
+        {
+            case ShopifyOfflineAccessToken offlineToken:
+                var expiringRequested = parameters.GetValueOrDefault(EXPIRING_KEY) == EXPIRING_VALUE ||
+                    parameters.GetValueOrDefault(GRANT_TYPE_KEY) == REFRESH_TOKEN_GRANT_TYPE;
+                ValidateOfflineToken(offlineToken, expiringRequested, response.StatusCode);
+                break;
+            case ShopifyOnlineAccessToken onlineToken:
+                ValidateOnlineToken(onlineToken, response.StatusCode);
+                break;
+            default:
+                throw new ShopifyOAuthException("The Shopify access token response does not contain a usable access_token.", response.StatusCode);
+        }
+
         return setExpiryDates(token, requestedAt);
+    }
+
+    private static void ValidateOfflineToken(ShopifyOfflineAccessToken token, bool expiringRequested, HttpStatusCode statusCode)
+    {
+        if (string.IsNullOrWhiteSpace(token.access_token))
+            throw new ShopifyOAuthException("The Shopify access token response does not contain a usable access_token.", statusCode);
+
+        // Check the request too, so a response missing all expiry metadata cannot pass as non-expiring.
+        var expiring = expiringRequested || token.expires_in.HasValue ||
+            token.refresh_token_expires_in.HasValue || token.refresh_token != null;
+        if (expiring && (string.IsNullOrWhiteSpace(token.refresh_token) ||
+            token.expires_in is not > 0 || token.refresh_token_expires_in is not > 0))
+            throw new ShopifyOAuthException("An expiring offline token response must contain a usable refresh_token and positive expires_in and refresh_token_expires_in values.", statusCode);
+    }
+
+    private static void ValidateOnlineToken(ShopifyOnlineAccessToken token, HttpStatusCode statusCode)
+    {
+        if (string.IsNullOrWhiteSpace(token.access_token))
+            throw new ShopifyOAuthException("The Shopify access token response does not contain a usable access_token.", statusCode);
+
+        if (token.expires_in is <= 0)
+            throw new ShopifyOAuthException("The online token response must contain a positive expires_in when provided.", statusCode);
     }
 
     private static T TryDeserialize<T>(string json, out JsonException exception) where T : class
