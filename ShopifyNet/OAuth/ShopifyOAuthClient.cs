@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace ShopifyNet;
 
 /// <summary>
-/// Client for the Shopify OAuth access token endpoint (https://{shop}.myshopify.com/admin/oauth/access_token).
+/// Builds Shopify OAuth authorization URLs, validates callbacks and calls the access token endpoint.
 /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens
 /// </summary>
 public class ShopifyOAuthClient
@@ -21,6 +21,10 @@ public class ShopifyOAuthClient
     private const string REQUESTED_TOKEN_TYPE_KEY = "requested_token_type";
     private const string REFRESH_TOKEN_KEY = "refresh_token";
     private const string EXPIRING_KEY = "expiring";
+    private const string SCOPE_KEY = "scope";
+    private const string REDIRECT_URI_KEY = "redirect_uri";
+    private const string STATE_KEY = "state";
+    private const string GRANT_OPTIONS_KEY = "grant_options[]";
 
     private const string EXPIRING_VALUE = "1";
     private const string REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
@@ -52,6 +56,46 @@ public class ShopifyOAuthClient
         _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
         _httpClient = httpClient ?? _defaultHttpClient;
         _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    /// <summary>
+    /// Builds the Shopify authorization URL to which the merchant should be redirected.
+    /// No request is sent. The caller must generate and store a random state nonce, then validate it in the callback.
+    /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
+    /// </summary>
+    /// <param name="myShopifyDomain">A plain shop.myshopify.com hostname.</param>
+    /// <param name="scopes">The comma-separated access scopes to request.</param>
+    /// <param name="redirectUri">The absolute HTTP or HTTPS callback URI registered with Shopify. Passed through without normalization.</param>
+    /// <param name="state">The stored, unpredictable state nonce. Must not contain ampersands, for compatibility with IsValidHmac.</param>
+    /// <param name="online">True to request per-user online access; false (the default) for offline access.</param>
+    public string BuildAuthorizationUrl(string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
+    {
+        ArgumentNullException.ThrowIfNull(myShopifyDomain);
+        if (!IsValidShopDomain(myShopifyDomain))
+            throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
+        ArgumentException.ThrowIfNullOrWhiteSpace(scopes);
+        ArgumentException.ThrowIfNullOrWhiteSpace(redirectUri);
+        ArgumentException.ThrowIfNullOrWhiteSpace(state);
+        if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var callbackUri) ||
+            (callbackUri.Scheme != Uri.UriSchemeHttps && callbackUri.Scheme != Uri.UriSchemeHttp) ||
+            !string.IsNullOrEmpty(callbackUri.Fragment) || !string.IsNullOrEmpty(callbackUri.UserInfo))
+            throw new ArgumentException("Expected an absolute HTTP or HTTPS callback URI without a fragment or user information.", nameof(redirectUri));
+        if (state.Contains('&'))
+            throw new ArgumentException("State must not contain ampersands, for compatibility with callback HMAC validation.", nameof(state));
+
+        var parameters = new Dictionary<string, string>
+        {
+            [CLIENT_ID_KEY] = _clientId,
+            [SCOPE_KEY] = scopes,
+            [REDIRECT_URI_KEY] = redirectUri,
+            [STATE_KEY] = state,
+        };
+        if (online)
+            parameters[GRANT_OPTIONS_KEY] = "per-user";
+
+        var query = string.Join("&", parameters.Select(parameter =>
+            $"{Uri.EscapeDataString(parameter.Key)}={Uri.EscapeDataString(parameter.Value)}"));
+        return $"https://{myShopifyDomain}/admin/oauth/authorize?{query}";
     }
 
     /// <summary>
