@@ -1,5 +1,8 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace ShopifyNet;
 
@@ -12,6 +15,7 @@ public class ShopifyOAuthClient
     private const string GRANT_TYPE_KEY = "grant_type";
     private const string CLIENT_ID_KEY = "client_id";
     private const string CLIENT_SECRET_KEY = "client_secret";
+    private const string CODE_KEY = "code";
     private const string SUBJECT_TOKEN_KEY = "subject_token";
     private const string SUBJECT_TOKEN_TYPE_KEY = "subject_token_type";
     private const string REQUESTED_TOKEN_TYPE_KEY = "requested_token_type";
@@ -48,6 +52,58 @@ public class ShopifyOAuthClient
         _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
         _httpClient = httpClient ?? _defaultHttpClient;
         _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    /// <summary>
+    /// Checks for a plain shop.myshopify.com hostname with a single valid DNS label for the shop.
+    /// URLs, ports, paths, subdomains and trailing dots are not accepted. All token requests enforce this check.
+    /// </summary>
+    public static bool IsValidShopDomain(string myShopifyDomain)
+    {
+        return myShopifyDomain != null &&
+            Regex.IsMatch(myShopifyDomain, @"\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com\z",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    /// <summary>
+    /// Verifies the OAuth callback query's hexadecimal HMAC-SHA256 using the app's client secret.
+    /// Supply all URL-decoded query parameters, including hmac, preserving any duplicates.
+    /// Parameters are sorted ordinally and joined as key=value pairs, excluding only hmac,
+    /// as described by Shopify's standalone-app OAuth guide. Duplicate keys, null values and invalid HMACs return false.
+    /// Ambiguous delimiters (ampersands in keys or values, or equals signs in keys) are rejected.
+    /// This checks authenticity only: separately validate the shop, stored state nonce and any timestamp freshness policy.
+    /// This method is not for webhook or app-proxy signatures.
+    /// </summary>
+    public bool IsValidHmac(IEnumerable<KeyValuePair<string, string>> queryParameters)
+    {
+        if (queryParameters == null)
+            return false;
+
+        var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var parameter in queryParameters)
+        {
+            if (string.IsNullOrEmpty(parameter.Key) || parameter.Value == null ||
+                parameter.Key.Contains('&') || parameter.Key.Contains('=') || parameter.Value.Contains('&') ||
+                !parameters.TryAdd(parameter.Key, parameter.Value))
+                return false;
+        }
+
+        if (!parameters.Remove("hmac", out var hmac) || hmac.Length != 64)
+            return false;
+
+        byte[] suppliedHash;
+        try
+        {
+            suppliedHash = Convert.FromHexString(hmac);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        var message = string.Join("&", parameters.Select(parameter => $"{parameter.Key}={parameter.Value}"));
+        var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(_clientSecret), Encoding.UTF8.GetBytes(message));
+        return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
     }
 
     /// <summary>
@@ -141,24 +197,65 @@ public class ShopifyOAuthClient
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// Exchanges an authorization code for an expiring or non-expiring offline access token.
+    /// The caller must validate the OAuth callback (including HMAC, state and shop) before exchanging the code.
+    /// The code must come from an authorization request without grant_options[]=per-user.
+    /// </summary>
+    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
+    /// <param name="code">The authorization code returned in the validated OAuth callback.</param>
+    /// <param name="expiring">True to request an expiring token with a refresh token; false to request a non-expiring token.</param>
+    /// <param name="cancellationToken"></param>
+    /// <exception cref="ShopifyOAuthException">Shopify rejected the token request.</exception>
+    public Task<ShopifyOfflineAccessToken> ExchangeCodeForOfflineAccessTokenAsync(string myShopifyDomain, string code, bool expiring, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        var parameters = new Dictionary<string, string>
+        {
+            [CODE_KEY] = code,
+        };
+        if (expiring)
+            parameters[EXPIRING_KEY] = EXPIRING_VALUE;
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, SetExpiryDates, parameters, cancellationToken);
+    }
+
+    /// <summary>
+    /// Exchanges an authorization code for an online access token tied to the authorizing user.
+    /// The caller must validate the OAuth callback (including HMAC, state and shop) before exchanging the code.
+    /// The code must come from an authorization request with grant_options[]=per-user.
+    /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
+    /// </summary>
+    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
+    /// <param name="code">The authorization code returned in the validated OAuth callback.</param>
+    /// <param name="cancellationToken"></param>
+    /// <exception cref="ShopifyOAuthException">Shopify rejected the token request.</exception>
+    public Task<ShopifyOnlineAccessToken> ExchangeCodeForOnlineAccessTokenAsync(string myShopifyDomain, string code, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        {
+            [CODE_KEY] = code,
+        }, cancellationToken);
+    }
+
     private static ShopifyOfflineAccessToken SetExpiryDates(ShopifyOfflineAccessToken token, DateTimeOffset requestedAt) => token with
     {
-        ExpiresAt = requestedAt.AddSeconds(token.expires_in),
-        RefreshTokenExpiresAt = requestedAt.AddSeconds(token.refresh_token_expires_in),
+        ExpiresAt = token.expires_in is int expiresIn ? requestedAt.AddSeconds(expiresIn) : null,
+        RefreshTokenExpiresAt = token.refresh_token_expires_in is int refreshExpiresIn ? requestedAt.AddSeconds(refreshExpiresIn) : null,
     };
 
     private static ShopifyOnlineAccessToken SetExpiryDates(ShopifyOnlineAccessToken token, DateTimeOffset requestedAt) => token with
     {
-        ExpiresAt = requestedAt.AddSeconds(token.expires_in),
+        ExpiresAt = token.expires_in is int expiresIn ? requestedAt.AddSeconds(expiresIn) : null,
     };
 
     private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Func<T, DateTimeOffset, T> setExpiryDates, Dictionary<string, string> parameters, CancellationToken cancellationToken)
         where T : class
     {
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
-        //the client secret is sent to this host, so reject anything that isn't a plain host name (e.g. "evil.com/path?")
-        if (Uri.CheckHostName(myShopifyDomain) != UriHostNameType.Dns)
-            throw new ArgumentException($"'{myShopifyDomain}' is not a valid host name.", nameof(myShopifyDomain));
+        //The client secret must only be sent to a Shopify store hostname.
+        if (!IsValidShopDomain(myShopifyDomain))
+            throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
 
         parameters[CLIENT_ID_KEY] = _clientId;
         parameters[CLIENT_SECRET_KEY] = _clientSecret;

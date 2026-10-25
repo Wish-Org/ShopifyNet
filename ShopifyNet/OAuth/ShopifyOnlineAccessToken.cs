@@ -18,10 +18,11 @@ public sealed record ShopifyOnlineAccessToken
     public string scope { get; init; }
 
     /// <summary>
-    /// The number of seconds until the access token expires.
+    /// The number of seconds until the access token expires, or null when Shopify omits expiry metadata.
+    /// Null means the expiry is unknown, not that the token never expires.
     /// The token also expires when the user logs out of the Shopify admin.
     /// </summary>
-    public int expires_in { get; init; }
+    public int? expires_in { get; init; }
 
     /// <summary>
     /// The comma separated list of access scopes available to the token:
@@ -38,8 +39,9 @@ public sealed record ShopifyOnlineAccessToken
     /// When the access token expires, computed from <see cref="expires_in"/> when the response was received.
     /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
     /// The token also expires earlier if the user logs out of the Shopify admin.
+    /// Null when Shopify does not provide expires_in; no expiry date is inferred.
     /// </summary>
-    public DateTimeOffset ExpiresAt { get; init; }
+    public DateTimeOffset? ExpiresAt { get; init; }
 
     //avoid leaking secrets and personal information into logs
     public override string ToString()
