@@ -35,11 +35,9 @@ public class ShopifyOAuthClient
 
     private static readonly HttpClient _defaultHttpClient = new(new SocketsHttpHandler
     {
+        // Request and automatically decode compressed responses from Shopify.
         AutomaticDecompression = DecompressionMethods.All
-    })
-    {
-        Timeout = TimeSpan.FromSeconds(30)
-    };
+    });
 
     private readonly string _clientId;
     private readonly string _clientSecret;
