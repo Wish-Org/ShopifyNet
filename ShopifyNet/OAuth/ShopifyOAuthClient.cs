@@ -163,7 +163,7 @@ public class ShopifyOAuthClient
     public Task<ShopifyOfflineAccessToken> MigrateToExpiringOfflineAccessTokenAsync(string myShopifyDomain, string nonExpiringAccessToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(nonExpiringAccessToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = nonExpiringAccessToken,
@@ -188,7 +188,7 @@ public class ShopifyOAuthClient
     public Task<ShopifyOfflineAccessToken> RefreshOfflineAccessTokenAsync(string myShopifyDomain, string refreshToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(refreshToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = REFRESH_TOKEN_GRANT_TYPE,
             [REFRESH_TOKEN_KEY] = refreshToken,
@@ -207,7 +207,7 @@ public class ShopifyOAuthClient
     public Task<ShopifyOfflineAccessToken> ExchangeIdTokenForOfflineAccessTokenAsync(string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(idToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = idToken,
@@ -230,7 +230,7 @@ public class ShopifyOAuthClient
     {
         ArgumentNullException.ThrowIfNull(idToken);
         //the expiring parameter only applies to offline access tokens
-        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = idToken,
@@ -258,7 +258,7 @@ public class ShopifyOAuthClient
         };
         if (expiring)
             parameters[EXPIRING_KEY] = EXPIRING_VALUE;
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, SetExpiryDates, parameters, cancellationToken);
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, parameters, cancellationToken);
     }
 
     /// <summary>
@@ -274,24 +274,13 @@ public class ShopifyOAuthClient
     public Task<ShopifyOnlineAccessToken> ExchangeCodeForOnlineAccessTokenAsync(string myShopifyDomain, string code, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
-        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, SetExpiryDates, new()
+        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, new()
         {
             [CODE_KEY] = code,
         }, cancellationToken);
     }
 
-    private static ShopifyOfflineAccessToken SetExpiryDates(ShopifyOfflineAccessToken token, DateTimeOffset requestedAt) => token with
-    {
-        ExpiresAt = token.expires_in is int expiresIn ? requestedAt.AddSeconds(expiresIn) : null,
-        RefreshTokenExpiresAt = token.refresh_token_expires_in is int refreshExpiresIn ? requestedAt.AddSeconds(refreshExpiresIn) : null,
-    };
-
-    private static ShopifyOnlineAccessToken SetExpiryDates(ShopifyOnlineAccessToken token, DateTimeOffset requestedAt) => token with
-    {
-        ExpiresAt = token.expires_in is int expiresIn ? requestedAt.AddSeconds(expiresIn) : null,
-    };
-
-    private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Func<T, DateTimeOffset, T> setExpiryDates, Dictionary<string, string> parameters, CancellationToken cancellationToken)
+    private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Dictionary<string, string> parameters, CancellationToken cancellationToken)
         where T : class
     {
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
@@ -331,15 +320,13 @@ public class ShopifyOAuthClient
                 var expiringRequested = parameters.GetValueOrDefault(EXPIRING_KEY) == EXPIRING_VALUE ||
                     parameters.GetValueOrDefault(GRANT_TYPE_KEY) == REFRESH_TOKEN_GRANT_TYPE;
                 ValidateOfflineToken(offlineToken, expiringRequested, response.StatusCode);
-                break;
+                return (T)(object)(offlineToken with { RequestedAt = requestedAt });
             case ShopifyOnlineAccessToken onlineToken:
                 ValidateOnlineToken(onlineToken, response.StatusCode);
-                break;
+                return (T)(object)(onlineToken with { RequestedAt = requestedAt });
             default:
                 throw new ShopifyOAuthException("The Shopify access token response does not contain a usable access_token.", response.StatusCode);
         }
-
-        return setExpiryDates(token, requestedAt);
     }
 
     private static void ValidateOfflineToken(ShopifyOfflineAccessToken token, bool expiringRequested, HttpStatusCode statusCode)

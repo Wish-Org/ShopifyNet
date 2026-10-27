@@ -34,19 +34,21 @@ public sealed record ShopifyOfflineAccessToken
     /// </summary>
     public int? refresh_token_expires_in { get; init; }
 
-    /// <summary>
-    /// When the access token expires, computed from <see cref="expires_in"/> when the response was received.
-    /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
-    /// Null for a non-expiring token.
-    /// </summary>
-    public DateTimeOffset? ExpiresAt { get; init; }
+    internal DateTimeOffset RequestedAt { get; init; } = DateTimeOffset.UtcNow;
 
     /// <summary>
-    /// When the refresh token expires, computed from <see cref="refresh_token_expires_in"/> when the response was received.
+    /// When the access token expires, computed from <see cref="expires_in"/> and the request timestamp.
     /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
     /// Null for a non-expiring token.
     /// </summary>
-    public DateTimeOffset? RefreshTokenExpiresAt { get; init; }
+    public DateTimeOffset? ExpiresAt => expires_in is int expiresIn ? RequestedAt.AddSeconds(expiresIn) : null;
+
+    /// <summary>
+    /// When the refresh token expires, computed from <see cref="refresh_token_expires_in"/> and the request timestamp.
+    /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
+    /// Null for a non-expiring token.
+    /// </summary>
+    public DateTimeOffset? RefreshTokenExpiresAt => refresh_token_expires_in is int expiresIn ? RequestedAt.AddSeconds(expiresIn) : null;
 
     //avoid leaking secrets into logs
     public override string ToString()
