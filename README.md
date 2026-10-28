@@ -57,7 +57,7 @@ var oauthClient = new ShopifyOAuthClient(clientId, clientSecret);
 //migrate a non-expiring offline token. The old token is invalidated, so the new token must be persisted.
 ShopifyOfflineAccessToken token = await oauthClient.MigrateToExpiringOfflineAccessTokenAsync(myShopifyDomain, nonExpiringToken);
 
-//refresh before token.ExpiresAt (computed from expires_in when the token was retrieved). The refresh token is rotated, so the new token must be persisted.
+//refresh before expires_in seconds have elapsed since acquisition. The refresh token is rotated, so the new token must be persisted.
 token = await oauthClient.RefreshOfflineAccessTokenAsync(myShopifyDomain, token.refresh_token);
 
 //exchange a validated ID (session) token for an expiring offline or an online access token
@@ -78,9 +78,9 @@ var client = new ShopifyClient(myShopifyDomain, token.access_token);
 
 Failures returned by Shopify throw a `ShopifyOAuthException` exposing the `StatusCode`, `Error` and `ErrorDescription`.
 
-Online authorization-code exchange responses can omit `expires_in`. `ShopifyOnlineAccessToken.expires_in` and `ExpiresAt` are nullable and remain null when expiry metadata is absent. Null means the expiry is unknown, not that the token never expires. When Shopify supplies a lifetime, `ExpiresAt` is calculated from the request time.
+Online authorization-code exchange responses can omit `expires_in`. `ShopifyOnlineAccessToken.expires_in` is nullable and remains null when expiry metadata is absent. Null means the expiry is unknown, not that the token never expires. Callers are responsible for tracking acquisition time and persisting expiry dates calculated from the returned lifetimes.
 
-For the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps), validate the callback's HMAC, state and shop before passing its code to these methods. The authorization request determines the token's access mode: omit `grant_options[]=per-user` for offline access and include it for online access. Each exchange needs its own authorization code. Pass `expiring: true` to send `expiring=1` and receive a refresh token alongside the access token. Pass `expiring: false` to omit that parameter and request a non-expiring token. Offline token expiry fields (`expires_in`, `refresh_token_expires_in`, `ExpiresAt`, `RefreshTokenExpiresAt`) are nullable; they and `refresh_token` are null for non-expiring tokens.
+For the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps), validate the callback's HMAC, state and shop before passing its code to these methods. The authorization request determines the token's access mode: omit `grant_options[]=per-user` for offline access and include it for online access. Each exchange needs its own authorization code. Pass `expiring: true` to send `expiring=1` and receive a refresh token alongside the access token. Pass `expiring: false` to omit that parameter and request a non-expiring token. Offline token expiry fields (`expires_in`, `refresh_token_expires_in`) are nullable; they and `refresh_token` are null for non-expiring tokens.
 
 ### Build an authorization URL
 

@@ -139,6 +139,8 @@ public class ShopifyOAuthClient
     // Escape % first so literal escape sequences remain distinct from escaped delimiters.
     private static string EncodeHmacQueryComponent(string value, bool isKey = false)
     {
+        //is this the only "manual" change from the HMAC algo? what about arrays?
+        //need more comments
         var encoded = value.Replace("%", "%25").Replace("&", "%26");
         return isKey ? encoded.Replace("=", "%3D") : encoded;
     }
@@ -262,8 +264,6 @@ public class ShopifyOAuthClient
         };
         request.Headers.Accept.ParseAdd("application/json");
 
-        //captured before sending so the computed expiry dates are never later than the actual ones
-        var requestedAt = DateTimeOffset.UtcNow;
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -285,10 +285,10 @@ public class ShopifyOAuthClient
                 var expiringRequested = parameters.GetValueOrDefault(EXPIRING_KEY) == EXPIRING_VALUE ||
                     parameters.GetValueOrDefault(GRANT_TYPE_KEY) == REFRESH_TOKEN_GRANT_TYPE;
                 ValidateOfflineToken(offlineToken, expiringRequested, response.StatusCode);
-                return (T)(object)(offlineToken with { RequestedAt = requestedAt });
+                return token;
             case ShopifyOnlineAccessToken onlineToken:
                 ValidateOnlineToken(onlineToken, response.StatusCode);
-                return (T)(object)(onlineToken with { RequestedAt = requestedAt });
+                return token;
             default:
                 throw new ShopifyOAuthException("The Shopify access token response does not contain a usable access_token.", response.StatusCode);
         }
