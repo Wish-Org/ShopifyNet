@@ -68,8 +68,11 @@ public class ShopifyAuthorizationUrlTests
     }
 
     [TestMethod]
-    public void RejectsStateThatCallbackHmacValidatorCannotAccept()
+    public void EncodesStateContainingQueryDelimiters()
     {
-        Assert.ThrowsException<ArgumentException>(() => _client.BuildAuthorizationUrl("shop.myshopify.com", "read_products", "https://app.example/callback", "nonce&extra=value"));
+        var url = _client.BuildAuthorizationUrl("shop.myshopify.com", "read_products", "https://app.example/callback", "nonce&extra=value");
+        var query = HttpUtility.ParseQueryString(new Uri(url).Query);
+        Assert.AreEqual("nonce&extra=value", query["state"]);
+        Assert.IsNull(query["extra"]);
     }
 }

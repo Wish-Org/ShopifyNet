@@ -42,18 +42,12 @@ public class ShopifyOAuthClient
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly HttpClient _httpClient;
-    private readonly TimeProvider _timeProvider;
 
-    /// <param name="clientId">The client ID (API key) of the app.</param>
-    /// <param name="clientSecret">The client secret (API secret key) of the app.</param>
-    /// <param name="httpClient">Optional HttpClient. If null, a shared default HttpClient is used. If set, you control the lifetime of the HttpClient.</param>
-    /// <param name="timeProvider">Optional time provider used to compute the expiry dates of the returned tokens. Defaults to TimeProvider.System.</param>
-    public ShopifyOAuthClient(string clientId, string clientSecret, HttpClient httpClient = null, TimeProvider timeProvider = null)
+    public ShopifyOAuthClient(string clientId, string clientSecret, HttpClient httpClient = null)
     {
         _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
         _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
         _httpClient = httpClient ?? _defaultHttpClient;
-        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -61,11 +55,6 @@ public class ShopifyOAuthClient
     /// No request is sent. The caller must generate and store a random state nonce, then validate it in the callback.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    /// <param name="myShopifyDomain">A plain shop.myshopify.com hostname.</param>
-    /// <param name="scopes">The comma-separated access scopes to request.</param>
-    /// <param name="redirectUri">The absolute HTTP or HTTPS callback URI registered with Shopify. Passed through without normalization.</param>
-    /// <param name="state">The stored, unpredictable state nonce. Must not contain ampersands, for compatibility with IsValidHmac.</param>
-    /// <param name="online">True to request per-user online access; false (the default) for offline access.</param>
     public string BuildAuthorizationUrl(string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
     {
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
@@ -78,8 +67,6 @@ public class ShopifyOAuthClient
             (callbackUri.Scheme != Uri.UriSchemeHttps && callbackUri.Scheme != Uri.UriSchemeHttp) ||
             !string.IsNullOrEmpty(callbackUri.Fragment) || !string.IsNullOrEmpty(callbackUri.UserInfo))
             throw new ArgumentException("Expected an absolute HTTP or HTTPS callback URI without a fragment or user information.", nameof(redirectUri));
-        if (state.Contains('&'))
-            throw new ArgumentException("State must not contain ampersands, for compatibility with callback HMAC validation.", nameof(state));
 
         var parameters = new Dictionary<string, string>
         {
@@ -110,9 +97,9 @@ public class ShopifyOAuthClient
     /// <summary>
     /// Verifies the OAuth callback query's hexadecimal HMAC-SHA256 using the app's client secret.
     /// Supply all URL-decoded query parameters, including hmac, preserving any duplicates.
-    /// Parameters are sorted ordinally and joined as key=value pairs, excluding only hmac,
-    /// as described by Shopify's standalone-app OAuth guide. Duplicate keys, null values and invalid HMACs return false.
-    /// Ambiguous delimiters (ampersands in keys or values, or equals signs in keys) are rejected.
+    /// Parameters are sorted ordinally and joined as key=value pairs, excluding only hmac.
+    /// Escape % and &amp; in keys and values, and = in keys only. Other characters remain literal.
+    /// Duplicate keys, null values and invalid HMACs return false.
     /// This checks authenticity only: separately validate the shop, stored state nonce and any timestamp freshness policy.
     /// This method is not for webhook or app-proxy signatures.
     /// </summary>
@@ -125,7 +112,6 @@ public class ShopifyOAuthClient
         foreach (var parameter in queryParameters)
         {
             if (string.IsNullOrEmpty(parameter.Key) || parameter.Value == null ||
-                parameter.Key.Contains('&') || parameter.Key.Contains('=') || parameter.Value.Contains('&') ||
                 !parameters.TryAdd(parameter.Key, parameter.Value))
                 return false;
         }
@@ -143,9 +129,18 @@ public class ShopifyOAuthClient
             return false;
         }
 
-        var message = string.Join("&", parameters.Select(parameter => $"{parameter.Key}={parameter.Value}"));
+        var message = string.Join("&", parameters.Select(parameter =>
+            $"{EncodeHmacQueryComponent(parameter.Key, isKey: true)}={EncodeHmacQueryComponent(parameter.Value)}"));
         var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(_clientSecret), Encoding.UTF8.GetBytes(message));
         return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
+    }
+
+    // HMAC canonicalization is not URL encoding: JSON punctuation and base64 padding stay literal.
+    // Escape % first so literal escape sequences remain distinct from escaped delimiters.
+    private static string EncodeHmacQueryComponent(string value, bool isKey = false)
+    {
+        var encoded = value.Replace("%", "%25").Replace("&", "%26");
+        return isKey ? encoded.Replace("=", "%3D") : encoded;
     }
 
     /// <summary>
@@ -154,12 +149,6 @@ public class ShopifyOAuthClient
     /// If the response is lost, the same request can be repeated with the original non-expiring token within seven days to recover the same token.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens#migrate-existing-tokens-without-a-user-session
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="nonExpiringAccessToken">The active non-expiring offline access token to migrate.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">
-    /// Shopify rejected the request, for example with 400 Bad Request and the "invalid_subject_token" error if the token isn't an active non-expiring offline access token.
-    /// </exception>
     public Task<ShopifyOfflineAccessToken> MigrateToExpiringOfflineAccessTokenAsync(string myShopifyDomain, string nonExpiringAccessToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(nonExpiringAccessToken);
@@ -178,13 +167,6 @@ public class ShopifyOAuthClient
     /// Shopify rotates the refresh token: the returned token (including its new refresh token) MUST be persisted and used for the next refresh.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/implement-token-exchange#refresh-an-expiring-offline-token
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="refreshToken">The refresh token.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">
-    /// Shopify rejected the request, for example with 401 Unauthorized if the refresh token is expired, already used or otherwise invalid,
-    /// in which case the merchant must re-authenticate.
-    /// </exception>
     public Task<ShopifyOfflineAccessToken> RefreshOfflineAccessTokenAsync(string myShopifyDomain, string refreshToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(refreshToken);
@@ -200,10 +182,6 @@ public class ShopifyOAuthClient
     /// The ID token must have been validated by the caller.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#token-exchange-grant
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="idToken">The ID token.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">Shopify rejected the request, for example with 400 Bad Request if the ID token is expired or invalid.</exception>
     public Task<ShopifyOfflineAccessToken> ExchangeIdTokenForOfflineAccessTokenAsync(string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(idToken);
@@ -222,10 +200,6 @@ public class ShopifyOAuthClient
     /// The ID token must have been validated by the caller.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#token-exchange-grant
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="idToken">The ID token.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">Shopify rejected the request, for example with 400 Bad Request if the ID token is expired or invalid.</exception>
     public Task<ShopifyOnlineAccessToken> ExchangeIdTokenForOnlineAccessTokenAsync(string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(idToken);
@@ -244,11 +218,6 @@ public class ShopifyOAuthClient
     /// The caller must validate the OAuth callback (including HMAC, state and shop) before exchanging the code.
     /// The code must come from an authorization request without grant_options[]=per-user.
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="code">The authorization code returned in the validated OAuth callback.</param>
-    /// <param name="expiring">True to request an expiring token with a refresh token; false to request a non-expiring token.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">Shopify rejected the token request.</exception>
     public Task<ShopifyOfflineAccessToken> ExchangeCodeForOfflineAccessTokenAsync(string myShopifyDomain, string code, bool expiring, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
@@ -267,10 +236,6 @@ public class ShopifyOAuthClient
     /// The code must come from an authorization request with grant_options[]=per-user.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="code">The authorization code returned in the validated OAuth callback.</param>
-    /// <param name="cancellationToken"></param>
-    /// <exception cref="ShopifyOAuthException">Shopify rejected the token request.</exception>
     public Task<ShopifyOnlineAccessToken> ExchangeCodeForOnlineAccessTokenAsync(string myShopifyDomain, string code, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
@@ -298,7 +263,7 @@ public class ShopifyOAuthClient
         request.Headers.Accept.ParseAdd("application/json");
 
         //captured before sending so the computed expiry dates are never later than the actual ones
-        var requestedAt = _timeProvider.GetUtcNow();
+        var requestedAt = DateTimeOffset.UtcNow;
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 

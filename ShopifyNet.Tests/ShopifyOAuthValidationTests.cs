@@ -14,7 +14,7 @@ public class ShopifyOAuthValidationTests
         ["shop"] = "test-shop.myshopify.com",
         ["host"] = "YWRtaW4=",
         ["code"] = "authorization-code",
-        // Independently computed HMAC-SHA256 over alphabetically sorted, decoded pairs.
+        // Synthetic fixture signed over sorted pairs, with the host padding left literal.
         ["hmac"] = "eda4de7d2e9914fbc39294ca2ed6767d63a543c13a0f2fd54a9cee07cbeb3188",
     };
 
@@ -63,12 +63,41 @@ public class ShopifyOAuthValidationTests
     }
 
     [TestMethod]
-    public void UsesDecodedParameterValues()
+    public void RejectsHmacSignedOverFormEncodedValues()
     {
         var query = ValidQuery();
-        query.Remove("host");
-        query["code"] = "a+b %/=";
-        query["hmac"] = "abe180ca6bca63040a04a74f4f4b2a7534a091d2792e09539d606f8acb84f8c6";
+        query["hmac"] = "27ec35edf2c692e2095a0e5f9970ff9b6ffe9acb06bbcf967bdfb1b0c500156d";
+        Assert.IsFalse(_client.IsValidHmac(query));
+    }
+
+    [TestMethod]
+    public void EscapesPercentWithoutEncodingOtherValueCharacters()
+    {
+        var query = ValidQuery();
+        query["code"] = "a+b %/=~*-._\u00e9";
+        // Independently signed with Node crypto: only % becomes %25 in this value.
+        query["hmac"] = "7af0f2f479cf4a675fde53aaaee665bd75ae9a97b9500899431004e798b391e1";
+        Assert.IsTrue(_client.IsValidHmac(query));
+    }
+
+    [TestMethod]
+    public void AcceptsSignedDelimitersInKeysAndValues()
+    {
+        var query = ValidQuery();
+        query["state"] = "nonce&extra=value";
+        query["extra&="] = "+/= ~*\u00e9";
+        // Escape & in keys and values, and = in keys only.
+        query["hmac"] = "6eb51503735241f316dac1d982f9d5b8ebfdebac213afc8bff79bace79a8a5e1";
+        Assert.IsTrue(_client.IsValidHmac(query));
+    }
+
+    [TestMethod]
+    public void PreservesJsonStateWhenSigning()
+    {
+        var query = ValidQuery();
+        query["state"] = """{"ReturnUrl":null,"AccountId":"br-test-plus-mathieu.myshopify.com","UserId":null}""";
+        // Synthetic signature using the reported JSON shape and the test secret, not a live app secret.
+        query["hmac"] = "5b2b32d47faae8c483a532efcd4ebedf0c736103ad9e87b298475b60b9dee442";
         Assert.IsTrue(_client.IsValidHmac(query));
     }
 

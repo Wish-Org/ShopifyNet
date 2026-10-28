@@ -104,7 +104,7 @@ Set `online: true` to include `grant_options[]=per-user` for an online token. Of
 
 All OAuth token requests reject domains other than a plain `shop.myshopify.com` hostname before sending credentials. `ShopifyOAuthClient.IsValidShopDomain` also exposes this check for authorization redirects and callbacks.
 
-`oauthClient.IsValidHmac` verifies the OAuth query signature using the configured client secret and a constant-time comparison. Supply every URL-decoded query parameter, including `hmac`, without filtering fields or collapsing duplicates. It rejects missing, malformed or incorrect HMACs and duplicate keys. To prevent ambiguity in Shopify's decoded signing format, it also rejects `&` in keys or values and `=` in keys; use an OAuth state nonce without these delimiters. It does not validate the state nonce or timestamp freshness, and is not a webhook or app-proxy verifier.
+`oauthClient.IsValidHmac` verifies the OAuth query signature using the configured client secret and a constant-time comparison. Supply every URL-decoded query parameter, including `hmac`, without filtering fields or collapsing duplicates. It rejects missing, malformed or incorrect HMACs and duplicate keys. Before signing, it sorts the parameters and escapes `%` as `%25` and `&` as `%26` in keys and values, plus `=` as `%3D` in keys only. Other characters, including JSON punctuation, spaces and base64 padding, remain literal. This signing format is separate from URL encoding used to transport the callback. It does not validate the state nonce or timestamp freshness, and is not a webhook or app-proxy verifier.
 
 For example, in an ASP.NET Core controller callback, with `expectedState` retrieved from the initiating browser's session:
 
