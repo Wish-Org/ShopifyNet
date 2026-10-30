@@ -35,19 +35,9 @@ public sealed record ShopifyOnlineAccessToken
     /// </summary>
     public ShopifyAssociatedUser associated_user { get; init; }
 
-    internal DateTimeOffset RequestedAt { get; init; } = DateTimeOffset.UtcNow;
-
-    /// <summary>
-    /// When the access token expires, computed from <see cref="expires_in"/> and the request timestamp.
-    /// It is computed from the time the request was sent, so it is slightly earlier than the actual expiry.
-    /// The token also expires earlier if the user logs out of the Shopify admin.
-    /// Null when Shopify does not provide expires_in; no expiry date is inferred.
-    /// </summary>
-    public DateTimeOffset? ExpiresAt => expires_in is int expiresIn ? RequestedAt.AddSeconds(expiresIn) : null;
-
     //avoid leaking secrets and personal information into logs
     public override string ToString()
     {
-        return $"{nameof(ShopifyOnlineAccessToken)} {{ {nameof(scope)} = {scope}, {nameof(expires_in)} = {expires_in}, {nameof(ExpiresAt)} = {ExpiresAt:O}, {nameof(associated_user_scope)} = {associated_user_scope}, associated_user_id = {associated_user?.id} }}";
+        return $"{nameof(ShopifyOnlineAccessToken)} {{ {nameof(scope)} = {scope}, {nameof(expires_in)} = {expires_in}, {nameof(associated_user_scope)} = {associated_user_scope}, associated_user_id = {associated_user?.id} }}";
     }
 }
