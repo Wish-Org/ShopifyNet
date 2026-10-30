@@ -120,6 +120,8 @@ public class ShopifyOAuthClient
                 (isArray && key is "hmac" or "signature"))
                 return false;
             // A comma followed by a space is part of Shopify's signed array representation.
+            //https://github.com/nozzlegear/ShopifySharp/pull/437
+            //https://github.com/nozzlegear/ShopifySharp/issues/530
             var value = isArray ? "[\"" + string.Join("\", \"", values) + "\"]" : values[0];
             if (!parameters.TryAdd(key, value))
                 return false;
@@ -146,8 +148,9 @@ public class ShopifyOAuthClient
 
     private static string EncodeHmacQueryComponent(string value, bool isKey = false)
     {
-        //is this the only "manual" change from the HMAC algo? what about arrays?
-        //need more comments
+        // This method encodes query components for HMAC verification according to Shopify's requirements.
+        // See https://github.com/nozzlegear/ShopifySharp/blob/master/ShopifySharp/Utilities/ShopifyRequestValidationUtility.cs#L107
+        //     https://webkul.com/blog/hmac-validation-shopify-app/
         var encoded = value.Replace("%", "%25").Replace("&", "%26");
         return isKey ? encoded.Replace("=", "%3D") : encoded;
     }
