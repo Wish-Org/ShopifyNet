@@ -97,11 +97,12 @@ public class ShopifyOAuthClient
     /// <summary>
     /// Verifies the OAuth callback query's hexadecimal HMAC-SHA256 using the app's client secret.
     /// Supply all URL-decoded query parameters, including hmac, preserving any duplicates.
-    /// Parameters are sorted ordinally and joined as key=value pairs, excluding only hmac.
+    /// Parameters are sorted ordinally and joined as key=value pairs, excluding hmac and signature.
+    /// Repeated keys ending in [] represent arrays: ids[]=1 and ids[]=2 are signed as ids=["1", "2"].
+    /// Preserve array element order and supply each element as a separate key/value pair, even for one element.
     /// Escape % and &amp; in keys and values, and = in keys only. Other characters remain literal.
-    /// Duplicate keys, null values and invalid HMACs return false.
+    /// Duplicate scalar keys, conflicting scalar/array keys, null values and invalid HMACs return false.
     /// This checks authenticity only: separately validate the shop, stored state nonce and any timestamp freshness policy.
-    /// This method is not for webhook or app-proxy signatures.
     /// </summary>
     public bool IsValidHmac(IEnumerable<KeyValuePair<string, string>> queryParameters)
     {
@@ -109,10 +110,18 @@ public class ShopifyOAuthClient
             return false;
 
         var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var parameter in queryParameters)
+        foreach (var group in queryParameters.GroupBy(p => p.Key, StringComparer.Ordinal))
         {
-            if (string.IsNullOrEmpty(parameter.Key) || parameter.Value == null ||
-                !parameters.TryAdd(parameter.Key, parameter.Value))
+            var isArray = group.Key?.EndsWith("[]", StringComparison.Ordinal) == true;
+            // For arrays key names end with [], but the key used in the HMAC calculation omits the brackets.
+            var key = isArray ? group.Key[..^2] : group.Key;
+            var values = group.Select(p => p.Value).ToList();
+            if (string.IsNullOrEmpty(key) || values.Contains(null) || (!isArray && values.Count > 1) ||
+                (isArray && key is "hmac" or "signature"))
+                return false;
+            // A comma followed by a space is part of Shopify's signed array representation.
+            var value = isArray ? "[\"" + string.Join("\", \"", values) + "\"]" : values[0];
+            if (!parameters.TryAdd(key, value))
                 return false;
         }
 
@@ -129,14 +138,12 @@ public class ShopifyOAuthClient
             return false;
         }
 
-        var message = string.Join("&", parameters.Select(parameter =>
-            $"{EncodeHmacQueryComponent(parameter.Key, isKey: true)}={EncodeHmacQueryComponent(parameter.Value)}"));
+        var message = string.Join("&", parameters.Where(p => p.Key != "signature").Select(p =>
+            $"{EncodeHmacQueryComponent(p.Key, isKey: true)}={EncodeHmacQueryComponent(p.Value)}"));
         var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(_clientSecret), Encoding.UTF8.GetBytes(message));
         return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
     }
 
-    // HMAC canonicalization is not URL encoding: JSON punctuation and base64 padding stay literal.
-    // Escape % first so literal escape sequences remain distinct from escaped delimiters.
     private static string EncodeHmacQueryComponent(string value, bool isKey = false)
     {
         var encoded = value.Replace("%", "%25").Replace("&", "%26");

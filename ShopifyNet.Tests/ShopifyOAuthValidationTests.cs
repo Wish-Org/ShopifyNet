@@ -18,6 +18,10 @@ public class ShopifyOAuthValidationTests
         ["hmac"] = "eda4de7d2e9914fbc39294ca2ed6767d63a543c13a0f2fd54a9cee07cbeb3188",
     };
 
+    // Uppercase hex, unlike the lowercase fixtures, so hex parsing is covered in both cases.
+    private static string Sign(string message) => Convert.ToHexString(System.Security.Cryptography.HMACSHA256.HashData(
+        System.Text.Encoding.UTF8.GetBytes("client-secret"), System.Text.Encoding.UTF8.GetBytes(message)));
+
     [DataTestMethod]
     [DataRow("test-shop.myshopify.com", true)]
     [DataRow("SHOP-123.MYSHOPIFY.COM", true)]
@@ -67,6 +71,33 @@ public class ShopifyOAuthValidationTests
     {
         var query = ValidQuery();
         query["hmac"] = "27ec35edf2c692e2095a0e5f9970ff9b6ffe9acb06bbcf967bdfb1b0c500156d";
+        Assert.IsFalse(_client.IsValidHmac(query));
+    }
+
+    [DataTestMethod]
+    [DataRow("one", "two", "ids=[\"one\", \"two\"]")]
+    [DataRow("", "a&%=b", "ids=[\"\", \"a%26%25=b\"]")]
+    public void SignsArrayParametersInOriginalOrder(string first, string second, string message)
+    {
+        var query = new List<KeyValuePair<string, string>>
+        {
+            new("ids[]", first), new("hmac", Sign(message)), new("ids[]", second)
+        };
+        Assert.IsTrue(_client.IsValidHmac(query));
+        Assert.IsFalse(_client.IsValidHmac(query.AsEnumerable().Reverse()));
+        query[0] = new("ids[]", "tampered");
+        Assert.IsFalse(_client.IsValidHmac(query));
+    }
+
+    [TestMethod]
+    public void AcceptsSingleElementArray()
+    {
+        var query = new Dictionary<string, string> { ["ids[]"] = "one", ["hmac"] = Sign("ids=[\"one\"]") };
+        Assert.IsTrue(_client.IsValidHmac(query));
+        query["ids"] = "one";
+        Assert.IsFalse(_client.IsValidHmac(query));
+        query.Remove("ids");
+        query["ids[]"] = null;
         Assert.IsFalse(_client.IsValidHmac(query));
     }
 
