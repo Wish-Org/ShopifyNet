@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -27,8 +28,12 @@ public class ShopifyApplicationOnlyKeyPairTests
         CollectionAssert.AreEquivalent(new[] { "kty", "crv", "x", "y", "kid", "alg", "use" },
             jwk.EnumerateObject().Select(p => p.Name).ToArray());
 
-        var x = DecodeBase64Url(jwk.GetProperty("x").GetString());
-        var y = DecodeBase64Url(jwk.GetProperty("y").GetString());
+        var encodedX = jwk.GetProperty("x").GetString();
+        var encodedY = jwk.GetProperty("y").GetString();
+        Assert.IsFalse(encodedX.Contains('='), "JWK coordinates must not have base64 padding.");
+        Assert.IsFalse(encodedY.Contains('='), "JWK coordinates must not have base64 padding.");
+        var x = Base64Url.DecodeFromChars(encodedX);
+        var y = Base64Url.DecodeFromChars(encodedY);
         Assert.AreEqual(32, x.Length);
         Assert.AreEqual(32, y.Length);
         using var publicKey = ECDsa.Create();
@@ -60,10 +65,4 @@ public class ShopifyApplicationOnlyKeyPairTests
         Assert.ThrowsException<ArgumentException>(() => ShopifyApplicationOnlyKeys.GenerateKeyPair(new string('a', 256)));
     }
 
-    private static byte[] DecodeBase64Url(string value)
-    {
-        Assert.IsFalse(value.Contains('='), "JWK integers must not have base64 padding.");
-        var base64 = value.Replace('-', '+').Replace('_', '/');
-        return Convert.FromBase64String(base64.PadRight((base64.Length + 3) / 4 * 4, '='));
-    }
 }

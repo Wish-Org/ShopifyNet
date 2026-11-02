@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -26,8 +27,8 @@ public static class ShopifyApplicationOnlyKeys
         {
             kty = "EC",
             crv = "P-256",
-            x = Convert.ToBase64String(publicKey.Q.X).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
-            y = Convert.ToBase64String(publicKey.Q.Y).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
+            x = Base64Url.EncodeToString(publicKey.Q.X),
+            y = Base64Url.EncodeToString(publicKey.Q.Y),
             kid = keyId,
             alg = "ES256",
             use = "sig"

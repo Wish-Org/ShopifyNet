@@ -2,7 +2,8 @@ using ShopifyNet;
 
 if (args.Length != 1)
 {
-    Console.Error.WriteLine("Usage: dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-<keyId>");
+    // betterreports-2026-11 is an example key ID format used for Shopify application-only keys. The key ID must be unique across your application keys.
+    Console.Error.WriteLine("Usage example: dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-2026-11");
     return 1;
 }
 

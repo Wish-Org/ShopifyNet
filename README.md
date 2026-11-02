@@ -53,7 +53,7 @@ See unit tests for more examples.
 Generate a P-256 elliptic-curve key pair for ES256 signing, following [Shopify's application-only access token guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens):
 
 ```sh
-dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-<keyid>
+dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-2026-11
 ```
 
 The console prints an unencrypted PKCS#8 PEM private key and a public JWK containing `kty`, `crv`, `x`, `y`, `kid`, `alg`, and `use`. Paste only the JWK into **Dev Dashboard > Settings > Credentials > Public keys > Add key**. Store the private key securely for signing client assertions; do not commit it. Choose a key ID that is unique among your app's active keys, at most 255 characters, without surrounding whitespace. Every run generates a new key pair.
@@ -61,7 +61,7 @@ The console prints an unencrypted PKCS#8 PEM private key and a public JWK contai
 You can also call the generator from your own console application without app credentials:
 
 ```csharp
-var keys = ShopifyApplicationOnlyKeys.GenerateKeyPair("betterreports-<keyid>");
+var keys = ShopifyApplicationOnlyKeys.GenerateKeyPair("betterreports-2026-11");
 Console.WriteLine(keys.PrivateKeyPem);
 Console.WriteLine(keys.PublicKeyJwk);
 ```
@@ -85,10 +85,10 @@ The test creates a fresh ES256 assertion and exchanges it for an access token, t
 
 #### Acquire, migrate and refresh tokens
 
-Request an application-only access token using your registered key ID and securely stored P-256 private key:
+Request an application-only access token using your registered key ID and securely stored P-256 private key. No client secret is needed; pass an empty string to the existing constructor for this flow:
 
 ```csharp
-var oauthClient = new ShopifyOAuthClient(clientId, clientSecret);
+var oauthClient = new ShopifyOAuthClient(clientId, clientSecret: string.Empty);
 ShopifyClientAssertionAccessToken applicationToken = await oauthClient.RequestClientAssertionAccessTokenAsync(
     myShopifyDomain, keyId, privateKeyPem, cancellationToken);
 ```

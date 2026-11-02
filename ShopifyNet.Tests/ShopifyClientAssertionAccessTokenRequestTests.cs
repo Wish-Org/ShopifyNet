@@ -19,6 +19,7 @@ public class ShopifyClientAssertionAccessTokenRequestTests
         signingKey.ImportFromPem(keys.PrivateKeyPem);
         using var verificationKey = ECDsa.Create(signingKey.ExportParameters(false));
         var assertionIds = new HashSet<string>();
+        long issuedAt = 0;
         using var http = new TestHttpClient(request =>
         {
             Assert.AreEqual(HttpMethod.Post, request.Method);
@@ -38,7 +39,8 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             Assert.AreEqual("client-id", payload.RootElement.GetProperty("iss").GetString());
             Assert.AreEqual("client-id", payload.RootElement.GetProperty("sub").GetString());
             Assert.AreEqual(request.RequestUri.AbsoluteUri, payload.RootElement.GetProperty("aud").GetString());
-            Assert.AreEqual(60L, payload.RootElement.GetProperty("exp").GetInt64() - payload.RootElement.GetProperty("iat").GetInt64());
+            issuedAt = payload.RootElement.GetProperty("iat").GetInt64();
+            Assert.AreEqual(60L, payload.RootElement.GetProperty("exp").GetInt64() - issuedAt);
             Assert.IsTrue(assertionIds.Add(payload.RootElement.GetProperty("jti").GetString()), "Each call must use a new assertion ID.");
             Assert.IsTrue(verificationKey.VerifyData(Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]),
                 Base64Url.DecodeFromChars(parts[2]), HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
@@ -50,7 +52,11 @@ public class ShopifyClientAssertionAccessTokenRequestTests
         var client = new ShopifyOAuthClient("client-id", "unused-secret", http);
         for (var i = 0; i < 2; i++)
         {
+            var beforeRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var token = await client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "test-key", keys.PrivateKeyPem);
+            var afterRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            Assert.IsTrue(issuedAt >= beforeRequest && issuedAt <= afterRequest,
+                "Assertion iat must be the current UTC time in Unix seconds.");
             Assert.AreEqual("test-token", token.access_token);
             Assert.AreEqual(3600, token.expires_in);
         }
