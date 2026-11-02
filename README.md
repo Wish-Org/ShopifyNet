@@ -48,6 +48,28 @@ See unit tests for more examples.
 
 ### OAuth access tokens
 
+#### Generate an application-only signing key pair
+
+Generate a P-256 elliptic-curve key pair for ES256 signing, following [Shopify's application-only access token guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens):
+
+```sh
+dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-<keyid>
+```
+
+The console prints an unencrypted PKCS#8 PEM private key and a public JWK containing `kty`, `crv`, `x`, `y`, `kid`, `alg`, and `use`. Paste only the JWK into **Dev Dashboard > Settings > Credentials > Public keys > Add key**. Store the private key securely for signing client assertions; do not commit it. Choose a key ID that is unique among your app's active keys, at most 255 characters, without surrounding whitespace. Every run generates a new key pair.
+
+You can also call the generator from your own console application without app credentials:
+
+```csharp
+var keys = ShopifyApplicationOnlyKeys.GenerateKeyPair("betterreports-<keyid>");
+Console.WriteLine(keys.PrivateKeyPem);
+Console.WriteLine(keys.PublicKeyJwk);
+```
+
+This generates signing keys only; it does not register the public key or request an access token.
+
+#### Acquire, migrate and refresh tokens
+
 `ShopifyOAuthClient` calls the Shopify OAuth access token endpoint to acquire, migrate and refresh access tokens.
 Public apps must use [expiring offline access tokens](https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens) for the GraphQL Admin API from January 1, 2027.
 
