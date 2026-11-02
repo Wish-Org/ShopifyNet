@@ -364,8 +364,8 @@ public class ShopifyOAuthClient
 
         switch (token)
         {
-            case ShopifyClientAssertionAccessToken applicationToken:
-                if (string.IsNullOrWhiteSpace(applicationToken.access_token) || applicationToken.expires_in <= 0)
+            case ShopifyClientAssertionAccessToken clientAssertionAccessToken:
+                if (string.IsNullOrWhiteSpace(clientAssertionAccessToken.access_token) || clientAssertionAccessToken.expires_in <= 0)
                     throw new ShopifyOAuthException("An application-only token response must contain a usable access_token and positive expires_in.", response.StatusCode);
                 return token;
             case ShopifyOfflineAccessToken offlineToken:
