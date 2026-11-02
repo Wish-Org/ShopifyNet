@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,6 +26,8 @@ public class ShopifyOAuthClient
     private const string REDIRECT_URI_KEY = "redirect_uri";
     private const string STATE_KEY = "state";
     private const string GRANT_OPTIONS_KEY = "grant_options[]";
+    private const string CLIENT_ASSERTION_KEY = "client_assertion";
+    private const string CLIENT_ASSERTION_TYPE_KEY = "client_assertion_type";
 
     private const string EXPIRING_VALUE = "1";
     private const string REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
@@ -32,11 +35,15 @@ public class ShopifyOAuthClient
     private const string ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
     private const string OFFLINE_ACCESS_TOKEN_TYPE = "urn:shopify:params:oauth:token-type:offline-access-token";
     private const string ONLINE_ACCESS_TOKEN_TYPE = "urn:shopify:params:oauth:token-type:online-access-token";
+    private const string CLIENT_CREDENTIALS_GRANT_TYPE = "client_credentials";
+    private const string JWT_BEARER_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
     private static readonly HttpClient _defaultHttpClient = new(new SocketsHttpHandler
     {
         // Request and automatically decode compressed responses from Shopify.
-        AutomaticDecompression = DecompressionMethods.All
+        AutomaticDecompression = DecompressionMethods.All,
+        // Token requests must not forward credentials to a redirect target.
+        AllowAutoRedirect = false
     });
 
     private readonly string _clientId;
@@ -171,7 +178,7 @@ public class ShopifyOAuthClient
             [SUBJECT_TOKEN_TYPE_KEY] = OFFLINE_ACCESS_TOKEN_TYPE,
             [REQUESTED_TOKEN_TYPE_KEY] = OFFLINE_ACCESS_TOKEN_TYPE,
             [EXPIRING_KEY] = EXPIRING_VALUE,
-        }, cancellationToken);
+        }, true, cancellationToken);
     }
 
     /// <summary>
@@ -186,7 +193,7 @@ public class ShopifyOAuthClient
         {
             [GRANT_TYPE_KEY] = REFRESH_TOKEN_GRANT_TYPE,
             [REFRESH_TOKEN_KEY] = refreshToken,
-        }, cancellationToken);
+        }, true, cancellationToken);
     }
 
     /// <summary>
@@ -204,7 +211,7 @@ public class ShopifyOAuthClient
             [SUBJECT_TOKEN_TYPE_KEY] = ID_TOKEN_TYPE,
             [REQUESTED_TOKEN_TYPE_KEY] = OFFLINE_ACCESS_TOKEN_TYPE,
             [EXPIRING_KEY] = EXPIRING_VALUE,
-        }, cancellationToken);
+        }, true, cancellationToken);
     }
 
     /// <summary>
@@ -222,7 +229,7 @@ public class ShopifyOAuthClient
             [SUBJECT_TOKEN_KEY] = idToken,
             [SUBJECT_TOKEN_TYPE_KEY] = ID_TOKEN_TYPE,
             [REQUESTED_TOKEN_TYPE_KEY] = ONLINE_ACCESS_TOKEN_TYPE,
-        }, cancellationToken);
+        }, true, cancellationToken);
     }
 
     /// <summary>
@@ -239,7 +246,7 @@ public class ShopifyOAuthClient
         };
         if (expiring)
             parameters[EXPIRING_KEY] = EXPIRING_VALUE;
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, parameters, cancellationToken);
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, parameters, true, cancellationToken);
     }
 
     /// <summary>
@@ -254,19 +261,85 @@ public class ShopifyOAuthClient
         return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, new()
         {
             [CODE_KEY] = code,
-        }, cancellationToken);
+        }, true, cancellationToken);
     }
 
-    private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Dictionary<string, string> parameters, CancellationToken cancellationToken)
+    /// <summary>
+    /// Creates an ES256 client assertion for the shop's application-only access token request.
+    /// Uses the configured client ID and an unencrypted P-256 PEM private key; the client secret is not used.
+    /// The assertion expires after 60 seconds and contains a new jti on each call.
+    /// Create a fresh assertion for every token request, including retries. This is not an access token.
+    /// No HTTP request is sent. The matching public JWK must already be registered in Shopify with this key ID.
+    /// See https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-4-create-a-client-assertion
+    /// </summary>
+    private string CreateClientAssertion(string myShopifyDomain, string keyId, string privateKeyPem)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(_clientId);
+        ArgumentNullException.ThrowIfNull(myShopifyDomain);
+        if (!IsValidShopDomain(myShopifyDomain))
+            throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyId);
+        if (keyId.Length > 255 || keyId != keyId.Trim())
+            throw new ArgumentException("Key ID must be at most 255 characters and have no leading or trailing whitespace.", nameof(keyId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(privateKeyPem);
+
+        using var key = ECDsa.Create();
+        key.ImportFromPem(privateKeyPem);
+        if (key.ExportParameters(includePrivateParameters: false).Curve.Oid.Value != ECCurve.NamedCurves.nistP256.Oid.Value)
+            throw new ArgumentException("Expected a P-256 EC private key for ES256.", nameof(privateKeyPem));
+
+        var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var header = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new { alg = "ES256", kid = keyId }));
+        var payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            iss = _clientId,
+            sub = _clientId,
+            aud = $"https://{myShopifyDomain.ToLowerInvariant()}/admin/oauth/access_token",
+            iat = issuedAt,
+            exp = issuedAt + 60,
+            jti = Guid.NewGuid().ToString()
+        }));
+        var signingInput = $"{header}.{payload}";
+        var signature = key.SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256,
+            DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+        return $"{signingInput}.{Base64Url.EncodeToString(signature)}";
+    }
+
+    /// <summary>
+    /// Creates an ES256 client assertion and requests an application-only access token for an installed store.
+    /// Supply the registered key ID and matching unencrypted P-256 PEM private key.
+    /// Sends the client_credentials grant without the client secret. Each call creates a fresh assertion.
+    /// No automatic retries are performed; call this method again to retry. The returned token has no refresh token.
+    /// A supplied HttpClient must disable redirects and must not add Authorization headers or replay requests.
+    /// See https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-5-request-an-access-token
+    /// </summary>
+    public Task<ShopifyClientAssertionAccessToken> RequestClientAssertionAccessTokenAsync(
+        string myShopifyDomain, string keyId, string privateKeyPem, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_httpClient.DefaultRequestHeaders.Authorization != null)
+            throw new InvalidOperationException("Client assertion requests must not include an Authorization header.");
+        var clientAssertion = CreateClientAssertion(myShopifyDomain, keyId, privateKeyPem);
+        return RequestAccessTokenAsync<ShopifyClientAssertionAccessToken>(myShopifyDomain, new()
+        {
+            [GRANT_TYPE_KEY] = CLIENT_CREDENTIALS_GRANT_TYPE,
+            [CLIENT_ASSERTION_TYPE_KEY] = JWT_BEARER_ASSERTION_TYPE,
+            [CLIENT_ASSERTION_KEY] = clientAssertion
+        }, false, cancellationToken);
+    }
+
+    private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Dictionary<string, string> parameters,
+        bool includeClientSecret, CancellationToken cancellationToken)
         where T : class
     {
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
-        //The client secret must only be sent to a Shopify store hostname.
+        // Credentials must only be sent to a Shopify store hostname.
         if (!IsValidShopDomain(myShopifyDomain))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
 
         parameters[CLIENT_ID_KEY] = _clientId;
-        parameters[CLIENT_SECRET_KEY] = _clientSecret;
+        if (includeClientSecret)
+            parameters[CLIENT_SECRET_KEY] = _clientSecret;
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{myShopifyDomain}/admin/oauth/access_token")
         {
@@ -291,6 +364,10 @@ public class ShopifyOAuthClient
 
         switch (token)
         {
+            case ShopifyClientAssertionAccessToken applicationToken:
+                if (string.IsNullOrWhiteSpace(applicationToken.access_token) || applicationToken.expires_in <= 0)
+                    throw new ShopifyOAuthException("An application-only token response must contain a usable access_token and positive expires_in.", response.StatusCode);
+                return token;
             case ShopifyOfflineAccessToken offlineToken:
                 var expiringRequested = parameters.GetValueOrDefault(EXPIRING_KEY) == EXPIRING_VALUE ||
                     parameters.GetValueOrDefault(GRANT_TYPE_KEY) == REFRESH_TOKEN_GRANT_TYPE;
