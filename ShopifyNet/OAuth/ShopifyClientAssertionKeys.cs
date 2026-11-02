@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace ShopifyNet;
 
 /// <summary>
-/// Generates signing keys for Shopify application-only authentication.
+/// Generates signing keys for Shopify client assertion authentication.
 /// </summary>
 public static class ShopifyClientAssertionKeys
 {
