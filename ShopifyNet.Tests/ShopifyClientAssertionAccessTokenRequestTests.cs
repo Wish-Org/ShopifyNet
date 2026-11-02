@@ -11,13 +11,21 @@ namespace ShopifyNet.Tests;
 [TestClass]
 public class ShopifyClientAssertionAccessTokenRequestTests
 {
-    [TestMethod]
-    public async Task CreatesFreshSignedAssertionForEveryTokenRequest()
+    [DataTestMethod]
+    [DataRow("ES256", false)]
+    [DataRow("RS256", false)]
+    [DataRow("ES256", true)]
+    [DataRow("RS256", true)]
+    public async Task CreatesFreshSignedAssertionForEveryTokenRequest(string algorithm, bool useTraditionalPem)
     {
-        var keys = ShopifyApplicationOnlyKeys.GenerateKeyPair("test-key");
-        using var signingKey = ECDsa.Create();
+        var keys = ShopifyClientAssertionKeys.GenerateKeyPair("test-key", algorithm);
+        using AsymmetricAlgorithm signingKey = algorithm == "ES256" ? ECDsa.Create() : RSA.Create();
         signingKey.ImportFromPem(keys.PrivateKeyPem);
-        using var verificationKey = ECDsa.Create(signingKey.ExportParameters(false));
+        using AsymmetricAlgorithm verificationKey = signingKey is ECDsa ec
+            ? ECDsa.Create(ec.ExportParameters(false)) : RSA.Create(((RSA)signingKey).ExportParameters(false));
+        var pem = useTraditionalPem
+            ? signingKey is ECDsa ecKey ? ecKey.ExportECPrivateKeyPem() : ((RSA)signingKey).ExportRSAPrivateKeyPem()
+            : keys.PrivateKeyPem;
         var assertionIds = new HashSet<string>();
         long issuedAt = 0;
         using var http = new TestHttpClient(request =>
@@ -33,7 +41,7 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             var parts = form["client_assertion"].Split('.');
             Assert.AreEqual(3, parts.Length);
             using var header = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[0]));
-            Assert.AreEqual("ES256", header.RootElement.GetProperty("alg").GetString());
+            Assert.AreEqual(algorithm, header.RootElement.GetProperty("alg").GetString());
             Assert.AreEqual("test-key", header.RootElement.GetProperty("kid").GetString());
             using var payload = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[1]));
             Assert.AreEqual("client-id", payload.RootElement.GetProperty("iss").GetString());
@@ -42,8 +50,11 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             issuedAt = payload.RootElement.GetProperty("iat").GetInt64();
             Assert.AreEqual(60L, payload.RootElement.GetProperty("exp").GetInt64() - issuedAt);
             Assert.IsTrue(assertionIds.Add(payload.RootElement.GetProperty("jti").GetString()), "Each call must use a new assertion ID.");
-            Assert.IsTrue(verificationKey.VerifyData(Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]),
-                Base64Url.DecodeFromChars(parts[2]), HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation));
+            var data = Encoding.ASCII.GetBytes(parts[0] + "." + parts[1]);
+            var signature = Base64Url.DecodeFromChars(parts[2]);
+            Assert.IsTrue(verificationKey is ECDsa ecVerifier
+                ? ecVerifier.VerifyData(data, signature, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation)
+                : ((RSA)verificationKey).VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""{"access_token":"test-token","scope":"read_products","expires_in":3600}""")
@@ -53,7 +64,7 @@ public class ShopifyClientAssertionAccessTokenRequestTests
         for (var i = 0; i < 2; i++)
         {
             var beforeRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var token = await client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "test-key", keys.PrivateKeyPem);
+            var token = await client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "test-key", pem);
             var afterRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             Assert.IsTrue(issuedAt >= beforeRequest && issuedAt <= afterRequest,
                 "Assertion iat must be the current UTC time in Unix seconds.");
@@ -61,5 +72,30 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             Assert.AreEqual(3600, token.expires_in);
         }
         Assert.AreEqual(2, assertionIds.Count);
+    }
+
+    [TestMethod]
+    public async Task RejectsUnsupportedKeysBeforeSending()
+    {
+        using var http = new TestHttpClient(_ => throw new AssertFailedException("Invalid key must not be sent."));
+        var client = new ShopifyOAuthClient("client-id", string.Empty, http);
+        using var wrongCurve = ECDsa.Create(ECCurve.NamedCurves.nistP384);
+        using var smallRsa = RSA.Create(1024);
+        await Assert.ThrowsExceptionAsync<ArgumentException>(() => client.RequestClientAssertionAccessTokenAsync(
+            "test.myshopify.com", "key", wrongCurve.ExportPkcs8PrivateKeyPem()));
+        await Assert.ThrowsExceptionAsync<ArgumentException>(() => client.RequestClientAssertionAccessTokenAsync(
+            "test.myshopify.com", "key", smallRsa.ExportPkcs8PrivateKeyPem()));
+    }
+
+    [DataTestMethod]
+    [DataRow("ES256")]
+    [DataRow("RS256")]
+    public async Task RejectsPublicOnlyKeysBeforeSending(string algorithm)
+    {
+        using AsymmetricAlgorithm key = algorithm == "ES256" ? ECDsa.Create(ECCurve.NamedCurves.nistP256) : RSA.Create(2048);
+        using var http = new TestHttpClient(_ => throw new AssertFailedException("Public-only key must not be sent."));
+        var client = new ShopifyOAuthClient("client-id", string.Empty, http);
+        await Assert.ThrowsExceptionAsync<CryptographicException>(() => client.RequestClientAssertionAccessTokenAsync(
+            "test.myshopify.com", "key", key.ExportSubjectPublicKeyInfoPem()));
     }
 }

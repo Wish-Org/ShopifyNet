@@ -265,8 +265,8 @@ public class ShopifyOAuthClient
     }
 
     /// <summary>
-    /// Creates an ES256 client assertion for the shop's application-only access token request.
-    /// Uses the configured client ID and an unencrypted P-256 PEM private key; the client secret is not used.
+    /// Creates an ES256 or RS256 client assertion for the shop's application-only access token request.
+    /// Uses the configured client ID and an unencrypted P-256 or RSA PEM private key; the client secret is not used.
     /// The assertion expires after 60 seconds and contains a new jti on each call.
     /// Create a fresh assertion for every token request, including retries. This is not an access token.
     /// No HTTP request is sent. The matching public JWK must already be registered in Shopify with this key ID.
@@ -283,13 +283,11 @@ public class ShopifyOAuthClient
             throw new ArgumentException("Key ID must be at most 255 characters and have no leading or trailing whitespace.", nameof(keyId));
         ArgumentException.ThrowIfNullOrWhiteSpace(privateKeyPem);
 
-        using var key = ECDsa.Create();
-        key.ImportFromPem(privateKeyPem);
-        if (key.ExportParameters(includePrivateParameters: false).Curve.Oid.Value != ECCurve.NamedCurves.nistP256.Oid.Value)
-            throw new ArgumentException("Expected a P-256 EC private key for ES256.", nameof(privateKeyPem));
+        using var key = ImportClientAssertionKey(privateKeyPem);
+        var algorithm = key is RSA ? "RS256" : "ES256";
 
         var issuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var header = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new { alg = "ES256", kid = keyId }));
+        var header = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new { alg = algorithm, kid = keyId }));
         var payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
         {
             iss = _clientId,
@@ -300,14 +298,66 @@ public class ShopifyOAuthClient
             jti = Guid.NewGuid().ToString()
         }));
         var signingInput = $"{header}.{payload}";
-        var signature = key.SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256,
-            DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+        var data = Encoding.ASCII.GetBytes(signingInput);
+        var signature = key is RSA rsa
+            ? rsa.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            : ((ECDsa)key).SignData(data, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
         return $"{signingInput}.{Base64Url.EncodeToString(signature)}";
     }
 
+    private static AsymmetricAlgorithm ImportClientAssertionKey(string privateKeyPem)
+    {
+        const string importError = "Expected exactly one unencrypted P-256 EC or RSA (2048-8192 bit) PEM key. " +
+            "Use PKCS#8 PRIVATE KEY, EC PRIVATE KEY or RSA PRIVATE KEY format.";
+        var pem = privateKeyPem.AsSpan();
+        if (!PemEncoding.TryFind(pem, out var fields) ||
+            !pem[..fields.Location.Start].Trim().IsEmpty ||
+            !pem[fields.Location.End..].Trim().IsEmpty ||
+            pem[fields.Label].SequenceEqual("ENCRYPTED PRIVATE KEY"))
+            throw new ArgumentException(importError, nameof(privateKeyPem));
+
+        var rsa = RSA.Create();
+        try
+        {
+            rsa.ImportFromPem(privateKeyPem);
+        }
+        catch (Exception rsaException) when (rsaException is ArgumentException or CryptographicException)
+        {
+            rsa.Dispose();
+            var ec = ECDsa.Create();
+            try
+            {
+                ec.ImportFromPem(privateKeyPem);
+                if (ec.ExportParameters(includePrivateParameters: false).Curve.Oid.Value != ECCurve.NamedCurves.nistP256.Oid.Value)
+                    throw new ArgumentException("Expected a P-256 EC key for ES256 or a 2048-8192 bit RSA key for RS256.", nameof(privateKeyPem));
+                return ec;
+            }
+            catch (Exception ecException) when (ecException is ArgumentException or CryptographicException)
+            {
+                ec.Dispose();
+                throw new ArgumentException(importError, nameof(privateKeyPem),
+                    new AggregateException(rsaException, ecException));
+            }
+            catch
+            {
+                ec.Dispose();
+                throw;
+            }
+        }
+
+        if (rsa.KeySize is < 2048 or > 8192)
+        {
+            rsa.Dispose();
+            throw new ArgumentException("RSA keys for RS256 must be between 2048 and 8192 bits.", nameof(privateKeyPem));
+        }
+        return rsa;
+    }
+
     /// <summary>
-    /// Creates an ES256 client assertion and requests an application-only access token for an installed store.
-    /// Supply the registered key ID and matching unencrypted P-256 PEM private key.
+    /// Creates an ES256 or RS256 client assertion and requests an application-only access token for an installed store.
+    /// Supply the registered key ID and matching unencrypted P-256 or RSA (2048-8192 bit) PEM private key.
+    /// The signing algorithm is selected from the key type; PKCS#8, EC PRIVATE KEY and RSA PRIVATE KEY PEMs are supported.
+    /// Supply exactly one PEM block with optional surrounding whitespace; encrypted keys and bundles are rejected.
     /// Sends the client_credentials grant without the client secret. Each call creates a fresh assertion.
     /// No automatic retries are performed; call this method again to retry. The returned token has no refresh token.
     /// A supplied HttpClient must disable redirects and must not add Authorization headers or replay requests.

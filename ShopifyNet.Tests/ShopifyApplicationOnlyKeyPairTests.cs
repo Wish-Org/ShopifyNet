@@ -12,7 +12,7 @@ public class ShopifyApplicationOnlyKeyPairTests
     [TestMethod]
     public void GeneratedPublicJwkVerifiesPrivateKeySignature()
     {
-        var (privateKeyPem, publicKeyJwk) = ShopifyApplicationOnlyKeys.GenerateKeyPair("betterreports");
+        var (privateKeyPem, publicKeyJwk) = ShopifyClientAssertionKeys.GenerateKeyPair("betterreports", "ES256");
         using var privateKey = ECDsa.Create();
         privateKey.ImportFromPem(privateKeyPem);
         Assert.AreEqual(256, privateKey.KeySize);
@@ -55,14 +55,51 @@ public class ShopifyApplicationOnlyKeyPairTests
     [DataRow("key\n")]
     public void RejectsInvalidKeyIds(string keyId)
     {
-        Assert.ThrowsException<ArgumentException>(() => ShopifyApplicationOnlyKeys.GenerateKeyPair(keyId));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyClientAssertionKeys.GenerateKeyPair(keyId, "ES256"));
     }
 
     [TestMethod]
     public void RejectsNullAndOverlongKeyIds()
     {
-        Assert.ThrowsException<ArgumentNullException>(() => ShopifyApplicationOnlyKeys.GenerateKeyPair(null));
-        Assert.ThrowsException<ArgumentException>(() => ShopifyApplicationOnlyKeys.GenerateKeyPair(new string('a', 256)));
+        Assert.ThrowsException<ArgumentNullException>(() => ShopifyClientAssertionKeys.GenerateKeyPair(null, "ES256"));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyClientAssertionKeys.GenerateKeyPair(new string('a', 256), "ES256"));
     }
 
+    [TestMethod]
+    public void GeneratesRsa3072PublicJwkMatchingPrivateKey()
+    {
+        var keys = ShopifyClientAssertionKeys.GenerateKeyPair("rsa-key", "RS256");
+        using var privateKey = RSA.Create();
+        privateKey.ImportFromPem(keys.PrivateKeyPem);
+        Assert.AreEqual(3072, privateKey.KeySize);
+        StringAssert.StartsWith(keys.PrivateKeyPem, "-----BEGIN PRIVATE KEY-----");
+        using var json = JsonDocument.Parse(keys.PublicKeyJwk);
+        var jwk = json.RootElement;
+        CollectionAssert.AreEquivalent(new[] { "kty", "n", "e", "kid", "alg", "use" },
+            jwk.EnumerateObject().Select(p => p.Name).ToArray());
+        Assert.AreEqual("RSA", jwk.GetProperty("kty").GetString());
+        Assert.AreEqual("RS256", jwk.GetProperty("alg").GetString());
+        Assert.AreEqual("rsa-key", jwk.GetProperty("kid").GetString());
+        Assert.AreEqual("sig", jwk.GetProperty("use").GetString());
+        using var publicKey = RSA.Create(new RSAParameters
+        {
+            Modulus = Base64Url.DecodeFromChars(jwk.GetProperty("n").GetString()),
+            Exponent = Base64Url.DecodeFromChars(jwk.GetProperty("e").GetString())
+        });
+        var data = Encoding.UTF8.GetBytes("test assertion");
+        var signature = privateKey.SignData(data, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        Assert.IsTrue(publicKey.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+    }
+
+    [DataTestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    [DataRow("HS256")]
+    [DataRow("ES384")]
+    [DataRow("rs256")]
+    [DataRow(" RS256 ")]
+    public void RejectsUnsupportedAlgorithm(string algorithm)
+    {
+        Assert.ThrowsException<ArgumentException>(() => ShopifyClientAssertionKeys.GenerateKeyPair("key", algorithm));
+    }
 }
