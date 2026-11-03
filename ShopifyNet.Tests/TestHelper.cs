@@ -12,7 +12,7 @@ public class TestHelper
                         Environment.GetEnvironmentVariable("SHOPIFYNET_KEY_ID");
     public static async Task<string> GetAccessTokenAsync()
     {
-        var oauthClient = new ShopifyOAuthClient(ClientId, clientSecret: string.Empty);
+        var oauthClient = new ShopifyOAuthClient(ClientId, null);
         var token = await oauthClient.RequestClientAssertionAccessTokenAsync(ShopId, KeyId, PrivateKey);
         return token.access_token;
     }
