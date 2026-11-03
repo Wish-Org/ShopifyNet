@@ -401,8 +401,8 @@ public class ShopifyOAuthClient
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{myShopifyDomain}/admin/oauth/access_token")
         {
-            Version = HttpVersion.Version20,
-            VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+            Version = _httpClient.DefaultRequestVersion,
+            VersionPolicy = _httpClient.DefaultVersionPolicy,
             Content = new FormUrlEncodedContent(parameters)
         };
         request.Headers.Accept.ParseAdd("application/json");
