@@ -8,7 +8,14 @@ namespace ShopifyNet.Tests;
 [TestClass]
 public class ShopifyClientTests
 {
+    private static string _accessToken;
     private ShopifyClient _client;
+
+    [ClassInitialize]
+    public static async Task InitializeClass(TestContext context)
+    {
+        _accessToken = await TestHelper.GetAccessTokenAsync();
+    }
 
     [TestInitialize]
     public void Initialize()
@@ -18,7 +25,7 @@ public class ShopifyClientTests
 
     private static ShopifyClientOptions GetClientOptions(bool throwOnGraphQLErrors = true, bool requestDetailedQueryCost = false)
     {
-        return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
+        return new ShopifyClientOptions(TestHelper.ShopId, _accessToken)
         {
             Interceptor = NoOpInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>.Instance,
             ThrowOnGraphQLErrors = throwOnGraphQLErrors,
