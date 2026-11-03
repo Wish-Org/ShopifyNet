@@ -4,6 +4,16 @@ public class TestHelper
 {
     public static string ShopId => Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User) ??
                         Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID");
-    public static string Token => Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User) ??
-                        Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN");
+    public static string ClientId => Environment.GetEnvironmentVariable("SHOPIFYNET_CLIENT_ID", EnvironmentVariableTarget.User) ??
+                        Environment.GetEnvironmentVariable("SHOPIFYNET_CLIENT_ID");
+    public static string PrivateKey => Environment.GetEnvironmentVariable("SHOPIFYNET_PRIVATE_KEY", EnvironmentVariableTarget.User) ??
+                        Environment.GetEnvironmentVariable("SHOPIFYNET_PRIVATE_KEY");
+    public static string KeyId => Environment.GetEnvironmentVariable("SHOPIFYNET_KEY_ID", EnvironmentVariableTarget.User) ??
+                        Environment.GetEnvironmentVariable("SHOPIFYNET_KEY_ID");
+    public static async Task<string> GetAccessTokenAsync()
+    {
+        var oauthClient = new ShopifyOAuthClient(ClientId, clientSecret: string.Empty);
+        var token = await oauthClient.RequestClientAssertionAccessTokenAsync(ShopId, KeyId, PrivateKey);
+        return token.access_token;
+    }
 }

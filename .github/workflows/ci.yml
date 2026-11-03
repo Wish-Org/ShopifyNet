@@ -28,7 +28,9 @@ jobs:
             - name: Test
               env:
                   SHOPIFYNET_SHOP_ID: ${{ secrets.SHOPIFYNET_SHOP_ID }}
-                  SHOPIFYNET_SHOP_TOKEN: ${{ secrets.SHOPIFYNET_SHOP_TOKEN }}
+                  SHOPIFYNET_CLIENT_ID: ${{ secrets.SHOPIFYNET_CLIENT_ID }}
+                  SHOPIFYNET_KEY_ID: ${{ secrets.SHOPIFYNET_KEY_ID }}
+                  SHOPIFYNET_PRIVATE_KEY: ${{ secrets.SHOPIFYNET_PRIVATE_KEY }}
               run: dotnet test --no-restore --verbosity normal
 
             - name: Publish to nuget

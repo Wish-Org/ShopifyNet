@@ -40,10 +40,12 @@ var options = new GraphQLTypeGeneratorOptions
 var generator = new GraphQLTypeGenerator();
 string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
-    string shopId = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_ID", EnvironmentVariableTarget.User)!;
-    string token = Environment.GetEnvironmentVariable("SHOPIFYNET_SHOP_TOKEN", EnvironmentVariableTarget.User)!;
+    string shopId = GetRequiredEnvironmentVariable("SHOPIFYNET_SHOP_ID");
+    var oauthClient = new ShopifyOAuthClient(GetRequiredEnvironmentVariable("SHOPIFYNET_CLIENT_ID"), clientSecret: string.Empty);
+    var token = await oauthClient.RequestClientAssertionAccessTokenAsync(shopId,
+        GetRequiredEnvironmentVariable("SHOPIFYNET_KEY_ID"), GetRequiredEnvironmentVariable("SHOPIFYNET_PRIVATE_KEY"));
 
-    var shopifyOptions = new ShopifyClientOptions(shopId, token) as IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>;
+    var shopifyOptions = new ShopifyClientOptions(shopId, token.access_token) as IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>;
 
     var options = new GraphQLClientOptions(shopifyOptions.Uri)
     {
@@ -58,3 +60,8 @@ string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 File.WriteAllText($@"{GetDir()}/../ShopifyNet/Generated.cs", csharpCode);
 
 static string GetDir([CallerFilePath] string filePath = "") => Path.GetDirectoryName(filePath)!;
+
+static string GetRequiredEnvironmentVariable(string name) =>
+    Environment.GetEnvironmentVariable(name) ??
+    Environment.GetEnvironmentVariable(name, EnvironmentVariableTarget.User) ??
+    throw new InvalidOperationException($"Set {name} before running the type generator.");

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using GraphQLSharp;
@@ -14,21 +14,18 @@ public class TokenBucketInterceptorTests
 
     private ShopifyClientOptions CreateClientOptions(HttpStatusCode status, object response, IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> interceptor, bool throwOnGraphQLErrors = true)
     {
-        return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
+        var httpClient = new TestHttpClient(_ => new HttpResponseMessage
         {
-            Interceptor = interceptor,
-            ThrowOnGraphQLErrors = throwOnGraphQLErrors,
-            HttpClient = new TestHttpClient(msg => new HttpResponseMessage
-            {
-                StatusCode = status,
-                Content = JsonContent.Create(response)
-            })
-        };
+            StatusCode = status,
+            Content = JsonContent.Create(response)
+        });
+
+        return CreateClientOptions(httpClient, interceptor, throwOnGraphQLErrors);
     }
 
     private ShopifyClientOptions CreateClientOptions(HttpClient httpClient, IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> interceptor, bool throwOnGraphQLErrors = true)
     {
-        return new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
+        return new ShopifyClientOptions("test.myshopify.com", "test-token")
         {
             Interceptor = interceptor,
             ThrowOnGraphQLErrors = throwOnGraphQLErrors,
@@ -270,7 +267,7 @@ public class TokenBucketInterceptorTests
         int cost = 962;
         int priority = 0;
         var interceptor = new TokenBucketInterceptor(r => priority);
-        var options = new ShopifyClientOptions(TestHelper.ShopId, TestHelper.Token)
+        var options = new ShopifyClientOptions(TestHelper.ShopId, await TestHelper.GetAccessTokenAsync())
         {
             Interceptor = interceptor,
         };
