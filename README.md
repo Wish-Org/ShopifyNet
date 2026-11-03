@@ -48,6 +48,56 @@ See unit tests for more examples.
 
 ### OAuth access tokens
 
+#### Generate an application-only signing key pair
+
+Generate a P-256 key pair for ES256 or an RSA-3072 key pair for RS256, following [Shopify's application-only access token guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens):
+
+```sh
+dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-2026-11 ES256
+dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-rsa-2026-11 RS256
+```
+
+The console prints an unencrypted PKCS#8 PEM private key and a public JWK. ES256 keys contain `kty`, `crv`, `x`, and `y`; RS256 keys contain `kty`, `n`, and `e`. Both include `kid`, `alg`, and `use` metadata. Paste only the JWK into **Dev Dashboard > Settings > Credentials > Public keys > Add key**. Store the private key securely for signing client assertions; do not commit it. Choose a key ID that is unique among your app's active keys, at most 255 characters, without surrounding whitespace. Every run generates a new key pair.
+
+You can also call the generator from your own console application without app credentials:
+
+```csharp
+var keys = ShopifyClientAssertionKeys.GenerateKeyPair("betterreports-2026-11", "ES256");
+Console.WriteLine(keys.PrivateKeyPem);
+Console.WriteLine(keys.PublicKeyJwk);
+```
+
+Both the library method and console command require two arguments: the key ID and signing algorithm (`ES256` or `RS256`, case-sensitive). This generates signing keys only; it does not register the public key or request an access token.
+
+#### Run the application-only integration test
+
+Install your app on a development store and register the public JWK in Shopify first. Set these variables in PowerShell, using the key ID registered with the matching P-256 or RSA private key:
+
+```powershell
+$env:SHOPIFYNET_RUN_OAUTH_INTEGRATION_TESTS = "1"
+$env:SHOPIFYNET_SHOP_ID = "your-store.myshopify.com"
+$env:SHOPIFYNET_CLIENT_ID = "your-client-id"
+$env:SHOPIFYNET_KEY_ID = "your-registered-key-id"
+$env:SHOPIFYNET_PRIVATE_KEY_PATH = "C:\secure\private.pem"
+dotnet test ShopifyNet.Tests --framework net10.0 --filter FullyQualifiedName~ShopifyClientAssertionIntegrationTests
+```
+
+The test creates a fresh ES256 or RS256 assertion and exchanges it for an access token, then checks the token, scopes, and positive expiry. No client secret is needed. It skips unless explicitly enabled and does not print the key, assertion, or token. Remove the opt-in variable afterward with `Remove-Item Env:SHOPIFYNET_RUN_OAUTH_INTEGRATION_TESTS`.
+
+#### Acquire, migrate and refresh tokens
+
+Request an application-only access token using your registered key ID and securely stored P-256 or RSA private key. No client secret is needed; pass an empty string to the existing constructor for this flow:
+
+```csharp
+var oauthClient = new ShopifyOAuthClient(clientId, clientSecret: string.Empty);
+ShopifyClientAssertionAccessToken applicationToken = await oauthClient.RequestClientAssertionAccessTokenAsync(
+    myShopifyDomain, keyId, privateKeyPem, cancellationToken);
+```
+
+`RequestClientAssertionAccessTokenAsync` creates a fresh ES256 or RS256 assertion internally, with the store's token endpoint as its audience, a 60-second lifetime, and a unique `jti`. It selects ES256 for P-256 keys and RS256 for RSA keys (2048–8192 bits), rejecting unsupported keys. Unencrypted PKCS#8, EC PRIVATE KEY, and RSA PRIVATE KEY PEM formats are supported. Supply exactly one PEM block with optional surrounding whitespace; encrypted keys, multiple blocks, and additional non-whitespace content are rejected. It sends the assertion using the `client_credentials` grant and configured client ID, without a client secret or scope parameter, as described in [Shopify's guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-5-request-an-access-token).
+
+Use `applicationToken.access_token` for GraphQL requests and its returned `expires_in` to determine when to request a new token. There is no refresh token. The method does not retry automatically: call it again to retry with a fresh assertion. The default HTTP client rejects redirects; if supplying your own `HttpClient`, disable redirects and automatic retries and do not configure an Authorization header.
+
 `ShopifyOAuthClient` calls the Shopify OAuth access token endpoint to acquire, migrate and refresh access tokens.
 Public apps must use [expiring offline access tokens](https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens) for the GraphQL Admin API from January 1, 2027.
 

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNet.TypeGenerator", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNet.Tests", "ShopifyNet.Tests\ShopifyNet.Tests.csproj", "{97D9E168-6634-46D5-B4E2-AA568B504993}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShopifyNet.KeyGenerator", "ShopifyNet.KeyPairGenerator\ShopifyNet.KeyGenerator.csproj", "{95FC6A79-52F2-4295-A5FD-20C6752E37BB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{97D9E168-6634-46D5-B4E2-AA568B504993}.Release|x64.Build.0 = Release|Any CPU
 		{97D9E168-6634-46D5-B4E2-AA568B504993}.Release|x86.ActiveCfg = Release|Any CPU
 		{97D9E168-6634-46D5-B4E2-AA568B504993}.Release|x86.Build.0 = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|x64.Build.0 = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Debug|x86.Build.0 = Debug|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|x64.ActiveCfg = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|x64.Build.0 = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|x86.ActiveCfg = Release|Any CPU
+		{95FC6A79-52F2-4295-A5FD-20C6752E37BB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
