@@ -53,7 +53,8 @@ public class ShopifyOAuthClient
     public ShopifyOAuthClient(string clientId, string clientSecret, HttpClient httpClient = null)
     {
         _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
-        _clientSecret = clientSecret ?? throw new ArgumentNullException(nameof(clientSecret));
+        // The client secret can be null for certain flows, such as client assertion.
+        _clientSecret = clientSecret;
         _httpClient = httpClient ?? _defaultHttpClient;
     }
 
@@ -113,6 +114,9 @@ public class ShopifyOAuthClient
     /// </summary>
     public bool IsValidHmac(IEnumerable<KeyValuePair<string, string>> queryParameters)
     {
+        if (_clientSecret == null)
+            throw new ArgumentNullException(nameof(_clientSecret));
+
         if (queryParameters == null)
             return false;
 
@@ -389,7 +393,11 @@ public class ShopifyOAuthClient
 
         parameters[CLIENT_ID_KEY] = _clientId;
         if (includeClientSecret)
+        {
+            if (_clientSecret == null)
+                throw new ArgumentNullException(nameof(_clientSecret));
             parameters[CLIENT_SECRET_KEY] = _clientSecret;
+        }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{myShopifyDomain}/admin/oauth/access_token")
         {
