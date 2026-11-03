@@ -12,6 +12,8 @@ public class ShopifyOAuthClientIntegrationTests
 {
     private ShopifyOAuthClient _client;
     private string _shop;
+    private string _clientId;
+    private string _clientSecret;
 
     [TestInitialize]
     public void Initialize()
@@ -23,9 +25,9 @@ public class ShopifyOAuthClientIntegrationTests
         Assert.IsTrue(Uri.CheckHostName(_shop) == UriHostNameType.Dns &&
                       _shop.EndsWith(".myshopify.com", StringComparison.OrdinalIgnoreCase),
                       "SHOPIFYNET_SHOP_ID must be a plain store.myshopify.com hostname.");
-        _client = new ShopifyOAuthClient(
-            RequireEnvironmentVariable("SHOPIFYNET_CLIENT_ID"),
-            RequireEnvironmentVariable("SHOPIFYNET_CLIENT_SECRET"));
+        _client = new ShopifyOAuthClient();
+        _clientId = RequireEnvironmentVariable("SHOPIFYNET_CLIENT_ID");
+        _clientSecret = RequireEnvironmentVariable("SHOPIFYNET_CLIENT_SECRET");
     }
 
     [TestMethod]
@@ -33,7 +35,7 @@ public class ShopifyOAuthClientIntegrationTests
     {
         var original = RequireEnvironmentVariable("SHOPIFYNET_NON_EXPIRING_ACCESS_TOKEN");
 
-        var token = await _client.MigrateToExpiringOfflineAccessTokenAsync(_shop, original);
+        var token = await _client.MigrateToExpiringOfflineAccessTokenAsync(_clientId, _clientSecret, _shop, original);
 
         AssertOfflineToken(token);
         Assert.IsFalse(token.access_token == original, "Migration should issue a new access token.");
@@ -44,7 +46,7 @@ public class ShopifyOAuthClientIntegrationTests
     {
         var original = RequireEnvironmentVariable("SHOPIFYNET_REFRESH_TOKEN");
 
-        var token = await _client.RefreshOfflineAccessTokenAsync(_shop, original);
+        var token = await _client.RefreshOfflineAccessTokenAsync(_clientId, _clientSecret, _shop, original);
 
         AssertOfflineToken(token);
         // Use a boolean assertion so a failure cannot print either secret.
@@ -56,7 +58,7 @@ public class ShopifyOAuthClientIntegrationTests
     {
         var idToken = RequireEnvironmentVariable("SHOPIFYNET_ID_TOKEN");
 
-        var token = await _client.ExchangeIdTokenForOfflineAccessTokenAsync(_shop, idToken);
+        var token = await _client.ExchangeIdTokenForOfflineAccessTokenAsync(_clientId, _clientSecret, _shop, idToken);
 
         AssertOfflineToken(token);
     }
@@ -66,7 +68,7 @@ public class ShopifyOAuthClientIntegrationTests
     {
         var idToken = RequireEnvironmentVariable("SHOPIFYNET_ID_TOKEN");
 
-        var token = await _client.ExchangeIdTokenForOnlineAccessTokenAsync(_shop, idToken);
+        var token = await _client.ExchangeIdTokenForOnlineAccessTokenAsync(_clientId, _clientSecret, _shop, idToken);
 
         AssertOnlineToken(token);
     }
@@ -77,7 +79,7 @@ public class ShopifyOAuthClientIntegrationTests
         // Use a fresh code from a validated callback without grant_options[]=per-user.
         var code = RequireEnvironmentVariable("SHOPIFYNET_OFFLINE_AUTHORIZATION_CODE");
 
-        var token = await _client.ExchangeCodeForOfflineAccessTokenAsync(_shop, code, true);
+        var token = await _client.ExchangeCodeForOfflineAccessTokenAsync(_clientId, _clientSecret, _shop, code, true);
 
         AssertOfflineToken(token);
     }
@@ -87,7 +89,7 @@ public class ShopifyOAuthClientIntegrationTests
     {
         var code = RequireEnvironmentVariable("SHOPIFYNET_NON_EXPIRING_OFFLINE_AUTHORIZATION_CODE");
 
-        var token = await _client.ExchangeCodeForOfflineAccessTokenAsync(_shop, code, expiring: false);
+        var token = await _client.ExchangeCodeForOfflineAccessTokenAsync(_clientId, _clientSecret, _shop, code, expiring: false);
 
         Assert.IsNotNull(token);
         Assert.IsFalse(string.IsNullOrWhiteSpace(token.access_token), "Missing access token.");
@@ -103,7 +105,7 @@ public class ShopifyOAuthClientIntegrationTests
         // Use a separate fresh code from a validated callback with grant_options[]=per-user.
         var code = RequireEnvironmentVariable("SHOPIFYNET_ONLINE_AUTHORIZATION_CODE");
 
-        var token = await _client.ExchangeCodeForOnlineAccessTokenAsync(_shop, code);
+        var token = await _client.ExchangeCodeForOnlineAccessTokenAsync(_clientId, _clientSecret, _shop, code);
 
         AssertOnlineToken(token);
     }

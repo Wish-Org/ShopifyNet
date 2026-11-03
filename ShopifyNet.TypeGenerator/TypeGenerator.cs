@@ -41,8 +41,8 @@ var generator = new GraphQLTypeGenerator();
 string csharpCode = await generator.GenerateTypesAsync(options, async query =>
 {
     string shopId = GetRequiredEnvironmentVariable("SHOPIFYNET_SHOP_ID");
-    var oauthClient = new ShopifyOAuthClient(GetRequiredEnvironmentVariable("SHOPIFYNET_CLIENT_ID"), null);
-    var token = await oauthClient.RequestClientAssertionAccessTokenAsync(shopId,
+    var oauthClient = new ShopifyOAuthClient();
+    var token = await oauthClient.RequestClientAssertionAccessTokenAsync(GetRequiredEnvironmentVariable("SHOPIFYNET_CLIENT_ID"), shopId,
         GetRequiredEnvironmentVariable("SHOPIFYNET_KEY_ID"), GetRequiredEnvironmentVariable("SHOPIFYNET_PRIVATE_KEY"));
 
     var shopifyOptions = new ShopifyClientOptions(shopId, token.access_token) as IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>;

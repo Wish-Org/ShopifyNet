@@ -48,6 +48,10 @@ See unit tests for more examples.
 
 ### OAuth access tokens
 
+`ShopifyOAuthClient` retains only HTTP transport configuration. Supply the client ID and, where required, client secret to each operation. This avoids requiring unused credentials and lets one instance serve multiple apps. `BuildAuthorizationUrl` and `IsValidHmac` are static helpers.
+
+**Breaking API change:** replace `new ShopifyOAuthClient(clientId, clientSecret, httpClient)` with `new ShopifyOAuthClient(httpClient)`, move credentials to the token method calls, and invoke the helpers on `ShopifyOAuthClient` as shown below. Token response types are unchanged.
+
 #### Generate an application-only signing key pair
 
 Generate a P-256 key pair for ES256 or an RSA-3072 key pair for RS256, following [Shopify's application-only access token guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens):
@@ -86,15 +90,15 @@ The test creates a fresh ES256 or RS256 assertion and exchanges it for an access
 
 #### Acquire, migrate and refresh tokens
 
-Request an application-only access token using your registered key ID and securely stored P-256 or RSA private key. No client secret is needed; pass an empty string to the existing constructor for this flow:
+Request an application-only access token using your registered key ID and securely stored P-256 or RSA private key. No client secret is needed. Credentials are passed to each operation; the constructor accepts only an optional `HttpClient`:
 
 ```csharp
-var oauthClient = new ShopifyOAuthClient(clientId, clientSecret: string.Empty);
+var oauthClient = new ShopifyOAuthClient();
 ShopifyClientAssertionAccessToken applicationToken = await oauthClient.RequestClientAssertionAccessTokenAsync(
-    myShopifyDomain, keyId, privateKeyPem, cancellationToken);
+    clientId, myShopifyDomain, keyId, privateKeyPem, cancellationToken);
 ```
 
-`RequestClientAssertionAccessTokenAsync` creates a fresh ES256 or RS256 assertion internally, with the store's token endpoint as its audience, a 60-second lifetime, and a unique `jti`. It selects ES256 for P-256 keys and RS256 for RSA keys (2048–8192 bits), rejecting unsupported keys. Unencrypted PKCS#8, EC PRIVATE KEY, and RSA PRIVATE KEY PEM formats are supported. Supply exactly one PEM block with optional surrounding whitespace; encrypted keys, multiple blocks, and additional non-whitespace content are rejected. It sends the assertion using the `client_credentials` grant and configured client ID, without a client secret or scope parameter, as described in [Shopify's guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-5-request-an-access-token).
+`RequestClientAssertionAccessTokenAsync` creates a fresh ES256 or RS256 assertion internally, with the store's token endpoint as its audience, a 60-second lifetime, and a unique `jti`. It selects ES256 for P-256 keys and RS256 for RSA keys (2048–8192 bits), rejecting unsupported keys. Unencrypted PKCS#8, EC PRIVATE KEY, and RSA PRIVATE KEY PEM formats are supported. Supply exactly one PEM block with optional surrounding whitespace; encrypted keys, multiple blocks, and additional non-whitespace content are rejected. It sends the assertion using the `client_credentials` grant and supplied client ID, without a client secret or scope parameter, as described in [Shopify's guide](https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-5-request-an-access-token).
 
 Use `applicationToken.access_token` for GraphQL requests and its returned `expires_in` to determine when to request a new token. There is no refresh token. The method does not retry automatically: call it again to retry with a fresh assertion. The default HTTP client rejects redirects; if supplying your own `HttpClient`, disable redirects and automatic retries and do not configure an Authorization header.
 
@@ -102,26 +106,26 @@ Use `applicationToken.access_token` for GraphQL requests and its returned `expir
 Public apps must use [expiring offline access tokens](https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens) for the GraphQL Admin API from January 1, 2027.
 
 ```csharp
-var oauthClient = new ShopifyOAuthClient(clientId, clientSecret);
+var oauthClient = new ShopifyOAuthClient();
 
 //migrate a non-expiring offline token. The old token is invalidated, so the new token must be persisted.
-ShopifyOfflineAccessToken token = await oauthClient.MigrateToExpiringOfflineAccessTokenAsync(myShopifyDomain, nonExpiringToken);
+ShopifyOfflineAccessToken token = await oauthClient.MigrateToExpiringOfflineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, nonExpiringToken);
 
 //refresh before expires_in seconds have elapsed since acquisition. The refresh token is rotated, so the new token must be persisted.
-token = await oauthClient.RefreshOfflineAccessTokenAsync(myShopifyDomain, token.refresh_token);
+token = await oauthClient.RefreshOfflineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, token.refresh_token);
 
 //exchange a validated ID (session) token for an expiring offline or an online access token
-token = await oauthClient.ExchangeIdTokenForOfflineAccessTokenAsync(myShopifyDomain, idToken);
-ShopifyOnlineAccessToken onlineToken = await oauthClient.ExchangeIdTokenForOnlineAccessTokenAsync(myShopifyDomain, idToken);
+token = await oauthClient.ExchangeIdTokenForOfflineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, idToken);
+ShopifyOnlineAccessToken onlineToken = await oauthClient.ExchangeIdTokenForOnlineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, idToken);
 
 //exchange an authorization code from a validated OAuth callback for an expiring offline token
-token = await oauthClient.ExchangeCodeForOfflineAccessTokenAsync(myShopifyDomain, offlineCode, expiring: true);
+token = await oauthClient.ExchangeCodeForOfflineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, offlineCode, expiring: true);
 
 //request a non-expiring offline token instead (using a separate authorization code)
-token = await oauthClient.ExchangeCodeForOfflineAccessTokenAsync(myShopifyDomain, nonExpiringOfflineCode, expiring: false);
+token = await oauthClient.ExchangeCodeForOfflineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, nonExpiringOfflineCode, expiring: false);
 
 //for an online token, the authorization URL must have included grant_options[]=per-user
-onlineToken = await oauthClient.ExchangeCodeForOnlineAccessTokenAsync(myShopifyDomain, onlineCode);
+onlineToken = await oauthClient.ExchangeCodeForOnlineAccessTokenAsync(clientId, clientSecret, myShopifyDomain, onlineCode);
 
 var client = new ShopifyClient(myShopifyDomain, token.access_token);
 ```
@@ -134,13 +138,13 @@ For the [authorization code flow](https://shopify.dev/docs/apps/build/authentica
 
 ### Build an authorization URL
 
-Use `BuildAuthorizationUrl` to start the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps). It validates the shop domain, URL-encodes the parameters and uses the client ID configured on `ShopifyOAuthClient`. It makes no network request and never includes the client secret.
+Use `BuildAuthorizationUrl` to start the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps). It validates the shop domain, URL-encodes the parameters and uses the supplied client ID. It makes no network request and never includes the client secret.
 
 ```csharp
 var state = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 // Store state in the initiating browser's session before redirecting.
-var authorizationUrl = oauthClient.BuildAuthorizationUrl(
-    myShopifyDomain,
+var authorizationUrl = ShopifyOAuthClient.BuildAuthorizationUrl(
+    clientId, myShopifyDomain,
     scopes: "read_products,write_orders",
     redirectUri: "https://your-app.example.com/oauth/callback",
     state: state,
@@ -154,7 +158,7 @@ Set `online: true` to include `grant_options[]=per-user` for an online token. Of
 
 All OAuth token requests reject domains other than a plain `shop.myshopify.com` hostname before sending credentials. `ShopifyOAuthClient.IsValidShopDomain` also exposes this check for authorization redirects and callbacks.
 
-`oauthClient.IsValidHmac` verifies the OAuth query signature using the configured client secret and a constant-time comparison. Supply every URL-decoded query parameter, including `hmac`, without filtering fields or collapsing duplicates. It rejects missing, malformed or incorrect HMACs and duplicate keys. Before signing, it sorts the parameters and escapes `%` as `%25` and `&` as `%26` in keys and values, plus `=` as `%3D` in keys only. Other characters, including JSON punctuation, spaces and base64 padding, remain literal. This signing format is separate from URL encoding used to transport the callback. It does not validate the state nonce or timestamp freshness, and is not a webhook or app-proxy verifier.
+`ShopifyOAuthClient.IsValidHmac` verifies the OAuth query signature using the supplied client secret and a constant-time comparison. Supply every URL-decoded query parameter, including `hmac`, without filtering fields or collapsing duplicates. It rejects missing, malformed or incorrect HMACs and duplicate keys. Before signing, it sorts the parameters and escapes `%` as `%25` and `&` as `%26` in keys and values, plus `=` as `%3D` in keys only. Other characters, including JSON punctuation, spaces and base64 padding, remain literal. This signing format is separate from URL encoding used to transport the callback. It does not validate the state nonce or timestamp freshness, and is not a webhook or app-proxy verifier.
 
 For example, in an ASP.NET Core controller callback, with `expectedState` retrieved from the initiating browser's session:
 
@@ -164,7 +168,7 @@ var parameters = Request.Query
     .ToArray();
 var shop = Request.Query["shop"].ToString();
 
-if (!oauthClient.IsValidHmac(parameters) || !ShopifyOAuthClient.IsValidShopDomain(shop))
+if (!ShopifyOAuthClient.IsValidHmac(parameters, clientSecret) || !ShopifyOAuthClient.IsValidShopDomain(shop))
     return Unauthorized();
 
 if (string.IsNullOrEmpty(expectedState) || Request.Query["state"].ToString() != expectedState)
@@ -172,5 +176,5 @@ if (string.IsNullOrEmpty(expectedState) || Request.Query["state"].ToString() != 
 
 // Consume the stored state so it cannot be reused, then exchange the signed code.
 var token = await oauthClient.ExchangeCodeForOfflineAccessTokenAsync(
-    shop, Request.Query["code"].ToString(), expiring: true);
+    clientId, clientSecret, shop, Request.Query["code"].ToString(), expiring: true);
 ```
