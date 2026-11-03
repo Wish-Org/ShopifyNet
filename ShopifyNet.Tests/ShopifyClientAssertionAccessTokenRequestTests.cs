@@ -95,7 +95,15 @@ public class ShopifyClientAssertionAccessTokenRequestTests
         using AsymmetricAlgorithm key = algorithm == "ES256" ? ECDsa.Create(ECCurve.NamedCurves.nistP256) : RSA.Create(2048);
         using var http = new TestHttpClient(_ => throw new AssertFailedException("Public-only key must not be sent."));
         var client = new ShopifyOAuthClient("client-id", string.Empty, http);
-        await Assert.ThrowsExceptionAsync<CryptographicException>(() => client.RequestClientAssertionAccessTokenAsync(
-            "test.myshopify.com", "key", key.ExportSubjectPublicKeyInfoPem()));
+        try
+        {
+            await client.RequestClientAssertionAccessTokenAsync(
+                "test.myshopify.com", "key", key.ExportSubjectPublicKeyInfoPem());
+            Assert.Fail("A public-only key must fail signing.");
+        }
+        catch (CryptographicException)
+        {
+            // Accept platform-specific subclasses, including OpenSSL exceptions on Linux.
+        }
     }
 }
