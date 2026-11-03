@@ -44,7 +44,11 @@ public class ShopifyOAuthClient
         AutomaticDecompression = DecompressionMethods.All,
         // Token requests must not forward credentials to a redirect target.
         AllowAutoRedirect = false
-    });
+    })
+    {
+        DefaultRequestVersion = HttpVersion.Version20,
+        DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+    };
 
     private readonly string _clientId;
     private readonly string _clientSecret;
