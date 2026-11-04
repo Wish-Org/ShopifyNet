@@ -22,9 +22,9 @@ public class ShopifyClientAssertionIntegrationTests
         var privateKeyPem = await File.ReadAllTextAsync(privateKeyPath);
 
         // Application-only authentication does not use the client secret.
-        var client = new ShopifyOAuthClient(clientId, clientSecret: string.Empty);
+        var client = new ShopifyOAuthClient();
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var token = await client.RequestClientAssertionAccessTokenAsync(shop, keyId, privateKeyPem, timeout.Token);
+        var token = await client.RequestClientAssertionAccessTokenAsync(clientId, shop, keyId, privateKeyPem, timeout.Token);
 
         Assert.IsNotNull(token);
         // Boolean assertions avoid printing the assertion, private key or returned token on failure.

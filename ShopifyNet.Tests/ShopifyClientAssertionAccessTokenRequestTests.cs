@@ -28,6 +28,7 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             : keys.PrivateKeyPem;
         var assertionIds = new HashSet<string>();
         long issuedAt = 0;
+        var clientId = "client-id";
         using var http = new TestHttpClient(request =>
         {
             Assert.AreEqual(HttpMethod.Post, request.Method);
@@ -35,7 +36,7 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             var form = HttpUtility.ParseQueryString(request.Content.ReadAsStringAsync().GetAwaiter().GetResult());
             Assert.AreEqual(4, form.Count);
             Assert.AreEqual("client_credentials", form["grant_type"]);
-            Assert.AreEqual("client-id", form["client_id"]);
+            Assert.AreEqual(clientId, form["client_id"]);
             Assert.AreEqual("urn:ietf:params:oauth:client-assertion-type:jwt-bearer", form["client_assertion_type"]);
             Assert.IsNull(form["client_secret"]);
             var parts = form["client_assertion"].Split('.');
@@ -44,8 +45,8 @@ public class ShopifyClientAssertionAccessTokenRequestTests
             Assert.AreEqual(algorithm, header.RootElement.GetProperty("alg").GetString());
             Assert.AreEqual("test-key", header.RootElement.GetProperty("kid").GetString());
             using var payload = JsonDocument.Parse(Base64Url.DecodeFromChars(parts[1]));
-            Assert.AreEqual("client-id", payload.RootElement.GetProperty("iss").GetString());
-            Assert.AreEqual("client-id", payload.RootElement.GetProperty("sub").GetString());
+            Assert.AreEqual(clientId, payload.RootElement.GetProperty("iss").GetString());
+            Assert.AreEqual(clientId, payload.RootElement.GetProperty("sub").GetString());
             Assert.AreEqual(request.RequestUri.AbsoluteUri, payload.RootElement.GetProperty("aud").GetString());
             issuedAt = payload.RootElement.GetProperty("iat").GetInt64();
             Assert.AreEqual(60L, payload.RootElement.GetProperty("exp").GetInt64() - issuedAt);
@@ -60,11 +61,12 @@ public class ShopifyClientAssertionAccessTokenRequestTests
                 Content = new StringContent("""{"access_token":"test-token","scope":"read_products","expires_in":3600}""")
             };
         });
-        var client = new ShopifyOAuthClient("client-id", "unused-secret", http);
+        var client = new ShopifyOAuthClient(http);
         for (var i = 0; i < 2; i++)
         {
+            clientId = $"client-{i}";
             var beforeRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var token = await client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "test-key", pem);
+            var token = await client.RequestClientAssertionAccessTokenAsync(clientId, "test.myshopify.com", "test-key", pem);
             var afterRequest = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             Assert.IsTrue(issuedAt >= beforeRequest && issuedAt <= afterRequest,
                 "Assertion iat must be the current UTC time in Unix seconds.");
@@ -78,13 +80,13 @@ public class ShopifyClientAssertionAccessTokenRequestTests
     public async Task RejectsUnsupportedKeysBeforeSending()
     {
         using var http = new TestHttpClient(_ => throw new AssertFailedException("Invalid key must not be sent."));
-        var client = new ShopifyOAuthClient("client-id", string.Empty, http);
+        var client = new ShopifyOAuthClient(http);
         using var wrongCurve = ECDsa.Create(ECCurve.NamedCurves.nistP384);
         using var smallRsa = RSA.Create(1024);
         await Assert.ThrowsExceptionAsync<ArgumentException>(() => client.RequestClientAssertionAccessTokenAsync(
-            "test.myshopify.com", "key", wrongCurve.ExportPkcs8PrivateKeyPem()));
+            "client-id", "test.myshopify.com", "key", wrongCurve.ExportPkcs8PrivateKeyPem()));
         await Assert.ThrowsExceptionAsync<ArgumentException>(() => client.RequestClientAssertionAccessTokenAsync(
-            "test.myshopify.com", "key", smallRsa.ExportPkcs8PrivateKeyPem()));
+            "client-id", "test.myshopify.com", "key", smallRsa.ExportPkcs8PrivateKeyPem()));
     }
 
     [DataTestMethod]
@@ -94,11 +96,11 @@ public class ShopifyClientAssertionAccessTokenRequestTests
     {
         using AsymmetricAlgorithm key = algorithm == "ES256" ? ECDsa.Create(ECCurve.NamedCurves.nistP256) : RSA.Create(2048);
         using var http = new TestHttpClient(_ => throw new AssertFailedException("Public-only key must not be sent."));
-        var client = new ShopifyOAuthClient("client-id", string.Empty, http);
+        var client = new ShopifyOAuthClient(http);
         try
         {
             await client.RequestClientAssertionAccessTokenAsync(
-                "test.myshopify.com", "key", key.ExportSubjectPublicKeyInfoPem());
+                "client-id", "test.myshopify.com", "key", key.ExportSubjectPublicKeyInfoPem());
             Assert.Fail("A public-only key must fail signing.");
         }
         catch (CryptographicException)

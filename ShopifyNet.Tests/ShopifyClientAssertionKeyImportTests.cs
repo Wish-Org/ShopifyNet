@@ -27,8 +27,8 @@ public class ShopifyClientAssertionKeyImportTests
                 Content = new StringContent("""{"access_token":"token","scope":"read_products","expires_in":3600}""")
             };
         });
-        var client = new ShopifyOAuthClient("client", string.Empty, http);
-        var token = await client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "key", key.ExportPkcs8PrivateKeyPem());
+        var client = new ShopifyOAuthClient(http);
+        var token = await client.RequestClientAssertionAccessTokenAsync("client", "test.myshopify.com", "key", key.ExportPkcs8PrivateKeyPem());
         Assert.AreEqual("token", token.access_token);
     }
 
@@ -95,8 +95,8 @@ public class ShopifyClientAssertionKeyImportTests
     private static async Task<ArgumentException> RejectPem(string pem)
     {
         using var http = new TestHttpClient(_ => throw new AssertFailedException("Invalid PEM must not trigger a request."));
-        var client = new ShopifyOAuthClient("client", string.Empty, http);
+        var client = new ShopifyOAuthClient(http);
         return await Assert.ThrowsExceptionAsync<ArgumentException>(() =>
-            client.RequestClientAssertionAccessTokenAsync("test.myshopify.com", "key", pem));
+            client.RequestClientAssertionAccessTokenAsync("client", "test.myshopify.com", "key", pem));
     }
 }

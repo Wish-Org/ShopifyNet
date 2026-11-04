@@ -9,6 +9,7 @@ namespace ShopifyNet;
 
 /// <summary>
 /// Builds Shopify OAuth authorization URLs, validates callbacks and calls the access token endpoint.
+/// Credentials are supplied per operation; instances retain only the HTTP client.
 /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens
 /// </summary>
 public class ShopifyOAuthClient
@@ -50,15 +51,10 @@ public class ShopifyOAuthClient
         DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
     };
 
-    private readonly string _clientId;
-    private readonly string _clientSecret;
     private readonly HttpClient _httpClient;
 
-    public ShopifyOAuthClient(string clientId, string clientSecret, HttpClient httpClient = null)
+    public ShopifyOAuthClient(HttpClient httpClient = null)
     {
-        _clientId = clientId ?? throw new ArgumentNullException(nameof(clientId));
-        // The client secret can be null for certain flows, such as client assertion.
-        _clientSecret = clientSecret;
         _httpClient = httpClient ?? _defaultHttpClient;
     }
 
@@ -67,8 +63,9 @@ public class ShopifyOAuthClient
     /// No request is sent. The caller must generate and store a random state nonce, then validate it in the callback.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    public string BuildAuthorizationUrl(string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
+    public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
     {
+        ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
         if (!IsValidShopDomain(myShopifyDomain))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
@@ -82,7 +79,7 @@ public class ShopifyOAuthClient
 
         var parameters = new Dictionary<string, string>
         {
-            [CLIENT_ID_KEY] = _clientId,
+            [CLIENT_ID_KEY] = clientId,
             [SCOPE_KEY] = scopes,
             [REDIRECT_URI_KEY] = redirectUri,
             [STATE_KEY] = state,
@@ -107,7 +104,7 @@ public class ShopifyOAuthClient
     }
 
     /// <summary>
-    /// Verifies the OAuth callback query's hexadecimal HMAC-SHA256 using the app's client secret.
+    /// Verifies the OAuth callback query's hexadecimal HMAC-SHA256 using the supplied client secret.
     /// Supply all URL-decoded query parameters, including hmac, preserving any duplicates.
     /// Parameters are sorted ordinally and joined as key=value pairs, excluding hmac and signature.
     /// Repeated keys ending in [] represent arrays: ids[]=1 and ids[]=2 are signed as ids=["1", "2"].
@@ -116,10 +113,9 @@ public class ShopifyOAuthClient
     /// Duplicate scalar keys, conflicting scalar/array keys, null values and invalid HMACs return false.
     /// This checks authenticity only: separately validate the shop, stored state nonce and any timestamp freshness policy.
     /// </summary>
-    public bool IsValidHmac(IEnumerable<KeyValuePair<string, string>> queryParameters)
+    public static bool IsValidHmac(IEnumerable<KeyValuePair<string, string>> queryParameters, string clientSecret)
     {
-        if (_clientSecret == null)
-            throw new ArgumentNullException(nameof(_clientSecret));
+        ArgumentNullException.ThrowIfNull(clientSecret);
 
         if (queryParameters == null)
             return false;
@@ -157,7 +153,7 @@ public class ShopifyOAuthClient
 
         var message = string.Join("&", parameters.Where(p => p.Key != "signature").Select(p =>
             $"{EncodeHmacQueryComponent(p.Key, isKey: true)}={EncodeHmacQueryComponent(p.Value)}"));
-        var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(_clientSecret), Encoding.UTF8.GetBytes(message));
+        var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(clientSecret), Encoding.UTF8.GetBytes(message));
         return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
     }
 
@@ -176,10 +172,10 @@ public class ShopifyOAuthClient
     /// If the response is lost, the same request can be repeated with the original non-expiring token within seven days to recover the same token.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/migrate-to-expiring-offline-access-tokens#migrate-existing-tokens-without-a-user-session
     /// </summary>
-    public Task<ShopifyOfflineAccessToken> MigrateToExpiringOfflineAccessTokenAsync(string myShopifyDomain, string nonExpiringAccessToken, CancellationToken cancellationToken = default)
+    public Task<ShopifyOfflineAccessToken> MigrateToExpiringOfflineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string nonExpiringAccessToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(nonExpiringAccessToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(clientId, clientSecret, myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = nonExpiringAccessToken,
@@ -194,10 +190,10 @@ public class ShopifyOAuthClient
     /// Shopify rotates the refresh token: the returned token (including its new refresh token) MUST be persisted and used for the next refresh.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/implement-token-exchange#refresh-an-expiring-offline-token
     /// </summary>
-    public Task<ShopifyOfflineAccessToken> RefreshOfflineAccessTokenAsync(string myShopifyDomain, string refreshToken, CancellationToken cancellationToken = default)
+    public Task<ShopifyOfflineAccessToken> RefreshOfflineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string refreshToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(refreshToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(clientId, clientSecret, myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = REFRESH_TOKEN_GRANT_TYPE,
             [REFRESH_TOKEN_KEY] = refreshToken,
@@ -209,10 +205,10 @@ public class ShopifyOAuthClient
     /// The ID token must have been validated by the caller.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#token-exchange-grant
     /// </summary>
-    public Task<ShopifyOfflineAccessToken> ExchangeIdTokenForOfflineAccessTokenAsync(string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
+    public Task<ShopifyOfflineAccessToken> ExchangeIdTokenForOfflineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(idToken);
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, new()
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(clientId, clientSecret, myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = idToken,
@@ -227,11 +223,11 @@ public class ShopifyOAuthClient
     /// The ID token must have been validated by the caller.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens#token-exchange-grant
     /// </summary>
-    public Task<ShopifyOnlineAccessToken> ExchangeIdTokenForOnlineAccessTokenAsync(string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
+    public Task<ShopifyOnlineAccessToken> ExchangeIdTokenForOnlineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string idToken, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(idToken);
         //the expiring parameter only applies to offline access tokens
-        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, new()
+        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(clientId, clientSecret, myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = TOKEN_EXCHANGE_GRANT_TYPE,
             [SUBJECT_TOKEN_KEY] = idToken,
@@ -245,7 +241,7 @@ public class ShopifyOAuthClient
     /// The caller must validate the OAuth callback (including HMAC, state and shop) before exchanging the code.
     /// The code must come from an authorization request without grant_options[]=per-user.
     /// </summary>
-    public Task<ShopifyOfflineAccessToken> ExchangeCodeForOfflineAccessTokenAsync(string myShopifyDomain, string code, bool expiring, CancellationToken cancellationToken = default)
+    public Task<ShopifyOfflineAccessToken> ExchangeCodeForOfflineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string code, bool expiring, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
         var parameters = new Dictionary<string, string>
@@ -254,7 +250,7 @@ public class ShopifyOAuthClient
         };
         if (expiring)
             parameters[EXPIRING_KEY] = EXPIRING_VALUE;
-        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(myShopifyDomain, parameters, true, cancellationToken);
+        return RequestAccessTokenAsync<ShopifyOfflineAccessToken>(clientId, clientSecret, myShopifyDomain, parameters, true, cancellationToken);
     }
 
     /// <summary>
@@ -263,10 +259,10 @@ public class ShopifyOAuthClient
     /// The code must come from an authorization request with grant_options[]=per-user.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    public Task<ShopifyOnlineAccessToken> ExchangeCodeForOnlineAccessTokenAsync(string myShopifyDomain, string code, CancellationToken cancellationToken = default)
+    public Task<ShopifyOnlineAccessToken> ExchangeCodeForOnlineAccessTokenAsync(string clientId, string clientSecret, string myShopifyDomain, string code, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(code);
-        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(myShopifyDomain, new()
+        return RequestAccessTokenAsync<ShopifyOnlineAccessToken>(clientId, clientSecret, myShopifyDomain, new()
         {
             [CODE_KEY] = code,
         }, true, cancellationToken);
@@ -274,15 +270,15 @@ public class ShopifyOAuthClient
 
     /// <summary>
     /// Creates an ES256 or RS256 client assertion for the shop's application-only access token request.
-    /// Uses the configured client ID and an unencrypted P-256 or RSA PEM private key; the client secret is not used.
+    /// Uses the supplied client ID and an unencrypted P-256 or RSA PEM private key; the client secret is not used.
     /// The assertion expires after 60 seconds and contains a new jti on each call.
     /// Create a fresh assertion for every token request, including retries. This is not an access token.
     /// No HTTP request is sent. The matching public JWK must already be registered in Shopify with this key ID.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-4-create-a-client-assertion
     /// </summary>
-    private string CreateClientAssertion(string myShopifyDomain, string keyId, string privateKeyPem)
+    private static string CreateClientAssertion(string clientId, string myShopifyDomain, string keyId, string privateKeyPem)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(_clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
         if (!IsValidShopDomain(myShopifyDomain))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
@@ -298,8 +294,8 @@ public class ShopifyOAuthClient
         var header = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new { alg = algorithm, kid = keyId }));
         var payload = Base64Url.EncodeToString(JsonSerializer.SerializeToUtf8Bytes(new
         {
-            iss = _clientId,
-            sub = _clientId,
+            iss = clientId,
+            sub = clientId,
             aud = $"https://{myShopifyDomain.ToLowerInvariant()}/admin/oauth/access_token",
             iat = issuedAt,
             exp = issuedAt + 60,
@@ -372,13 +368,13 @@ public class ShopifyOAuthClient
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens#step-5-request-an-access-token
     /// </summary>
     public Task<ShopifyClientAssertionAccessToken> RequestClientAssertionAccessTokenAsync(
-        string myShopifyDomain, string keyId, string privateKeyPem, CancellationToken cancellationToken = default)
+        string clientId, string myShopifyDomain, string keyId, string privateKeyPem, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_httpClient.DefaultRequestHeaders.Authorization != null)
             throw new InvalidOperationException("Client assertion requests must not include an Authorization header.");
-        var clientAssertion = CreateClientAssertion(myShopifyDomain, keyId, privateKeyPem);
-        return RequestAccessTokenAsync<ShopifyClientAssertionAccessToken>(myShopifyDomain, new()
+        var clientAssertion = CreateClientAssertion(clientId, myShopifyDomain, keyId, privateKeyPem);
+        return RequestAccessTokenAsync<ShopifyClientAssertionAccessToken>(clientId, null, myShopifyDomain, new()
         {
             [GRANT_TYPE_KEY] = CLIENT_CREDENTIALS_GRANT_TYPE,
             [CLIENT_ASSERTION_TYPE_KEY] = JWT_BEARER_ASSERTION_TYPE,
@@ -386,21 +382,22 @@ public class ShopifyOAuthClient
         }, false, cancellationToken);
     }
 
-    private async Task<T> RequestAccessTokenAsync<T>(string myShopifyDomain, Dictionary<string, string> parameters,
+    private async Task<T> RequestAccessTokenAsync<T>(string clientId, string clientSecret, string myShopifyDomain, Dictionary<string, string> parameters,
         bool includeClientSecret, CancellationToken cancellationToken)
         where T : class
     {
+        ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
         // Credentials must only be sent to a Shopify store hostname.
         if (!IsValidShopDomain(myShopifyDomain))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
 
-        parameters[CLIENT_ID_KEY] = _clientId;
+        parameters[CLIENT_ID_KEY] = clientId;
         if (includeClientSecret)
         {
-            if (_clientSecret == null)
-                throw new ArgumentNullException(nameof(_clientSecret));
-            parameters[CLIENT_SECRET_KEY] = _clientSecret;
+            if (clientSecret == null)
+                throw new ArgumentNullException(nameof(clientSecret));
+            parameters[CLIENT_SECRET_KEY] = clientSecret;
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{myShopifyDomain}/admin/oauth/access_token")
