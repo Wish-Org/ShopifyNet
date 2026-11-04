@@ -44,7 +44,11 @@ public class ShopifyOAuthClient
         AutomaticDecompression = DecompressionMethods.All,
         // Token requests must not forward credentials to a redirect target.
         AllowAutoRedirect = false
-    });
+    })
+    {
+        DefaultRequestVersion = HttpVersion.Version20,
+        DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+    };
 
     private readonly string _clientId;
     private readonly string _clientSecret;
@@ -401,6 +405,8 @@ public class ShopifyOAuthClient
 
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://{myShopifyDomain}/admin/oauth/access_token")
         {
+            Version = _httpClient.DefaultRequestVersion,
+            VersionPolicy = _httpClient.DefaultVersionPolicy,
             Content = new FormUrlEncodedContent(parameters)
         };
         request.Headers.Accept.ParseAdd("application/json");
