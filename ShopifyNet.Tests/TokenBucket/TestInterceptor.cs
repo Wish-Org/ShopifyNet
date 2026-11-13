@@ -14,10 +14,10 @@ internal class TestInterceptor : IInterceptor<ShopifyGraphQLRequest, ShopifyClie
 
     public Task<GraphQLResponse<TData>> InterceptRequestAsync<TData>(ShopifyGraphQLRequest request, ShopifyClientOptions options, CancellationToken cancellationToken, ExecuteRequestAsync<ShopifyGraphQLRequest, TData> executeAsync)
     {
-        return _interceptor.InterceptRequestAsync(request, options, cancellationToken, async (r, _, ct) =>
+        return _interceptor.InterceptRequestAsync(request, options, cancellationToken, async (r, h, ct) =>
         {
             CallCount++;
-            return await executeAsync(r, null, ct);
+            return await executeAsync(r, h, ct);
         });
     }
 }

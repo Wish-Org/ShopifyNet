@@ -54,7 +54,7 @@ public class TokenBucketInterceptor : IInterceptor<ShopifyGraphQLRequest, Shopif
         TokenBucket bucket = null;
         lock (_tokenToBucket)
         {
-            bucket = _tokenToBucket.GetOrAdd(options.AccessToken, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE));
+            bucket = _tokenToBucket.GetOrAdd(r.AccessToken ?? options.AccessToken, t => new TokenBucket(DEFAULT_GRAPHQL_MAX_AVAILABLE, DEFAULT_GRAPHQL_RESTORE_RATE));
         }
 
         this.RemoveIdleBucketsAsync();
