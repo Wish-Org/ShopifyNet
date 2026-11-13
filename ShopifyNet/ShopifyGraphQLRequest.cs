@@ -8,6 +8,9 @@ public class ShopifyGraphQLRequest : GraphQLRequest
     [JsonIgnore]
     public int? Cost { get; set; }
 
+    [JsonIgnore]
+    public string AccessToken { get; set; }
+
     public static implicit operator ShopifyGraphQLRequest(string query)
     {
         return new ShopifyGraphQLRequest

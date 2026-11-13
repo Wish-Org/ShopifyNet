@@ -49,7 +49,7 @@ public class TokenBucketInterceptor : IInterceptor<ShopifyGraphQLRequest, Shopif
         }
     }
 
-    public async Task<GraphQLResponse<TData>> InterceptRequestAsync<TData>(ShopifyGraphQLRequest r, ShopifyClientOptions options, CancellationToken cancellationToken, Func<ShopifyGraphQLRequest, CancellationToken, Task<GraphQLResponse<TData>>> executeAsync)
+    public async Task<GraphQLResponse<TData>> InterceptRequestAsync<TData>(ShopifyGraphQLRequest r, ShopifyClientOptions options, CancellationToken cancellationToken, ExecuteRequestAsync<ShopifyGraphQLRequest, TData> executeAsync)
     {
         TokenBucket bucket = null;
         lock (_tokenToBucket)
@@ -70,7 +70,7 @@ public class TokenBucketInterceptor : IInterceptor<ShopifyGraphQLRequest, Shopif
             try
             {
                 //may throw GraphQLErrorsException if options.ThrowOnGraphQLErrors is true
-                res = await executeAsync(r, cancellationToken);
+                res = await executeAsync(r, null, cancellationToken);
             }
             catch (GraphQLErrorsException ex) when (attempt < MAX_ATTEMPTS && ex.response.IsThrottled())
             {
