@@ -24,6 +24,7 @@ public class ShopifyOAuthValidationTests
     [DataRow("test-shop.myshopify.com", true)]
     [DataRow("SHOP-123.MYSHOPIFY.COM", true)]
     [DataRow("a.myshopify.com", true)]
+    [DataRow("admin.shopify.com", false)]
     [DataRow(null, false)]
     [DataRow("", false)]
     [DataRow("evil.com", false)]

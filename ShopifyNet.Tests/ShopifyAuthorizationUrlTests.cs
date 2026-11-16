@@ -37,9 +37,24 @@ public class ShopifyAuthorizationUrlTests
     }
 
     [DataTestMethod]
+    [DataRow("admin.shopify.com")]
+    [DataRow("ADMIN.SHOPIFY.COM")]
+    public void AcceptsAdminDomainForStoreSelection(string domain)
+    {
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", domain, "read_products", "https://app.example/callback", "nonce");
+        StringAssert.StartsWith(url, $"https://{domain}/admin/oauth/authorize?");
+    }
+
+    [DataTestMethod]
     [DataRow("evil.com")]
     [DataRow("shop.myshopify.com.evil.com")]
     [DataRow("https://shop.myshopify.com")]
+    [DataRow("shopify.com")]
+    [DataRow("evil.shopify.com")]
+    [DataRow("sub.admin.shopify.com")]
+    [DataRow("admin.shopify.com.evil.com")]
+    [DataRow("admin.shopify.com.")]
+    [DataRow("admin.shopify.com/store/shop")]
     public void RejectsInvalidShop(string shop)
     {
         Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", shop, "read_products", "https://app.example/callback", "nonce"));

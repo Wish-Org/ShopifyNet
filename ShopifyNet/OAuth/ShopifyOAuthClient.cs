@@ -14,6 +14,7 @@ namespace ShopifyNet;
 /// </summary>
 public class ShopifyOAuthClient
 {
+    private const string ADMIN_DOMAIN = "admin.shopify.com";
     private const string GRANT_TYPE_KEY = "grant_type";
     private const string CLIENT_ID_KEY = "client_id";
     private const string CLIENT_SECRET_KEY = "client_secret";
@@ -61,13 +62,15 @@ public class ShopifyOAuthClient
     /// <summary>
     /// Builds the Shopify authorization URL to which the merchant should be redirected.
     /// No request is sent. The caller must generate and store a random state nonce, then validate it in the callback.
+    /// The domain may be a shop.myshopify.com hostname or admin.shopify.com, which lets the merchant pick the store;
+    /// the callback's shop parameter then holds the selected store's myshopify.com domain for the token exchange.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
     public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
-        if (!IsValidShopDomain(myShopifyDomain))
+        if (!IsValidShopDomain(myShopifyDomain) && !string.Equals(myShopifyDomain, ADMIN_DOMAIN, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
         ArgumentException.ThrowIfNullOrWhiteSpace(scopes);
         ArgumentException.ThrowIfNullOrWhiteSpace(redirectUri);

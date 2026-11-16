@@ -138,7 +138,7 @@ For the [authorization code flow](https://shopify.dev/docs/apps/build/authentica
 
 ### Build an authorization URL
 
-Use `BuildAuthorizationUrl` to start the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps). It validates the shop domain, URL-encodes the parameters and uses the supplied client ID. It makes no network request and never includes the client secret.
+Use `BuildAuthorizationUrl` to start the [authorization code flow](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps). It validates the shop domain, which may also be `admin.shopify.com` to let the merchant choose the store (the callback's `shop` parameter then carries the selected store's `myshopify.com` domain for the token exchange). It URL-encodes the parameters and uses the supplied client ID. It makes no network request and never includes the client secret.
 
 ```csharp
 var state = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
