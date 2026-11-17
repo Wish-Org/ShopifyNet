@@ -30,7 +30,6 @@ public class ShopifyOAuthClient
     private const string GRANT_OPTIONS_KEY = "grant_options[]";
     private const string CLIENT_ASSERTION_KEY = "client_assertion";
     private const string CLIENT_ASSERTION_TYPE_KEY = "client_assertion_type";
-
     private const string EXPIRING_VALUE = "1";
     private const string REFRESH_TOKEN_GRANT_TYPE = "refresh_token";
     private const string TOKEN_EXCHANGE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:token-exchange";
@@ -39,6 +38,8 @@ public class ShopifyOAuthClient
     private const string ONLINE_ACCESS_TOKEN_TYPE = "urn:shopify:params:oauth:token-type:online-access-token";
     private const string CLIENT_CREDENTIALS_GRANT_TYPE = "client_credentials";
     private const string JWT_BEARER_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
+    public const string WEBHOOK_HMAC_HEADER = "X-Shopify-Hmac-SHA256";
+
 
     private static readonly HttpClient _defaultHttpClient = new(new SocketsHttpHandler
     {
@@ -158,6 +159,39 @@ public class ShopifyOAuthClient
             $"{EncodeHmacQueryComponent(p.Key, isKey: true)}={EncodeHmacQueryComponent(p.Value)}"));
         var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(clientSecret), Encoding.UTF8.GetBytes(message));
         return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
+    }
+
+    /// <summary>
+    /// Verifies a webhook's base64 HMAC-SHA256 (the X-Shopify-Hmac-SHA256 header) over the raw request body using the client secret.
+    /// Supply the body exactly as received; a re-serialized body will not validate.
+    /// Missing, malformed or incorrect HMACs return false. A header with several values, joined with commas, is malformed.
+    /// This checks authenticity only: deduplicate with X-Shopify-Event-Id and apply any freshness policy separately.
+    /// See https://shopify.dev/docs/apps/build/webhooks/subscribe/https#step-2-validate-the-origin-of-your-webhook-to-ensure-its-coming-from-shopify
+    /// </summary>
+    public static bool IsValidWebhookHmac(string hmacHeader, ReadOnlySpan<byte> requestBody, string clientSecret)
+    {
+        ArgumentNullException.ThrowIfNull(clientSecret);
+
+        if (hmacHeader == null)
+            return false;
+
+        Span<byte> suppliedHash = stackalloc byte[HMACSHA256.HashSizeInBytes];
+        if (!Convert.TryFromBase64String(hmacHeader, suppliedHash, out var bytesWritten) || bytesWritten != HMACSHA256.HashSizeInBytes)
+            return false;
+
+        Span<byte> expectedHash = stackalloc byte[HMACSHA256.HashSizeInBytes];
+        HMACSHA256.HashData(Encoding.UTF8.GetBytes(clientSecret), requestBody, expectedHash);
+        return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
+    }
+
+    public static bool IsValidWebhookHmac(string hmacHeader, string requestBody, string clientSecret)
+    {
+        ArgumentNullException.ThrowIfNull(clientSecret);
+
+        if (requestBody == null)
+            return false;
+
+        return IsValidWebhookHmac(hmacHeader, Encoding.UTF8.GetBytes(requestBody), clientSecret);
     }
 
     private static string EncodeHmacQueryComponent(string value, bool isKey = false)
