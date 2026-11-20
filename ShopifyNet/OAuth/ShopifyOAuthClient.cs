@@ -307,6 +307,7 @@ public class ShopifyOAuthClient
 
     /// <summary>
     /// Creates an ES256 or RS256 client assertion for the shop's application-only access token request.
+    /// ES256 requires loading a Windows profile in Azure, so it may not work in all environments.
     /// Uses the supplied client ID and an unencrypted P-256 or RSA PEM private key; the client secret is not used.
     /// The assertion expires after 60 seconds and contains a new jti on each call.
     /// Create a fresh assertion for every token request, including retries. This is not an access token.
