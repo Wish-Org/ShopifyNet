@@ -11,6 +11,7 @@ public static class ShopifyClientAssertionKeys
 {
     /// <summary>
     /// Generates a P-256 key pair for ES256 or an RSA-3072 key pair for RS256.
+    /// ES256 requires loading a Windows profile in Azure, so it may not work in all environments.
     /// Returns an unencrypted PKCS#8 PEM private key and an indented public JWK for Shopify's Dev Dashboard.
     /// Keep the private key secure; upload only the public JWK. Each call creates a new key pair.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/application-only-access-tokens

@@ -3,8 +3,9 @@ using ShopifyNet;
 if (args.Length != 2)
 {
     // betterreports-2026-11 is an example key ID format used for Shopify client assertion keys. The key ID must be unique across your client assertion keys.
+    // ES256 requires loading a windows profile in Azure so it may not work in all environments.
     Console.Error.WriteLine("Usage: dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- <key-id> <ES256|RS256>");
-    Console.Error.WriteLine("Example: dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-2026-11 ES256");
+    Console.Error.WriteLine("Example: dotnet run --project ShopifyNet.KeyPairGenerator --framework net10.0 -- betterreports-2026-11 RS256");
     return 1;
 }
 
