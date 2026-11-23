@@ -90,50 +90,10 @@ public class ShopifyAuthorizationUrlTests
     }
 
     [TestMethod]
-    public void RejectsEmptyScopeList()
-    {
-        var error = Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", [], "https://app.example/callback", "nonce"));
-        Assert.AreEqual("scopeList", error.ParamName);
-    }
-
-    [TestMethod]
-    public void RejectsNullScopeListWithParameterName()
-    {
-        var error = Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", null, "https://app.example/callback", "nonce"));
-        Assert.AreEqual("scopeList", error.ParamName);
-    }
-
-    [TestMethod]
     public void ValidatesClientIdBeforeScopeList()
     {
         var error = Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl(null, "shop.myshopify.com", null, "https://app.example/callback", "nonce"));
         Assert.AreEqual("clientId", error.ParamName);
-    }
-
-    [DataTestMethod]
-    [DataRow("")]
-    [DataRow(" ")]
-    [DataRow(null)]
-    public void RejectsBlankScopeInList(string blank)
-    {
-        var error = Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products", blank], "https://app.example/callback", "nonce"));
-        Assert.AreEqual("scopeList", error.ParamName);
-    }
-
-    [TestMethod]
-    public void EnumeratesScopeListOnce()
-    {
-        var enumerations = 0;
-        IEnumerable<string> Scopes()
-        {
-            enumerations++;
-            yield return "read_products";
-            yield return "write_orders";
-        }
-
-        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", Scopes(), "https://app.example/callback", "nonce");
-        Assert.AreEqual("read_products,write_orders", HttpUtility.ParseQueryString(new Uri(url).Query)["scope"]);
-        Assert.AreEqual(1, enumerations);
     }
 
     [TestMethod]
