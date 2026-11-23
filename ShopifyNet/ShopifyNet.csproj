@@ -20,6 +20,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="GraphQLSharp" />
+		<PackageReference Include="Microsoft.Extensions.Primitives" />
 	</ItemGroup>
 
 </Project>

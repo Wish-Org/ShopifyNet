@@ -12,6 +12,12 @@ public sealed record ShopifyClientAssertionAccessToken
     /// <summary>The comma separated scopes granted to the app installation.</summary>
     public string scope { get; init; }
 
+    /// <summary>
+    /// Splits <see cref="scope"/> into individual scopes, ignoring empty entries.
+    /// Returns null when <see cref="scope"/> is null.
+    /// </summary>
+    public IEnumerable<string> GetScopes() => scope?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
     /// <summary>The number of seconds until expiry, as returned by Shopify.</summary>
     public int expires_in { get; init; }
 

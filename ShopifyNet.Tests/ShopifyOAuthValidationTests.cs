@@ -165,7 +165,7 @@ public class ShopifyOAuthValidationTests
         var query = ValidQuery();
         query.Remove("hmac");
         Assert.IsFalse(ShopifyOAuthClient.IsValidHmac(query, "client-secret"));
-        Assert.IsFalse(ShopifyOAuthClient.IsValidHmac(null, "client-secret"));
+        Assert.IsFalse(ShopifyOAuthClient.IsValidHmac((IEnumerable<KeyValuePair<string, string>>)null, "client-secret"));
     }
 
     [DataTestMethod]
