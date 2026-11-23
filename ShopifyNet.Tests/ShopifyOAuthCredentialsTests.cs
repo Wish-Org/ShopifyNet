@@ -66,9 +66,9 @@ public class ShopifyOAuthCredentialsTests
     public void StaticHelpersRejectMissingCredentials()
     {
         var idError = Assert.ThrowsException<ArgumentNullException>(() =>
-            ShopifyOAuthClient.BuildAuthorizationUrl(null, "test.myshopify.com", "read_products", "https://app.example/callback", "nonce"));
+            ShopifyOAuthClient.BuildAuthorizationUrl(null, "test.myshopify.com", ["read_products"], "https://app.example/callback", "nonce"));
         Assert.AreEqual("clientId", idError.ParamName);
-        var secretError = Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.IsValidHmac([], null));
+        var secretError = Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.IsValidHmac(Array.Empty<KeyValuePair<string, string>>(), null));
         Assert.AreEqual("clientSecret", secretError.ParamName);
     }
 }

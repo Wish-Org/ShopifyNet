@@ -18,6 +18,12 @@ public sealed record ShopifyOnlineAccessToken
     public string scope { get; init; }
 
     /// <summary>
+    /// Splits <see cref="scope"/> into individual scopes, ignoring empty entries.
+    /// Returns null when <see cref="scope"/> is null.
+    /// </summary>
+    public IEnumerable<string> GetScopes() => scope?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+    /// <summary>
     /// The number of seconds until the access token expires, or null when Shopify omits expiry metadata.
     /// Null means the expiry is unknown, not that the token never expires.
     /// The token also expires when the user logs out of the Shopify admin.

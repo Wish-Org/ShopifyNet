@@ -145,12 +145,14 @@ var state = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerat
 // Store state in the initiating browser's session before redirecting.
 var authorizationUrl = ShopifyOAuthClient.BuildAuthorizationUrl(
     clientId, myShopifyDomain,
-    scopes: "read_products,write_orders",
+    scopeList: ["read_products", "write_orders"],
     redirectUri: "https://your-app.example.com/oauth/callback",
     state: state,
     online: false);
 // Redirect the merchant to authorizationUrl.
 ```
+
+The scopes are joined with commas. The list must contain at least one scope, with no null, empty or whitespace entries. Every token type exposes `GetScopes()`, which splits the granted `scope` string back into a list (or returns null when Shopify omitted it).
 
 Set `online: true` to include `grant_options[]=per-user` for an online token. Offline access is the default; choose expiring or non-expiring offline access when exchanging the resulting code. The callback URI must match one registered with Shopify. Validate and consume the stored state when handling the callback, together with the HMAC and shop checks below.
 
@@ -160,15 +162,14 @@ All OAuth token requests reject domains other than a plain `shop.myshopify.com` 
 
 `ShopifyOAuthClient.IsValidHmac` verifies the OAuth query signature using the supplied client secret and a constant-time comparison. Supply every URL-decoded query parameter, including `hmac`, without filtering fields or collapsing duplicates. It rejects missing, malformed or incorrect HMACs and duplicate keys. Before signing, it sorts the parameters and escapes `%` as `%25` and `&` as `%26` in keys and values, plus `=` as `%3D` in keys only. Other characters, including JSON punctuation, spaces and base64 padding, remain literal. This signing format is separate from URL encoding used to transport the callback. It does not validate the state nonce or timestamp freshness, and is not a webhook or app-proxy verifier.
 
+`IsValidHmac` accepts either `string` or `StringValues` values. The `StringValues` overload takes ASP.NET Core's `Request.Query` directly, expanding each multi-valued key into separate pairs in order.
+
 For example, in an ASP.NET Core controller callback, with `expectedState` retrieved from the initiating browser's session:
 
 ```csharp
-var parameters = Request.Query
-    .SelectMany(pair => pair.Value.Select(value => new KeyValuePair<string, string>(pair.Key, value)))
-    .ToArray();
 var shop = Request.Query["shop"].ToString();
 
-if (!ShopifyOAuthClient.IsValidHmac(parameters, clientSecret) || !ShopifyOAuthClient.IsValidShopDomain(shop))
+if (!ShopifyOAuthClient.IsValidHmac(Request.Query, clientSecret) || !ShopifyOAuthClient.IsValidShopDomain(shop))
     return Unauthorized();
 
 if (string.IsNullOrEmpty(expectedState) || Request.Query["state"].ToString() != expectedState)

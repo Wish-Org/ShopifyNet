@@ -18,6 +18,12 @@ public sealed record ShopifyOfflineAccessToken
     public string scope { get; init; }
 
     /// <summary>
+    /// Splits <see cref="scope"/> into individual scopes, ignoring empty entries.
+    /// Returns null when <see cref="scope"/> is null.
+    /// </summary>
+    public IEnumerable<string> GetScopes() => scope?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+    /// <summary>
     /// The number of seconds until the access token expires, or null for a non-expiring token.
     /// </summary>
     public int? expires_in { get; init; }
