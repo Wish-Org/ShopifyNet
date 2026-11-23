@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Primitives;
 
 namespace ShopifyNet;
 
@@ -66,13 +67,16 @@ public class ShopifyOAuthClient
     /// the callback's shop parameter then holds the selected store's myshopify.com domain for the token exchange.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, string scopes, string redirectUri, string state, bool online = false)
+    public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, IEnumerable<string> scopes, string redirectUri, string state, bool online = false)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
         if (!IsValidShopDomain(myShopifyDomain) && !string.Equals(myShopifyDomain, ADMIN_DOMAIN, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
-        ArgumentException.ThrowIfNullOrWhiteSpace(scopes);
+        ArgumentNullException.ThrowIfNull(scopes);
+        if (!scopes.Any() || scopes.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Expected at least one scope, with no null, empty or whitespace scopes.", nameof(scopes));
+        var scopeString = string.Join(",", scopes);
         ArgumentException.ThrowIfNullOrWhiteSpace(redirectUri);
         ArgumentException.ThrowIfNullOrWhiteSpace(state);
         if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var callbackUri) ||
@@ -83,7 +87,7 @@ public class ShopifyOAuthClient
         var parameters = new Dictionary<string, string>
         {
             [CLIENT_ID_KEY] = clientId,
-            [SCOPE_KEY] = scopes,
+            [SCOPE_KEY] = scopeString,
             [REDIRECT_URI_KEY] = redirectUri,
             [STATE_KEY] = state,
         };
@@ -158,6 +162,18 @@ public class ShopifyOAuthClient
             $"{EncodeHmacQueryComponent(p.Key, isKey: true)}={EncodeHmacQueryComponent(p.Value)}"));
         var expectedHash = HMACSHA256.HashData(Encoding.UTF8.GetBytes(clientSecret), Encoding.UTF8.GetBytes(message));
         return CryptographicOperations.FixedTimeEquals(expectedHash, suppliedHash);
+    }
+
+    /// <summary>
+    /// Verifies the OAuth callback query's HMAC from multi-valued query parameters, such as ASP.NET Core's IQueryCollection.
+    /// Each value is expanded to a separate key/value pair, preserving order, then verified as by
+    /// <see cref="IsValidHmac(IEnumerable{KeyValuePair{string, string}}, string)"/>, whose rules and return values apply.
+    /// </summary>
+    public static bool IsValidHmac(IEnumerable<KeyValuePair<string, StringValues>> queryParameters, string clientSecret)
+    {
+        // A null query stays null, so the string overload checks clientSecret first and then returns false.
+        var parameters = queryParameters?.SelectMany(p => p.Value.Select(v => KeyValuePair.Create(p.Key, v)));
+        return IsValidHmac(parameters, clientSecret);
     }
 
     private static string EncodeHmacQueryComponent(string value, bool isKey = false)

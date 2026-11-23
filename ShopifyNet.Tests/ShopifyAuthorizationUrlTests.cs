@@ -12,7 +12,7 @@ public class ShopifyAuthorizationUrlTests
     public void BuildsEncodedAuthorizationUrl(bool online)
     {
         const string redirectUri = "https://app.example/callback?next=%2Forders&source=shopify";
-        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "test-shop.myshopify.com", "read_products,write_orders", redirectUri, "nonce+/= %", online);
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "test-shop.myshopify.com", ["read_products", "write_orders"], redirectUri, "nonce+/= %", online);
         var uri = new Uri(url);
         var query = HttpUtility.ParseQueryString(uri.Query);
 
@@ -32,7 +32,7 @@ public class ShopifyAuthorizationUrlTests
     [TestMethod]
     public void DefaultsToOfflineAccess()
     {
-        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", "http://localhost:3000/callback", "nonce");
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], "http://localhost:3000/callback", "nonce");
         Assert.IsNull(HttpUtility.ParseQueryString(new Uri(url).Query)["grant_options[]"]);
     }
 
@@ -41,7 +41,7 @@ public class ShopifyAuthorizationUrlTests
     [DataRow("ADMIN.SHOPIFY.COM")]
     public void AcceptsAdminDomainForStoreSelection(string domain)
     {
-        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", domain, "read_products", "https://app.example/callback", "nonce");
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", domain, ["read_products"], "https://app.example/callback", "nonce");
         StringAssert.StartsWith(url, $"https://{domain}/admin/oauth/authorize?");
     }
 
@@ -57,7 +57,7 @@ public class ShopifyAuthorizationUrlTests
     [DataRow("admin.shopify.com/store/shop")]
     public void RejectsInvalidShop(string shop)
     {
-        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", shop, "read_products", "https://app.example/callback", "nonce"));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", shop, ["read_products"], "https://app.example/callback", "nonce"));
     }
 
     [DataTestMethod]
@@ -67,23 +67,39 @@ public class ShopifyAuthorizationUrlTests
     [DataRow("https://user:password@app.example/callback")]
     public void RejectsInvalidRedirectUri(string redirectUri)
     {
-        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", redirectUri, "nonce"));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], redirectUri, "nonce"));
     }
 
     [TestMethod]
     public void RequiresScopesRedirectAndState()
     {
         Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", null, "https://app.example/callback", "nonce"));
-        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", " ", "https://app.example/callback", "nonce"));
-        Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", null, "nonce"));
-        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", "https://app.example/callback", ""));
-        Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", "https://app.example/callback", null));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", [" "], "https://app.example/callback", "nonce"));
+        Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], null, "nonce"));
+        Assert.ThrowsException<ArgumentException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], "https://app.example/callback", ""));
+        Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], "https://app.example/callback", null));
+    }
+
+    [TestMethod]
+    public void JoinsScopeListWithCommas()
+    {
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", new List<string> { "read_products", "write_orders", "read_customers" }, "https://app.example/callback", "nonce");
+        var uri = new Uri(url);
+        Assert.AreEqual("read_products,write_orders,read_customers", HttpUtility.ParseQueryString(uri.Query)["scope"]);
+        StringAssert.Contains(uri.Query, "scope=read_products%2Cwrite_orders%2Cread_customers");
+    }
+
+    [TestMethod]
+    public void ValidatesClientIdBeforeScopeList()
+    {
+        var error = Assert.ThrowsException<ArgumentNullException>(() => ShopifyOAuthClient.BuildAuthorizationUrl(null, "shop.myshopify.com", null, "https://app.example/callback", "nonce"));
+        Assert.AreEqual("clientId", error.ParamName);
     }
 
     [TestMethod]
     public void EncodesStateContainingQueryDelimiters()
     {
-        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", "read_products", "https://app.example/callback", "nonce&extra=value");
+        var url = ShopifyOAuthClient.BuildAuthorizationUrl("client+id", "shop.myshopify.com", ["read_products"], "https://app.example/callback", "nonce&extra=value");
         var query = HttpUtility.ParseQueryString(new Uri(url).Query);
         Assert.AreEqual("nonce&extra=value", query["state"]);
         Assert.IsNull(query["extra"]);
