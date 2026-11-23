@@ -21,7 +21,7 @@ public sealed record ShopifyOnlineAccessToken
     /// Splits <see cref="scope"/> into individual scopes, ignoring empty entries.
     /// Returns null when <see cref="scope"/> is null.
     /// </summary>
-    public IEnumerable<string> GetScopes() => scope?.Split(',', StringSplitOptions.RemoveEmptyEntries);
+    public IEnumerable<string> GetScopes() => scope?.Split(',');
 
     /// <summary>
     /// The number of seconds until the access token expires, or null when Shopify omits expiry metadata.

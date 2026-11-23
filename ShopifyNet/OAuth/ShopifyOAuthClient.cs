@@ -68,17 +68,16 @@ public class ShopifyOAuthClient
     /// the callback's shop parameter then holds the selected store's myshopify.com domain for the token exchange.
     /// See https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps
     /// </summary>
-    public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, IEnumerable<string> scopeList, string redirectUri, string state, bool online = false)
+    public static string BuildAuthorizationUrl(string clientId, string myShopifyDomain, IEnumerable<string> scopes, string redirectUri, string state, bool online = false)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(myShopifyDomain);
         if (!IsValidShopDomain(myShopifyDomain) && !string.Equals(myShopifyDomain, ADMIN_DOMAIN, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Invalid shop domain.", nameof(myShopifyDomain));
-        ArgumentNullException.ThrowIfNull(scopeList);
-        var scopeArray = scopeList.ToArray();
-        if (scopeArray.Length == 0 || scopeArray.Any(string.IsNullOrWhiteSpace))
-            throw new ArgumentException("Expected at least one scope, with no null, empty or whitespace scopes.", nameof(scopeList));
-        var scopes = string.Join(",", scopeArray);
+        ArgumentNullException.ThrowIfNull(scopes);
+        if (!scopes.Any() || scopes.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Expected at least one scope, with no null, empty or whitespace scopes.", nameof(scopes));
+        var scopeString = string.Join(",", scopes);
         ArgumentException.ThrowIfNullOrWhiteSpace(redirectUri);
         ArgumentException.ThrowIfNullOrWhiteSpace(state);
         if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var callbackUri) ||
@@ -89,7 +88,7 @@ public class ShopifyOAuthClient
         var parameters = new Dictionary<string, string>
         {
             [CLIENT_ID_KEY] = clientId,
-            [SCOPE_KEY] = scopes,
+            [SCOPE_KEY] = scopeString,
             [REDIRECT_URI_KEY] = redirectUri,
             [STATE_KEY] = state,
         };
