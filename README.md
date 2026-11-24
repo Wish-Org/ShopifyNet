@@ -48,9 +48,17 @@ See unit tests for more examples.
 
 ### Per-request access tokens
 
-The access token passed to `ShopifyClient` or `ShopifyClientOptions` is optional. Pass null to share one client across tokens (for example expiring tokens that are refreshed). ShopifyNet does not send that token itself: an interceptor must apply it through the header callback, removing any `X-Shopify-Access-Token` header first.
+The access token passed to `ShopifyClient` or `ShopifyClientOptions` is optional. Pass null to share one client across tokens (for example expiring tokens that are refreshed). ShopifyNet sends the client's token, when set, in the `X-Shopify-Access-Token` header, but does not send the per-request token itself: an interceptor must apply it through the header callback, removing any `X-Shopify-Access-Token` header first.
 
-**Breaking API change:** the token-bucket rate limiter has been removed. `ShopifyClientOptions.SMART_INTERCEPTOR` is replaced by `RETRY_INTERCEPTOR`, which only retries, and the `useSmartInterceptor` constructor parameter is renamed `useRetryInterceptor`. Supply your own interceptor through `ShopifyClientOptions.Interceptor` if you need client-side rate limiting.
+**Breaking API change:** the token-bucket rate limiter has been removed. `ShopifyClientOptions.SMART_INTERCEPTOR` is replaced by `RETRY_INTERCEPTOR`, which only retries, and the `useSmartInterceptor` constructor parameter is renamed `useRetryInterceptor`. The retry interceptor does not retry throttled requests: Shopify reports those with HTTP 200 and a `THROTTLED` error code, so the request fails (throwing a `GraphQLErrorsException` when `ThrowOnGraphQLErrors` is true). Supply your own interceptor through `ShopifyClientOptions.Interceptor` if you need client-side rate limiting or throttle handling. Setting `Interceptor` replaces `RETRY_INTERCEPTOR`, so chain yours with it to keep retries:
+
+```csharp
+var options = new ShopifyClientOptions(myShopifyDomain, accessToken: null)
+{
+    Interceptor = new ChainedInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>(
+        myInterceptor, ShopifyClientOptions.RETRY_INTERCEPTOR),
+};
+```
 
 ### OAuth access tokens
 

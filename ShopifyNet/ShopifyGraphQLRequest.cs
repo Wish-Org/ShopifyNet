@@ -5,6 +5,10 @@ namespace ShopifyNet;
 
 public class ShopifyGraphQLRequest : GraphQLRequest
 {
+    /// <summary>
+    /// Optional estimated query cost. Not used by ShopifyNet itself: it is available to custom interceptors,
+    /// for example to reserve rate-limit budget before sending the request.
+    /// </summary>
     [JsonIgnore]
     public int? Cost { get; set; }
 
