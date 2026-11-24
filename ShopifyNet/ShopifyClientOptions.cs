@@ -12,10 +12,10 @@ public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, 
         typeof(ShopifyClientOptions).Assembly.GetName().Version!.ToString());
 
     /// <summary>
-    /// A ChainedInterceptor with a TokenBucketInterceptor for rate limiting and a RetryInterceptor for handling retries.
+    /// A RetryInterceptor for handling retries.
     /// </summary>
-    public static readonly IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> SMART_INTERCEPTOR =
-                            new ChainedInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>(new TokenBucketInterceptor(), new RetryInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>());
+    public static readonly IInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions> RETRY_INTERCEPTOR =
+                            new RetryInterceptor<ShopifyGraphQLRequest, ShopifyClientOptions>();
 
     /// <summary>
     /// The MyShopify domain of the store, such as "myshop.myshopify.com".
@@ -23,13 +23,14 @@ public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, 
     public string MyShopifyDomain { get; private set; }
 
     /// <summary>
-    /// Public setter because might be set by an interceptor that refreshes token
+    /// Optional access token sent in the X-Shopify-Access-Token header with every request.
+    /// Null when each request supplies its own token through <see cref="ShopifyGraphQLRequest.AccessToken"/>.
     /// </summary>
     public string AccessToken { get; private set; }
 
     /// <summary>
     /// Optional API version to use for the Shopify API.
-    /// Defaults to AdminClientOptions.DEFAULT_API_VERSION if unspecified.
+    /// Defaults to ShopifyClientOptions.DEFAULT_API_VERSION if unspecified.
     /// </summary>
     public string APIVersion { get; private set; }
 
@@ -54,21 +55,24 @@ public class ShopifyClientOptions : IGraphQLClientOptions<ShopifyClientOptions, 
     Action<HttpRequestHeaders> IGraphQLClientOptions<ShopifyClientOptions, ShopifyGraphQLRequest>.ConfigureHttpRequestHeaders => this.ConfigureHttpRequestHeaders;
 
     /// <param name="myShopifyDomain">The MyShopify domain of the store, such as "myshop.myshopify.com".</param>
-    /// <param name="accessToken"></param>
-    /// <param name="apiVersion">Optional API version to use for the Shopify API. Defaults to AdminClientOptions.DEFAULT_API_VERSION if unspecified.</param>
-    /// <param name="useSmartInterceptor">Whether to use the built-in smart interceptor for rate limiting and retries.</param>
+    /// <param name="accessToken">
+    /// Optional access token sent with every request. May be null if each request supplies its own token through
+    /// <see cref="ShopifyGraphQLRequest.AccessToken"/>, which an interceptor must apply.
+    /// </param>
+    /// <param name="apiVersion">Optional API version to use for the Shopify API. Defaults to ShopifyClientOptions.DEFAULT_API_VERSION if unspecified.</param>
+    /// <param name="useRetryInterceptor">Whether to use the built-in retry interceptor (<see cref="RETRY_INTERCEPTOR"/>) to retry failed requests.</param>
     public ShopifyClientOptions(string myShopifyDomain,
                                 string accessToken,
                                 string apiVersion = DEFAULT_API_VERSION,
-                                bool useSmartInterceptor = true)
+                                bool useRetryInterceptor = true)
     {
         MyShopifyDomain = myShopifyDomain ?? throw new ArgumentNullException(nameof(myShopifyDomain));
-        AccessToken = accessToken ?? throw new ArgumentNullException(nameof(accessToken));
+        AccessToken = accessToken;
         APIVersion = apiVersion ?? DEFAULT_API_VERSION;
         _uri = new Uri($"https://{MyShopifyDomain}/admin/api/{APIVersion}/graphql.json");
 
-        if (useSmartInterceptor)
-            Interceptor = SMART_INTERCEPTOR;
+        if (useRetryInterceptor)
+            Interceptor = RETRY_INTERCEPTOR;
     }
 
     private void ConfigureHttpRequestHeaders(HttpRequestHeaders headers)

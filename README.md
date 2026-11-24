@@ -14,7 +14,7 @@ dotnet add package ShopifyNet
 
 -   Strongly typed queries, mutations, input objects. All API types have been pregenerated and are available in the `ShopifyNet.Types` namespace.
 -   Support for request interception. This enables centralized logic for logging, retries, rate limit policies, testing, error handling...
--   Built-in smart interceptor automatically handles retries and rate limits
+-   Built-in retry interceptor automatically retries failed requests
 -   The `ShopifyNet.ShopifyClient` is thread safe.
 -   Ability to provide a custom `HttpClient` instance
 
@@ -45,6 +45,12 @@ public async Task QuerySimple()
 ```
 
 See unit tests for more examples.
+
+### Per-request access tokens
+
+The access token passed to `ShopifyClient` or `ShopifyClientOptions` is optional. Pass null to share one client across tokens (for example expiring tokens that are refreshed). ShopifyNet does not send that token itself: an interceptor must apply it through the header callback, removing any `X-Shopify-Access-Token` header first.
+
+**Breaking API change:** the token-bucket rate limiter has been removed. `ShopifyClientOptions.SMART_INTERCEPTOR` is replaced by `RETRY_INTERCEPTOR`, which only retries, and the `useSmartInterceptor` constructor parameter is renamed `useRetryInterceptor`. Supply your own interceptor through `ShopifyClientOptions.Interceptor` if you need client-side rate limiting.
 
 ### OAuth access tokens
 

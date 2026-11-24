@@ -8,8 +8,8 @@ public partial class ShopifyClient
     public ShopifyClient(string myShopifyDomain,
                         string accessToken,
                         string apiVersion = ShopifyClientOptions.DEFAULT_API_VERSION,
-                        bool useSmartInterceptor = true)
-                        : this(new ShopifyClientOptions(myShopifyDomain, accessToken, apiVersion, useSmartInterceptor))
+                        bool useRetryInterceptor = true)
+                        : this(new ShopifyClientOptions(myShopifyDomain, accessToken, apiVersion, useRetryInterceptor))
     {
     }
 
